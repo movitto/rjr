@@ -1,0 +1,25 @@
+Simrpc - A Simple RPC library using AMQP as the transport mechanism
+Copyright (C) 2009 Mohammed Morsi <movitto@yahoo.com>
+Simrpc is made available under the MIT License
+
+I. Intro
+=====================================================
+Simrpc is a simple Ruby module for rpc communication, 
+that uses Apache QPID as the transport mechanism. 
+
+II. Using
+=====================================================
+Until I write a tutorial, the simrpc test suite 
+should detail common usage. The Simrpc API 
+http://projects.morsi.org/simrpc/doc/  (generated
+from rdoc) details the complete interface
+
+III. TODO
+=====================================================
+ Efficiency improvements
+ C++ rewrite, w/ Ruby and other wrappers, so
+  Simrpc can be used as across-languages
+
+IV. Authors
+=====================================================
+ Mohammed Morsi <movitto@yahoo.com>
