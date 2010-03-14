@@ -1,0 +1,79 @@
+== Simrpc - A Simple RPC library using AMQP as the transport mechanism
+
+Copyright (C) 2010 Mohammed Morsi <movitto@yahoo.com>
+
+Simrpc is made available under the MIT License
+
+=== Intro
+Simrpc is a simple Ruby module for rpc communication
+that uses Apache QPID as the transport mechanism. 
+
+Developers define class / function schemas in xml and register handlers
+to be invoked when schema methods are called. Schema classes and members
+are mapped to Ruby classes via Ruby's builtin introspection mechanisms.
+
+To install simrpc simply run:
+   gem install simrpc
+
+Source code is available via:
+   git clone http://github.com/movitto/simrpc
+
+=== Using
+Generate documentation via
+  rake rdoc
+
+Also see specs for detailed usage.
+
+The primary interface to simrpc is provided by the 'node' module which 
+defines Simrpc::Node. This class should be instantiated using a custom identifier
+for every simrpc endpoint you want to establish (nodes that share
+an identifier will share a message queue) after which it can be used to 
+register handlers to schema methods and invoke remote methods.
+
+
+== Example
+
+    TEST_SCHEMA = 
+             "<schema>"+
+             "  <method name='foo_method'>" +
+             "    <param type='int' name='some_int'/>"+
+             "    <param type='float' name='floating_point_number'/>"+
+             "    <return_value type='str' name='a_string' />" +
+             "    <return_value type='obj' name='my_class_instance' associated='MyClass' />" +
+             "  </method>"+
+             "  <method name='bar_method'>" +
+             "    <param type='array' name='byte_array' associated='int'/>"+
+             "    <return_value type='int' name='bool_success' />"+
+             "  </method>"+
+             "  <class name='MyClass'>"+
+             "    <member type='str' name='str_member' />" +
+             "    <member type='float' name='float_member' />" +
+             "    <member type='obj' name='associated_obj' ignore_null='true' />" +
+             "  </class>"+
+             "</schema>"
+
+    class MyClass
+      attr_accessor :str_member
+      attr_accessor :float_member
+      attr_accessor :associated_obj
+    end
+
+    server = Node.new(:id => "server3", :schema => TEST_SCHEMA)
+    client = Node.new(:id => "client3", :schema => TEST_SCHEMA, :destination => "server3")
+
+    server.handle_method("foo_method") { |some_int, floating_point_number|
+       some_int # => 10
+       floating_point_number # => 15.4
+
+       ["stuff", MyClass.new("foobar", 4.2)]
+    }   
+
+    a_str, my_class_instance = client.foo_method(10, 15.4)
+
+    a_str # => "stuff"
+    my_class_instance.str_member # => "foobar"
+    my_class_instance.float_member # => 4.2 
+
+
+=== Authors
+ Mohammed Morsi <movitto@yahoo.com>

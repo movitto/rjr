@@ -1,7 +1,4 @@
-# simrpc - simple remote procedure call library
-#
-# Implements a simple to use method based RPC for ruby
-# built upon Apache Qpid
+# simrpc common module spec
 #
 # Copyright (c) 2010 Mohammed Morsi <movitto@yahoo.com>
 #
@@ -26,13 +23,4 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-lib = File.dirname(__FILE__)
-
-require lib + '/simrpc/common'
-require lib + '/simrpc/exceptions'
-require lib + '/simrpc/schema'
-require lib + '/simrpc/message'
-require lib + '/simrpc/qpid_adapter'
-require lib + '/simrpc/node'
-
-require 'activesupport' # for inflector
+require File.dirname(__FILE__) + '/spec_helper'

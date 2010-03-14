@@ -1,9 +1,6 @@
-# simrpc - simple remote procedure call library
+# simrpc exceptions, may be thrown in simrpc operations
 #
-# Implements a simple to use method based RPC for ruby
-# built upon Apache Qpid
-#
-# Copyright (c) 2010 Mohammed Morsi <movitto@yahoo.com>
+# Copyright (C) 2010 Mohammed Morsi <movitto@yahoo.com>
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
@@ -26,13 +23,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-lib = File.dirname(__FILE__)
-
-require lib + '/simrpc/common'
-require lib + '/simrpc/exceptions'
-require lib + '/simrpc/schema'
-require lib + '/simrpc/message'
-require lib + '/simrpc/qpid_adapter'
-require lib + '/simrpc/node'
-
-require 'activesupport' # for inflector
+class InvalidSchemaClass < RuntimeError
+   def self(msg = '')
+     super(msg)
+   end
+end
