@@ -49,6 +49,7 @@ describe "Simrpc::Schema" do
      schema_def.methods[0].parameters[0].name.should == 'some_int'
      schema_def.methods[0].parameters[1].type.should == :float
      schema_def.methods[0].parameters[1].name.should == 'floating_point_number'
+     schema_def.methods[0].parameters[1].default.should == 5.6
      schema_def.methods[0].return_values.size.should == 2
      schema_def.methods[0].return_values[0].type.should == :str
      schema_def.methods[0].return_values[0].name.should == 'a_string'

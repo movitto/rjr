@@ -40,7 +40,7 @@ TEST_SCHEMA =
          "<schema>"+
          "  <method name='foo_method'>" +
          "    <param type='int' name='some_int'/>"+
-         "    <param type='float' name='floating_point_number'/>"+
+         "    <param type='float' name='floating_point_number' default='5.6' />"+
          "    <return_value type='str' name='a_string' />" +
          "    <return_value type='obj' name='my_class_instance' associated='MyClass' />" +
          "  </method>"+

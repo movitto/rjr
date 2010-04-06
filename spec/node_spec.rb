@@ -70,7 +70,41 @@ describe "Simrpc::Node" do
       client.send_message("server-queue", msg)
       finished_lock.wait()
 
+      server.terminate
+      client.terminate
+
       # FIXME test method that doesn't have any return values
+  end
+
+  it "should handle default values" do
+      schema_def = Schema::Parser.parse(:schema => TEST_SCHEMA)
+      mmc = MethodMessageController.new(schema_def)
+      msg = mmc.generate('foo_method', [2])
+
+      finished_lock = Semaphore.new(1)
+      finished_lock.wait()
+
+      schema_def.methods[0].handler = lambda { |some_int, floating_point_number|
+        some_int.to_i.should == 2
+        floating_point_number.to_f.should == 5.6 # test default value
+        return "yo", MyClass.new
+      }
+
+      server  = QpidAdapter::Node.new :id => "server"
+      server.async_accept { |node, msg, reply_to|
+        mmc.message_received(node, msg, reply_to)
+      }
+
+      client = QpidAdapter::Node.new :id => 'client'
+      client.async_accept { |node, msg, reply_to|
+         #msg = Message::Message.from_s(msg)
+         finished_lock.signal()
+      }
+      client.send_message("server-queue", msg)
+      finished_lock.wait()
+
+      server.terminate
+      client.terminate
   end
 
   it "it should run properly" do

@@ -66,8 +66,11 @@ module_function :primitive_from_str
 class DataFieldDef
   attr_accessor :type, :name, :associated
 
-  # indicates this data field should be ignored if it has a null value
+  # Indicates this data field should be ignored if it has a null value
   attr_accessor :ignore_null
+
+  # Indicates the default value of the field
+  attr_accessor :default
 
   def initialize(args = {})
      @type = args[:type] unless args[:type].nil?
@@ -390,8 +393,10 @@ class Parser
      data_field = DataFieldDef.new
      data_field.type = element.attributes["type"].intern
      data_field.name = element.attributes["name"]
+     data_field.default = data_field.from_s(element.attributes["default"]) unless element.attributes["default"].nil?
      data_field.associated = element.attributes["associated"].intern unless element.attributes["associated"].nil?
      data_field.ignore_null = true if element.attributes.include? "ignore_null"
+     data_field
      return data_field
    end
 end

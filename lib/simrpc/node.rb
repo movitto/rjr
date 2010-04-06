@@ -49,7 +49,12 @@ class MethodMessageController
            method.parameters.each { |param|
              field = Message::Field.new
              field.name = param.name
-             field.value = param.to_s(args[i], @schema_def)
+             # default value support
+             if i >= args.size
+               field.value = param.to_s(param.default, @schema_def)
+             else
+               field.value = param.to_s(args[i], @schema_def)
+             end
              msg.body.fields.push field
              i += 1
            }
@@ -86,24 +91,20 @@ class MethodMessageController
                                                              # FIXME throw a catch block around this call to catch all handler exceptions
                return_values = [return_values] unless return_values.is_a? Array
 
-               # if method returns no values, do not return response
-               unless method.return_values.size == 0
-
-                  # consruct and send response message using return values
-                  response = Message::Message.new
-                  response.header.type = 'response'
-                  response.header.target = method.name
-                  (0...method.return_values.size).each { |rvi|
-                    field = Message::Field.new
-                    field.name = method.return_values[rvi].name
-                    field_def = method.return_values.find { |rv| rv.name == field.name }
-                    field.value = field_def.to_s(return_values[rvi], @schema_def) unless field_def.nil? # TODO what if field_def is nil
-                    response.body.fields.push field
-                  }
-                  Logger.info "responding to #{reply_to}"
-                  node.send_message(reply_to, response)
-
-               end
+               # consruct and send response message using return values
+               response = Message::Message.new
+               response.header.type = 'response'
+               response.header.target = method.name
+               (0...method.return_values.size).each { |rvi|
+                 field = Message::Field.new
+                 field_def = method.return_values[rvi]
+                 field.name = field_def.name
+                 # can't support default values here since we don't know if the handler return nil intentionally
+                 field.value = field_def.to_s(return_values[rvi], @schema_def) unless field_def.nil? # TODO what if field_def is nil
+                 response.body.fields.push field
+               }
+               Logger.info "responding to #{reply_to}"
+               node.send_message(reply_to, response)
 
            # for response values just return converted return values
            else
