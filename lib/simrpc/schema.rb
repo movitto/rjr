@@ -141,7 +141,7 @@ class DataFieldDef
   # Provide schema_def for :obj or :array data fields associated w/ non-primitive types
   # # coverted_classes is a recursive helper array used/maintained internally
   def from_s(str, schema_def = nil, converted_classes = [])
-    if str == ""
+    if str == "" # || str == "nil" # FIXME uncomment & test
       return nil
 
     elsif Schema::is_primitive?(@type)

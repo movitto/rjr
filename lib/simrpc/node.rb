@@ -105,6 +105,7 @@ class MethodMessageController
                }
                Logger.info "responding to #{reply_to}"
                node.send_message(reply_to, response)
+               return nil
 
            # for response values just return converted return values
            else
@@ -141,6 +142,9 @@ class Node
       end
       raise ArgumentError, "schema_def cannot be nil" if @schema_def.nil?
       @mmc = MethodMessageController.new(@schema_def)
+
+      # FIXME XXX big bug, we need a lock per message to allow
+      # a node to be able to handle multiple simultaneous messages
       @message_lock = Semaphore.new(1)
       @message_lock.wait
 
@@ -195,6 +199,7 @@ class Node
         #@message_received.body.fields.collect { |f| f.value }
         return *@message_results
       end
+      return nil
    end
 
    # can invoke schema methods directly on Node instances, this will catch
