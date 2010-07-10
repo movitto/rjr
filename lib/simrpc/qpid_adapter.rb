@@ -85,6 +85,9 @@ class Node
 
      @children = {}
 
+     # threads to launch registered handlers
+     @handler_threads = []
+
      @accept_lock = Semaphore.new(1)
 
      # qpid constructs that will be created for node
@@ -128,13 +131,15 @@ class Node
      @incoming.listen{ |msg|
         Logger.info "queue #{@queue} received message #{msg.body}"
         reply_to = msg.get(:message_properties).reply_to.routing_key
-        handler.call(self, msg.body, reply_to)
+        # FIXME should delete handler threads as they complete
+        @handler_threads << Thread.new { handler.call(self, msg.body, reply_to) }
      }
   end
 
   # block until accept operation is complete
   def join
      @accept_lock.wait
+     @handler_threads.each { |th| th.join }
   end
 
   # instructs QpidServer to stop accepting, blocking
@@ -147,7 +152,7 @@ class Node
       @accept_lock.signal
     end
     @ssn.close
-    # TODO undefine the @queue/@exchange
+    # FIXME undefine the @queue/@exchange
   end
 
   # send a message to the specified routing_key
