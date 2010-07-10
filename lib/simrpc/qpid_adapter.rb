@@ -126,7 +126,7 @@ class Node
 
      # start receiving messages
      @incoming.listen{ |msg|
-        Logger.info "queue #{@queue} received message #{msg.body.to_s.size} #{msg.body}"
+        Logger.info "queue #{@queue} received message #{msg.body}"
         reply_to = msg.get(:message_properties).reply_to.routing_key
         handler.call(self, msg.body, reply_to)
      }

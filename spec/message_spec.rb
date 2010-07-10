@@ -35,6 +35,12 @@ describe "Simrpc::Message" do
      assert_equal ["foobar", ""], Message::Formatter::parse_from_formatted(formatted)
   end
 
+  it "should format and parsed a data field with a fixed size" do
+     formatted = Message::Formatter::format_with_fixed_size(3, 123456)
+     formatted.should == "123"
+     assert_equal ["123", ""], Message::Formatter::parse_from_formatted_with_fixed_size(3, formatted)
+  end
+
   it "should convert a field to and from a string" do
      field = Message::Field.new(:name => "foo", :value => "bar")
      field_s = field.to_s
@@ -72,13 +78,14 @@ describe "Simrpc::Message" do
 
   it "should convert a message to and from a string" do
      msg = Message::Message.new
+     msg.header.id = "12345678"
      msg.header.type = 'request'
      msg.header.target = 'method'
      msg.body.fields.push Message::Field.new(:name => "foo", :value => "bar")
      msg.body.fields.push Message::Field.new(:name => "money", :value => "lotsof")
      msg_s = msg.to_s
 
-     msg_s.should == "0000002900000007request00000006method000000650000002200000003foo00000003bar0000002700000005money00000006lotsof"
+     msg_s.should == "000000371234567800000007request00000006method000000650000002200000003foo00000003bar0000002700000005money00000006lotsof"
      
      msg_o = Message::Message.from_s(msg_s)
      msg_o.header.type.should == 'request'

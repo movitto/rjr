@@ -33,91 +33,71 @@ class MethodMessageController
       @schema_def = schema_def
     end
 
-    # generate new new method message, setting the message
+    # Generate new new method message, setting the message
     # target to the specified method name, and setting the fields
     # on the message to the method arguments
     def generate(method_name, args)
-       @schema_def.methods.each { |method|
-         if method.name == method_name
-           msg = Message::Message.new
-           msg.header.type = 'request'
-           msg.header.target = method.name
+      mmethod = @schema_def.methods.find { |method| method.name == method_name }
+      return nil if mmethod.nil?
 
-           # loop through each param, convering corresponding
-           # argument to message field and adding it to msg
-           i = 0
-           method.parameters.each { |param|
-             field = Message::Field.new
-             field.name = param.name
-             # default value support
-             if i >= args.size
-               field.value = param.to_s(param.default, @schema_def)
-             else
-               field.value = param.to_s(args[i], @schema_def)
-             end
-             msg.body.fields.push field
-             i += 1
-           }
+      msg = Message::Message.new :header => {:id => IDBank.generate, :type => 'request', :target => mmethod.name }
 
-           return msg
-         end
-       }
-       return nil
+      # if we have too few arguments, fill rest in w/ default values
+      if mmethod.parameters.size > args.size
+        mmethod.parameters[args.size...mmethod.parameters.size].each { |param| args << param.default }
+      end
+
+      msg.body.fields = (0...mmethod.parameters.size).collect { |i|
+        Message::Field.new(:name => mmethod.parameters[i].name,
+                           :value => mmethod.parameters[i].to_s(args[i], @schema_def))
+      }
+
+      return msg
     end
 
     # should be invoked when a message is received,
     # takes a message, converts it into a method call, and calls the corresponding
     # handler in the provided schema. Takes return arguments and sends back to caller
     def message_received(node, message, reply_to)
-       message = Message::Message::from_s(message)
-       @schema_def.methods.each { |method|
+      message = Message::Message::from_s(message)
+      mmethod = @schema_def.methods.find { |method| method.name == message.header.target }
+      return nil if mmethod.nil?
 
-         if method.name == message.header.target
-           Logger.info "received method #{method.name} message "
+      Logger.info "received method #{mmethod.name} message "
 
-           # for request messages, dispatch to method handler
-           if message.header.type != 'response' && method.handler != nil
-               # order the params
-               params = []
-               method.parameters.each { |data_field|
-                 value_field = message.body.fields.find { |f| f.name == data_field.name }
-                 params.push data_field.from_s(value_field.value, @schema_def) unless value_field.nil? # TODO what if value_field is nil
-               }
+      # For request messages, dispatch to method handler
+      if message.header.type == 'request'
+        return nil if mmethod.handler.nil?
 
-               Logger.info "invoking #{method.name} handler "
+        # collect the method params
+        params = (0...mmethod.parameters.size).collect { |i| mmethod.parameters[i].from_s(message.body.fields[i].value, @schema_def) }
 
-               # invoke method handler
-               return_values = method.handler.call(*params)  # FIXME handlers can't use 'return' as this will fall through here
-                                                             # FIXME throw a catch block around this call to catch all handler exceptions
-               return_values = [return_values] unless return_values.is_a? Array
+        Logger.info "invoking #{mmethod.name} handler "
 
-               # consruct and send response message using return values
-               response = Message::Message.new
-               response.header.type = 'response'
-               response.header.target = method.name
-               (0...method.return_values.size).each { |rvi|
-                 field = Message::Field.new
-                 field_def = method.return_values[rvi]
-                 field.name = field_def.name
-                 # can't support default values here since we don't know if the handler return nil intentionally
-                 field.value = field_def.to_s(return_values[rvi], @schema_def) unless field_def.nil? # TODO what if field_def is nil
-                 response.body.fields.push field
-               }
-               Logger.info "responding to #{reply_to}"
-               node.send_message(reply_to, response)
-               return nil
+        # invoke method handler
+        return_values = mmethod.handler.call(*params)  # FIXME handlers can't use 'return' as this will fall through here
+                                                      # FIXME throw a catch block around this call to catch all handler exceptions
+        return_values = [return_values] unless return_values.is_a? Array
 
-           # for response values just return converted return values
-           else
-               results = []
-               method.return_values.each { |data_field|
-                 value_field = message.body.fields.find { |f| f.name == data_field.name }
-                 results.push data_field.from_s(value_field.value, @schema_def) unless value_field.nil? # TODO what if value_field is nil
-               }
-               return results
-           end
-         end
-       }
+        # consruct and send response message using return values
+        response = Message::Message.new :header => {:id => message.header.id, :type => 'response', :target => mmethod.name }
+        response.body.fields = (0...mmethod.return_values.size).collect { |i|
+          field_def = mmethod.return_values[i]
+          Message::Field.new :name => field_def.name, :value => field_def.to_s(return_values[i], @schema_def)
+          # TODO if mmethod.return_values.size > return_values.size, fill in w/ default values
+        }
+        Logger.info "responding to #{reply_to}"
+        node.send_message(reply_to, response)
+        return message.header.id, params
+
+      # For response values just return converted return values
+      else
+        results = (0...mmethod.return_values.size).collect { |i|
+          mmethod.return_values[i].from_s(message.body.fields[i].value, @schema_def)
+        }
+        return message.header.id, results
+
+      end
     end
 end
 
@@ -143,17 +123,15 @@ class Node
       raise ArgumentError, "schema_def cannot be nil" if @schema_def.nil?
       @mmc = MethodMessageController.new(@schema_def)
 
-      # FIXME XXX big bug, we need a lock per message to allow
-      # a node to be able to handle multiple simultaneous messages
-      @message_lock = Semaphore.new(1)
-      @message_lock.wait
+      # hash of message id's -> response locks
+      @message_locks = {}
 
       # FIXME currently not allowing for any other params to be passed into
       # QpidAdapter::Node such as broker ip or port, NEED TO FIX THIS
       @qpid_node = QpidAdapter::Node.new(:id => @id)
       @qpid_node.async_accept { |node, msg, reply_to|
-          results = @mmc.message_received(node, msg, reply_to)
-          message_received(results)
+          mid, results = @mmc.message_received(node, msg, reply_to)
+          message_received(mid, results)
       }
    end
 
@@ -163,9 +141,14 @@ class Node
    end
 
    # implements, message_received callback to be notified when qpid receives a message
-   def message_received(results)
-       @message_results = results
-       @message_lock.signal
+   def message_received(mid, results)
+       @message_results = results unless results.nil?
+       @message_locks[mid].signal unless mid.nil? || !@message_locks.has_key?(mid)
+   end
+
+   # Terminate node operations
+   def terminate
+     @qpid_node.terminate
    end
 
    # wait until the node is no longer accepting messages
@@ -193,7 +176,10 @@ class Node
 
       # block if we are expecting return values
       if @schema_def.methods.find{|m| m.name == method_name}.return_values.size != 0
-        @message_lock.wait # block until response received
+        @message_locks[msg.header.id] =  Semaphore.new(1)
+        @message_locks[msg.header.id].wait
+        @message_locks[msg.header.id].wait # block until response received
+        @message_locks.delete(msg.header.id)
 
         # return return values
         #@message_received.body.fields.collect { |f| f.value }

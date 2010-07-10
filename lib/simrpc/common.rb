@@ -24,6 +24,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 require 'logger'
+require 'uuid'
 
 module Simrpc
 
@@ -43,4 +44,12 @@ class Logger
     end
 end
 
+# ID bank, generates unique ids
+class IDBank
+  # FIXME right now generates uuid and grabs first 8 chars for message ids, not enough for tru randomness
+  def self.generate
+    UUID.new.generate[0...8]
+  end
 end
+
+end # module Simrpc

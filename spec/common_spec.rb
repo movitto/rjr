@@ -24,3 +24,13 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 require File.dirname(__FILE__) + '/spec_helper'
+
+describe "Simrpc" do
+
+  it "should generate unique ids" do
+    id1 = IDBank.generate
+    id2 = IDBank.generate
+    id1.should_not == id2
+  end
+
+end

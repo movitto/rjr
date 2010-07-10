@@ -8,7 +8,7 @@ require 'spec/rake/spectask'
 require 'rake/gempackagetask'
 
 GEM_NAME="simrpc"
-PKG_VERSION=0.2
+PKG_VERSION=0.3
 
 desc "Run all specs"
 Spec::Rake::SpecTask.new('spec') do |t|
@@ -30,11 +30,11 @@ SPEC = Gem::Specification.new do |s|
 
     s.required_ruby_version = '>= 1.8.1'
     s.required_rubygems_version = Gem::Requirement.new(">= 1.3.3")
-    # FIXME require qpid
+    # FIXME require qpid, uuid, activesupport, rspec
 
     s.author = "Mohammed Morsi"
     s.email = "movitto@yahoo.com"
-    s.date = %q{2010-03-11}
+    s.date = %q{2010-06-13}
     s.description = %q{simrpc is a simple Ruby module for rpc communication, using Apache QPID as the transport mechanism.}
     s.summary     = %q{simrpc is a simple Ruby module for rpc communication, using Apache QPID as the transport mechanism.}
     s.homepage = %q{http://projects.morsi.org/Simrpc}

@@ -33,15 +33,15 @@ module Message
 # Simrpc::Message formatter helper module
 class Formatter
 
-  # helper method to format a data field,
-  # prepending a fixed size to it
+  # Helper method to format a data field,
+  # prepending a size to it
   def self.format_with_size(data)
     # currently size is set to a 8 digit int
     len = "%08d" % data.to_s.size
     len + data.to_s
   end
 
-  # helper method to parse a data field
+  # Helper method to parse a data field
   # off the front of a data sequence, using the
   # formatted size. Returns parsed data field
   # and remaining data sequence. If optional
@@ -55,6 +55,24 @@ class Formatter
      remaining = data[8+len...data.size]
      return parsed, remaining if data_class.nil?
      return data_class.from_s(parsed), remaining
+  end
+
+  # Helper to format a data field of a fixed size,
+  def self.format_with_fixed_size(size, data)
+    # we will only accept the first <size> characters of data
+    # FIXME throw exception if data.size < size
+    data.to_s[0..size-1]
+  end
+
+  # Helper to parse data of a fixed size and return it and the remaining data.
+  # If optional class is given, the from_s method will be invoked w/ the parsed
+  # data field and returned w/ the remaining data sequence instead
+  def self.parse_from_formatted_with_fixed_size(size, data, data_class = nil)
+    # FIXME throw exception if data.size < size
+    parsed = data[0..size-1]
+    remaining = data[size...data.size]
+    return parsed, remaining if data_class.nil?
+    return data_class.from_s(parsed), remaining
   end
 end
 
@@ -83,19 +101,21 @@ end
 # header contains various descriptive properies
 # about a message
 class Header
-  attr_accessor :type, :target
+  attr_accessor :id, :type, :target
 
   def initialize(args = {})
+     @id     = args[:id].nil?     ? "" : args[:id]
      @type   = args[:type].nil?   ? "" : args[:type]
      @target = args[:target].nil? ? "" : args[:target]
   end
 
   def to_s
-    Formatter::format_with_size(@type) + Formatter::format_with_size(@target)
+    Formatter::format_with_fixed_size(8, @id) + Formatter::format_with_size(@type) + Formatter::format_with_size(@target)
   end
 
   def self.from_s(data)
     header = Header.new
+    header.id,     data = Formatter::parse_from_formatted_with_fixed_size(8, data)
     header.type,   data = Formatter::parse_from_formatted(data)
     header.target, data = Formatter::parse_from_formatted(data)
     return header
@@ -106,7 +126,7 @@ end
 class Body
    attr_accessor :fields
 
-   def initialize
+   def initialize(args = {})
      @fields = []
    end
 
@@ -134,9 +154,9 @@ end
 class Message
    attr_accessor :header, :body
 
-   def initialize
-      @header = Header.new
-      @body   = Body.new
+   def initialize(args = {})
+      @header = Header.new(args.has_key?(:header) ? args[:header] : {})
+      @body   = Body.new(args.has_key?(:body) ? args[:body] : {})
    end
 
    def to_s
