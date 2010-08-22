@@ -37,7 +37,8 @@ module QpidAdapter
 # network which has its own exchange and queue which it listens on
 class Node
  private
-  # helper method to generate a random id
+  # Helper method to generate a random id
+  # TODO use uuid since we're pulling in that gem anyways for message ids
   def gen_uuid
     ["%02x"*4, "%02x"*2, "%02x"*2, "%02x"*2, "%02x"*6].join("-") %
         Array.new(16) {|x| rand(0xff) }
@@ -132,6 +133,7 @@ class Node
         Logger.info "queue #{@queue} received message #{msg.body}"
         reply_to = msg.get(:message_properties).reply_to.routing_key
         # FIXME should delete handler threads as they complete
+        # FIXME handler timeout
         @handler_threads << Thread.new { handler.call(self, msg.body, reply_to) }
      }
   end
@@ -146,13 +148,15 @@ class Node
   # untill all accepting operations have terminated
   def terminate
     Logger.warn "terminating qpid session"
+    # FIXME terminate outstanding handler_threads
     unless @incoming.nil?
       @incoming.stop
       @incoming.close
       @accept_lock.signal
     end
+    @ssn.queue_delete(@queue)
+    @ssn.exchange_delete(@exchange)
     @ssn.close
-    # FIXME undefine the @queue/@exchange
   end
 
   # send a message to the specified routing_key

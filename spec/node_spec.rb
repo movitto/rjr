@@ -128,6 +128,9 @@ describe "Simrpc::Node" do
      my_class_instance.float_member.should == 4.2
 
       # FIXME test method that doesn't have any return values
+
+      client.terminate
+      server.terminate
   end
 
 end

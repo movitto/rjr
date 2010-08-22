@@ -38,6 +38,7 @@ describe "Simrpc::QpidAdapter" do
     ssn.error?.should == false
     #ssn.closed.should == false
     id.should == "test1"
+    qpid.terminate
   end
 
   # ensure we define a queue and exchange
@@ -67,6 +68,21 @@ describe "Simrpc::QpidAdapter" do
      #assert !binding_result.queue_not_found?
      #assert !binding_result.queue_not_matched?
      #assert !binding_result.key_not_found?
+
+     node.terminate
+  end
+
+  it "should terminate queue and exchange" do
+    node  = QpidAdapter::Node.new :id => "qpid_test3"
+    node.terminate
+
+    # need to start a new session since terminate closes the previous one
+    conn = Qpid::Connection.new(TCPSocket.new('localhost', 5672))
+    conn.start
+    ssn = conn.session(UUID.new.generate)
+
+    assert ssn.queue_query("qpid_test3-queue").queue.nil?
+    assert ssn.exchange_query("qpid_test3-exchange").not_found
   end
 
   # test sending/receiving a message
@@ -87,6 +103,9 @@ describe "Simrpc::QpidAdapter" do
     }
     client.send_message("server1-queue", "test-data")
     finished_lock.wait()
+
+    server.terminate
+    client.terminate
   end
 
 end
