@@ -78,6 +78,9 @@ class Node
      end
 
      ### create underlying tcp connection
+     # NOTE pretty big bug in ruby/qpid preventing us from using 'inspect'
+     # on this class (causes segfault)
+     # https://issues.apache.org/jira/browse/QPID-2405
      @conn = Qpid::Connection.new(TCPSocket.new(broker,port))
      @conn.start
 

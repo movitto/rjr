@@ -128,6 +128,7 @@ class Node
 
       # FIXME currently not allowing for any other params to be passed into
       # QpidAdapter::Node such as broker ip or port, NEED TO FIX THIS
+      # NOTE see QpidAdapter::Node for limitation on using 'inspect'
       @qpid_node = QpidAdapter::Node.new(:id => @id)
       @qpid_node.async_accept { |node, msg, reply_to|
           mid, results = @mmc.message_received(node, msg, reply_to)
