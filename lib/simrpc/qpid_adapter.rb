@@ -86,8 +86,9 @@ class Node
 
      @children = {}
 
-     # threads to launch registered handlers
-     @handler_threads = []
+     # threads pool to handle incoming requests
+     # FIXME make the # of threads and timeout configurable)
+     @thread_pool = ThreadPool.new(10, :timeout => 5)
 
      @accept_lock = Semaphore.new(1)
 
@@ -134,21 +135,22 @@ class Node
         reply_to = msg.get(:message_properties).reply_to.routing_key
         # FIXME should delete handler threads as they complete
         # FIXME handler timeout
-        @handler_threads << Thread.new { handler.call(self, msg.body, reply_to) }
+        job = ThreadPoolJob.new { handler.call(self, msg.body, reply_to) }
+        @thread_pool << job
      }
   end
 
   # block until accept operation is complete
   def join
      @accept_lock.wait
-     @handler_threads.each { |th| th.join }
+     #FIXME @thread_pool.join
   end
 
   # instructs QpidServer to stop accepting, blocking
   # untill all accepting operations have terminated
   def terminate
     Logger.warn "terminating qpid session"
-    # FIXME terminate outstanding handler_threads
+    @thread_pool.stop
     unless @incoming.nil?
       @incoming.stop
       @incoming.close

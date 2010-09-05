@@ -8,7 +8,7 @@ require 'spec/rake/spectask'
 require 'rake/gempackagetask'
 
 GEM_NAME="simrpc"
-PKG_VERSION=0.3
+PKG_VERSION=0.4
 
 desc "Run all specs"
 Spec::Rake::SpecTask.new('spec') do |t|
@@ -30,11 +30,14 @@ SPEC = Gem::Specification.new do |s|
 
     s.required_ruby_version = '>= 1.8.1'
     s.required_rubygems_version = Gem::Requirement.new(">= 1.3.3")
-    # FIXME require qpid, uuid, activesupport, rspec
+    s.add_development_dependency('rspec', '~> 1.3.0')
+    s.add_dependency('uuid', '~> 2.3.1')
+    s.add_dependency('activesupport', '~> 2.3.8')
+    # !!! we also need the ruby qpid wrapper. which is not currently packaged in gem form
 
     s.author = "Mohammed Morsi"
     s.email = "movitto@yahoo.com"
-    s.date = %q{2010-06-13}
+    s.date = %q{2010-09-04}
     s.description = %q{simrpc is a simple Ruby module for rpc communication, using Apache QPID as the transport mechanism.}
     s.summary     = %q{simrpc is a simple Ruby module for rpc communication, using Apache QPID as the transport mechanism.}
     s.homepage = %q{http://projects.morsi.org/Simrpc}

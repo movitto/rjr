@@ -30,9 +30,10 @@ lib = File.dirname(__FILE__)
 
 require lib + '/simrpc/common'
 require lib + '/simrpc/exceptions'
+require lib + '/simrpc/thread_pool'
 require lib + '/simrpc/schema'
 require lib + '/simrpc/message'
 require lib + '/simrpc/qpid_adapter'
 require lib + '/simrpc/node'
 
-require 'activesupport' # for inflector
+require 'active_support' # for inflector
