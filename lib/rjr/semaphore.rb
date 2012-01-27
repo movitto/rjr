@@ -1,8 +1,9 @@
+#
 # $Id: semaphore.rb,v 1.2 2003/03/15 20:10:10 fukumoto Exp $
 #
 # Copied unmodified from:
 #   http://www.imasy.or.jp/~fukumoto/ruby/semaphore.rb
-# Licensed under The Ruby License:
+# Originally licensed under The Ruby License:
 #   http://raa.ruby-lang.org/project/semaphore/
 
 class CountingSemaphore
