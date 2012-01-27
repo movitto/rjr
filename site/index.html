@@ -1,0 +1,21 @@
+<html>
+  <head>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script type="text/javascript" src="json.js"></script>
+    <script type="text/javascript" src="jrw.js"></script>
+    <script type="text/javascript">
+      var node = new JRNode('127.0.0.1', '8080');
+      node.onopen = function(){
+        node.invoke_request('hello');
+        node.close();
+      };
+      node.onsuccess = function(result){
+        alert("SSSS" + result);
+      }
+      node.onfailed = function(error_code, error_msg){
+        alert("EEE" + error_code + " " + error_msg);
+      }
+      node.open();
+    </script>
+  </head>
+</html>
