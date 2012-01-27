@@ -32,8 +32,8 @@ def main()
     exit
   end
 
-  rjr_node = RJR::AMQPNode.new :node_id => 'rjr', :broker => 'localhost'
-  #rjr_node = RJR::WSNode.new :node_id => 'rjr', :host => 'localhost', :port => 8080
+  #rjr_node = RJR::AMQPNode.new :node_id => 'rjr', :broker => 'localhost'
+  rjr_node = RJR::WSNode.new :node_id => 'rjr', :host => 'localhost', :port => 8080
 
   RJR::Dispatcher.add_handler('hello') { |msg|
     #raise Exception.new("foobar")

@@ -6,14 +6,15 @@
     <script type="text/javascript">
       var node = new JRNode('127.0.0.1', '8080');
       node.onopen = function(){
-        node.invoke_request('hello');
-        node.close();
+        //node.invoke_request('create_location', new JRObject("Motel::Location", { x : 20, y : -30, z : 15 }));
+        node.invoke_request('get_location', 10);
       };
       node.onsuccess = function(result){
-        alert("SSSS" + result);
+        console.log("SSSS");
+        console.log(result);
       }
       node.onfailed = function(error_code, error_msg){
-        alert("EEE" + error_code + " " + error_msg);
+        console.log("EEE " + error_code + " " + error_msg);
       }
       node.open();
     </script>
