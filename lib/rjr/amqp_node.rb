@@ -43,7 +43,7 @@ class AMQPNode < RJR::Node
 
   # Instruct Node to start listening for and dispatching rpc requests
   def listen
-     EventMachine.run do
+     em_run do
        init_node
 
        # start receiving messages
@@ -58,7 +58,7 @@ class AMQPNode < RJR::Node
 
   # Instructs node to send rpc request, and wait for / return response
   def invoke_request(routing_key, rpc_method, *args)
-    EventMachine.run do
+    em_run do
       init_node
       message = RequestMessage.new :method => rpc_method,
                                    :args   => args

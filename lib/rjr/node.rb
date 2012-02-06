@@ -28,5 +28,18 @@ class Node
   def terminate
     @thread_pool.stop
   end
+
+  # run eventmachine if not running and invoke block
+  def em_run
+    @@em_running ||= false
+    if @@em_running
+      yield
+    else
+      @@em_running = true
+      EventMachine.run do
+        yield
+      end
+    end
+  end
 end
 end # module RJR
