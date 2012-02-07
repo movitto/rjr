@@ -35,9 +35,13 @@ class Node
     if @@em_running
       yield
     else
-      @@em_running = true
-      EventMachine.run do
-        yield
+      begin
+        @@em_running = true
+        EventMachine.run do
+          yield
+        end
+      ensure
+        @@em_running = false
       end
     end
   end
