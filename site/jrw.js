@@ -32,7 +32,7 @@ function JRObject (type, value){
 };
 
 JRObject.is_jrobject = function(json){
-  return json['json_class'] && json['data'];
+  return json && json['json_class'] && json['data'];
 };
 
 JRObject.from_json = function(json){
@@ -78,7 +78,7 @@ function JRNode (host, port){
                id: id};
     this.onmessage = function(msg){
       if(msg['id'] == id){
-        success = msg['result'];
+        success = !msg['error'];
         if(success && this.onsuccess){
           result = msg['result'];
           if(JRObject.is_jrobject(result))
