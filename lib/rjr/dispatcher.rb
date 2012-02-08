@@ -31,6 +31,19 @@ class Result
   def to_s
     "#{@success} #{@result} #{@error_code} #{@error_msg}"
   end
+
+  ######### Specific request types
+
+  def self.invalid_request
+     return Result.new(:error_code => -32600,
+                       :error_message => '  Invalid Request')
+  end
+
+  def self.method_not_found
+     return Result.new(:error_code => -32602,
+                       :error_message => 'Method not found')
+  end
+
 end
 
 class Dispatcher
@@ -44,8 +57,7 @@ class Dispatcher
   def self.dispatch_request(method, args)
      handler = @@handlers[method]
      if handler.nil?
-       return Result.new(:error_code => -32602,
-                         :error_message => 'Method not found')
+       return Result.method_not_found
      else
        begin
          retval = handler.call(*args)

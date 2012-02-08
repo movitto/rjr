@@ -33,7 +33,8 @@ def main()
   end
 
   amqp_node = RJR::AMQPNode.new :node_id => 'rjr', :broker => 'localhost'
-  ws_node = RJR::WSNode.new :node_id => 'rjr', :host => 'localhost', :port => 8080
+  ws_node   = RJR::WSNode.new   :node_id => 'rjr', :host   => 'localhost', :port => 8080
+  www_node  = RJR::WebNode.new  :node_id => 'rjr', :host   => 'localhost', :port => 8888
 
   RJR::Dispatcher.add_handler('hello') { |msg|
     #raise Exception.new("foobar")
@@ -41,7 +42,7 @@ def main()
     "world"
   }
 
-  rjr_node = RJR::MultiNode.new :nodes => [amqp_node, ws_node]
+  rjr_node = RJR::MultiNode.new :nodes => [amqp_node, ws_node, www_node]
 
   rjr_node.listen
   rjr_node.terminate # TODO run in signal handler
