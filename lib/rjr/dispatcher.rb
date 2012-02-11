@@ -36,12 +36,12 @@ class Result
 
   def self.invalid_request
      return Result.new(:error_code => -32600,
-                       :error_message => '  Invalid Request')
+                       :error_msg => '  Invalid Request')
   end
 
   def self.method_not_found
      return Result.new(:error_code => -32602,
-                       :error_message => 'Method not found')
+                       :error_msg => 'Method not found')
   end
 
 end
@@ -53,12 +53,22 @@ class Dispatcher
     @@handlers[method] = handler
   end
 
+  # register a callback to the specified method.
+  # a callback is the same as a handler except it takes an additional argument
+  # specifying the node callback instance to use to send data back to client
+  def self.add_callback(method, &handler)
+    @@callbacks  ||= {}
+    @@callbacks[method] = handler
+  end
+
   # Helper to handle request messages
-  def self.dispatch_request(method, args)
-     handler = @@handlers[method]
-     if handler.nil?
-       return Result.method_not_found
-     else
+  def self.dispatch_request(method, args, node_callback = nil)
+     @@handlers  ||= {}
+     @@callbacks ||= {}
+     handler  = @@handlers[method]
+     callback = @@callbacks[method]
+
+     if !handler.nil?
        begin
          retval = handler.call(*args)
          return Result.new(:result => retval)
@@ -66,6 +76,20 @@ class Dispatcher
          return Result.new(:error_code => -32000,
                            :error_msg  => e.to_s)
        end
+
+     elsif !callback.nil?
+       # ; if node_callback.nil? # TODO handle callback method invoked via node type that doesn't support callbacks
+       begin
+         retval = callback.call(node_callback, *args)
+         return Result.new(:result => retval)
+       rescue Exception => e
+         return Result.new(:error_code => -32000,
+                           :error_msg  => e.to_s)
+       end
+
+     else
+       return Result.method_not_found
+
      end
 
      return nil

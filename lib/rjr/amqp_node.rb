@@ -10,11 +10,27 @@ require 'amqp'
 
 module RJR
 
+# AMQP client node callback interface,
+# send data back to client via AMQP.
+class AMQPNodeCallback
+  def initialize(exchange, destination, jr_method)
+    @exchange    = exchange
+    @destination = destination
+    @jr_method   = jr_method
+  end
+
+  def invoke(*data)
+    msg = RequestMessage.new :method => @jr_method, :args => data
+    @exchange.publish(msg.to_s, :routing_key => @destination)
+  end
+end
+
+# AMQP node definition, listen for and invoke json-rpc requests  over AMQP
 class AMQPNode < RJR::Node
   private
   def handle_request(reply_to, message)
     msg    = RequestMessage.new(:message => message)
-    result = Dispatcher.dispatch_request(msg.jr_method, msg.jr_args)
+    result = Dispatcher.dispatch_request(msg.jr_method, msg.jr_args, AMQPNodeCallback.new(@exchange, reply_to, msg.jr_method))
     response = ResponseMessage.new(:id => msg.msg_id, :result => result)
     @exchange.publish(response.to_s, :routing_key => reply_to)
   end
