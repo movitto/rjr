@@ -10,11 +10,27 @@ require 'em-websocket'
 
 module RJR
 
+# Web Socket client node callback interface,
+# send data back to client via established web socket.
+class WSNodeCallback
+  def initialize(socket, jr_method)
+    @socket    = socket
+    @jr_method = jr_method
+  end
+
+  def invoke(*data)
+    #msg = CallbackMessage.new(:data => data)
+    msg = RequestMessage.new :method => @jr_method, :args => data
+    @socket.send(msg.to_s)
+  end
+end
+
+# Web node definition, listen for and invoke json-rpc requests via web sockets
 class WSNode < RJR::Node
   private
   def handle_request(socket, message)
     msg    = RequestMessage.new(:message => message)
-    result = Dispatcher.dispatch_request(msg.jr_method, msg.jr_args)
+    result = Dispatcher.dispatch_request(msg.jr_method, msg.jr_args, WSNodeCallback.new(socket, msg.jr_method))
     response = ResponseMessage.new(:id => msg.msg_id, :result => result)
     socket.send(response.to_s)
   end

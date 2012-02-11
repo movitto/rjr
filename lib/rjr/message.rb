@@ -10,6 +10,7 @@ require 'json'
 
 module RJR
 
+# Message sent from client to server to invoke a json-rpc method
 class RequestMessage
   # Helper method to generate a random id
   def self.gen_uuid
@@ -43,6 +44,7 @@ class RequestMessage
   end
 end
 
+# Message sent from server to client in response to request message
 class ResponseMessage
   attr_accessor :msg_id
   attr_accessor :result
@@ -79,4 +81,5 @@ class ResponseMessage
     end
   end
 end
+
 end

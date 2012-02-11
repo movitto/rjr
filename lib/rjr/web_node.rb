@@ -11,6 +11,17 @@ require 'em-http-request'
 
 module RJR
 
+# Web client node callback interface,
+# currently does nothing as web connections aren't persistant
+class WebNodeCallback
+  def initialize()
+  end
+
+  def invoke(data)
+  end
+end
+
+# Web node definition, listen for and invoke json-rpc requests via web requests
 class WebRequestHandler < EventMachine::Connection
   include EventMachine::HttpServer
 
@@ -19,7 +30,7 @@ class WebRequestHandler < EventMachine::Connection
     result = nil
     begin
       msg    = RequestMessage.new(:message => message)
-      result = Dispatcher.dispatch_request(msg.jr_method, msg.jr_args)
+      result = Dispatcher.dispatch_request(msg.jr_method, msg.jr_args, WebNodeCallback.new())
     rescue JSON::ParserError => e
       result = Result.invalid_request
     end
@@ -28,8 +39,10 @@ class WebRequestHandler < EventMachine::Connection
     response = ResponseMessage.new(:id => msg_id, :result => result)
 
     resp = EventMachine::DelegatedHttpResponse.new(self)
-    resp.status  = response.result.success ? 200 : 500
+    #resp.status  = response.result.success ? 200 : 500
+    resp.status = 200
     resp.content = response.to_s
+    resp.content_type "application/json"
     resp.send_response
   end
 
