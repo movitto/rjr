@@ -4,7 +4,7 @@
     <script type="text/javascript" src="json.js"></script>
     <script type="text/javascript" src="jrw.js"></script>
     <script type="text/javascript">
-      var node = new JRNode('127.0.0.1', '8080');
+      var node = new WsNode('127.0.0.1', '8080');
       node.onopen = function(){
         //node.invoke_request('create_location', new JRObject("Motel::Location", { x : 20, y : -30, z : 15 }));
         node.invoke_request('get_location', 10);
