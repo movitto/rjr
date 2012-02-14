@@ -23,11 +23,37 @@ function getObjectClass(obj) {
     return undefined;
 }
 
+// encapsulates a json-rpc message
+function JRMessage(msg){
+  this.json = msg;
+  this.parsed = $.evalJSON(msg);
+
+  this.id     = this.parsed['id'];
+  this.method = this.parsed['method'];
+  if(this.parsed['params']){
+    this.params = this.parsed['params'];
+    for(p=0;p<this.params.length;++p){
+      if(JRObject.is_jrobject(this.params[p]))
+        this.params[p] = JRObject.from_json(this.params[p]);
+    }
+  }
+  this.error  = this.parsed['error'];
+  this.result = this.parsed['result'];
+  if(this.result && JRObject.is_jrobject(this.result))
+    this.result = JRObject.from_json(this.result);
+}
+
 // encapsulates an object w/ type
 //  - adaptor for the ruby 'json' library
 function JRObject (type, value){
-  this.to_json = function(){
-     return {json_class: type, data: value };
+  this.type  = type;
+  this.value = value;
+  this.toJSON = function(){
+     var data = {};
+     for(p in value)
+       if(p != "toJSON")
+         data[p] = value[p];
+     return {json_class: this.type, data: data };
   };
 };
 
@@ -36,7 +62,18 @@ JRObject.is_jrobject = function(json){
 };
 
 JRObject.from_json = function(json){
-  return json['data'];
+  // TODO lookup class corresponding to json['json_class'] in global registry and instantiate
+  var obj = json['data'];
+  for(p in obj){
+    if(JRObject.is_jrobject(obj[p]))
+      obj[p] = JRObject.from_json(obj[p]);
+    else if(typeof(obj[p]) == "object"){ // handle arrays
+      for(i in obj[p])
+        if(JRObject.is_jrobject(obj[p][i]))
+          obj[p][i] = JRObject.from_json(obj[p][i]);
+   }
+  }
+  return obj;
 };
 
 // main json-rpc websocket interface
@@ -56,8 +93,7 @@ function WSNode (host, port){
         node.onclose();
     };
     this.socket.onmessage = function (e){
-      msg = e.data;
-      msg = $.parseJSON(msg);
+      msg = new JRMessage(e.data);
       if(node.onmessage)
         node.onmessage(msg);
     };
@@ -67,9 +103,6 @@ function WSNode (host, port){
     rpc_method = arguments[0];
     args = [];
     for(a = 1; a < arguments.length; a++){
-      if(getObjectClass(arguments[a]) == "JRObject")
-        args.push(arguments[a].to_json());
-      else
         args.push(arguments[a]);
     }
     request = {jsonrpc:  '2.0',
@@ -83,8 +116,6 @@ function WSNode (host, port){
         success = !msg['error'];
         if(success && this.onsuccess){
           result = msg['result'];
-          if(JRObject.is_jrobject(result))
-            result = JRObject.from_json(result);
           this.onsuccess(result);
         }
         else if(!success && this.onfailed)
@@ -92,9 +123,6 @@ function WSNode (host, port){
       }else{
         if(msg['method'] && this.invoke_callback){
           params = msg['params'];
-          for(i=0;i<params.length;++i)
-            if(JRObject.is_jrobject(params[i]))
-              params[i] = JRObject.from_json(params[i]);
           this.invoke_callback(msg['method'], params);
         }
       }
@@ -114,9 +142,6 @@ function WebNode (uri){
     rpc_method = arguments[0];
     args = [];
     for(a = 1; a < arguments.length; a++){
-      if(getObjectClass(arguments[a]) == "JRObject")
-        args.push(arguments[a].to_json());
-      else
         args.push(arguments[a]);
     }
     request = {jsonrpc:  '2.0',
@@ -127,15 +152,14 @@ function WebNode (uri){
     $.ajax({type: 'POST',
             url: uri,
             data: $.toJSON(request),
-            dataType: 'json',
+            dataType: 'text', // using text so we can parse json ourselves
             success: function(data){
+              data = new JRMessage(data);
               if(node.message_received)
                 node.message_received(data);
               success = !data['error'];
               if(success && node.onsuccess){
                 result = data['result'];
-                if(JRObject.is_jrobject(result))
-                  result = JRObject.from_json(result);
                 node.onsuccess(result);
               }
               else if(!success && node.onfailed)
