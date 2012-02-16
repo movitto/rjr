@@ -9,20 +9,6 @@ function guid() {
   return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4()+S4());
 }
 
-// helper to get an object's class
-function getObjectClass(obj) {
-    if (obj && obj.constructor && obj.constructor.toString) {
-        var arr = obj.constructor.toString().match(
-            /function\s*(\w+)/);
-
-        if (arr && arr.length == 2) {
-            return arr[1];
-        }
-    }
-
-    return undefined;
-}
-
 // encapsulates a json-rpc message
 function JRMessage(msg){
   this.json = msg;
@@ -62,8 +48,10 @@ JRObject.is_jrobject = function(json){
 };
 
 JRObject.from_json = function(json){
-  // TODO lookup class corresponding to json['json_class'] in global registry and instantiate
+  // TODO lookup class corresponding in global registry and instantiate
+  //var cl  = JRObject.class_registry[json['json_class']];
   var obj = json['data'];
+  obj.json_class = json['json_class'];
   for(var p in obj){
     if(JRObject.is_jrobject(obj[p]))
       obj[p] = JRObject.from_json(obj[p]);
@@ -76,9 +64,12 @@ JRObject.from_json = function(json){
   return obj;
 };
 
+// global / shared class registry
+//JRObject.class_registry = {};
+
 // main json-rpc websocket interface
 function WSNode (host, port){
-  node = this;
+  var node = this;
   this.open = function(){
     this.socket = new MozWebSocket("ws://" + host + ":" + port);
     this.socket.onopen = function (){
@@ -136,7 +127,7 @@ function WSNode (host, port){
 
 // main json-rpc www interface
 function WebNode (uri){
-  node = this;
+  var node = this;
   this.invoke_request = function(){
     id = guid();
     rpc_method = arguments[0];
