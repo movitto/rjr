@@ -21,12 +21,16 @@ function JRMessage(msg){
     for(p=0;p<this.params.length;++p){
       if(JRObject.is_jrobject(this.params[p]))
         this.params[p] = JRObject.from_json(this.params[p]);
+      else if(JRObject.is_jrobject_array(obj[p]))
+        this.params[p] = JRObject.from_json_array(this.params[p]);
     }
   }
   this.error  = this.parsed['error'];
   this.result = this.parsed['result'];
   if(this.result && JRObject.is_jrobject(this.result))
     this.result = JRObject.from_json(this.result);
+  else if(JRObject.is_jrobject_array(this.result))
+    this.result = JRObject.from_json_array(this.result);
 }
 
 // encapsulates an object w/ type
@@ -47,6 +51,10 @@ JRObject.is_jrobject = function(json){
   return json && json['json_class'] && json['data'];
 };
 
+JRObject.is_jrobject_array = function(json){
+  return json && typeof(json) == "object" && json.length > 0 && JRObject.is_jrobject(json[0]);
+};
+
 JRObject.from_json = function(json){
   // TODO lookup class corresponding in global registry and instantiate
   //var cl  = JRObject.class_registry[json['json_class']];
@@ -55,13 +63,19 @@ JRObject.from_json = function(json){
   for(var p in obj){
     if(JRObject.is_jrobject(obj[p]))
       obj[p] = JRObject.from_json(obj[p]);
-    else if(typeof(obj[p]) == "object"){ // handle arrays
-      for(var i in obj[p])
-        if(JRObject.is_jrobject(obj[p][i]))
-          obj[p][i] = JRObject.from_json(obj[p][i]);
+    else if(JRObject.is_jrobject_array(obj[p])){
+      obj[p] = JRObject.from_json_array(obj[p]);
    }
   }
   return obj;
+};
+
+JRObject.from_json_array = function(json){
+  var objs = [];
+  for(var i in json)
+    if(JRObject.is_jrobject(json[i]))
+      objs[i] = JRObject.from_json(json[i]);
+  return objs;
 };
 
 // global / shared class registry
