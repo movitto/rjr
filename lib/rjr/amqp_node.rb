@@ -17,11 +17,18 @@ class AMQPNodeCallback
     @exchange    = exchange
     @destination = destination
     @jr_method   = jr_method
+    @disconnected = false
+
+    @exchange.on_return do |basic_return, metadata, payload|
+        puts "#{payload} was returned! reply_code = #{basic_return.reply_code}, reply_text = #{basic_return.reply_text}"
+        @disconnected = true
+    end
   end
 
   def invoke(*data)
     msg = RequestMessage.new :method => @jr_method, :args => data
-    @exchange.publish(msg.to_s, :routing_key => @destination)
+    raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
+    @exchange.publish(msg.to_s, :routing_key => @destination, :mandatory => true)
   end
 end
 

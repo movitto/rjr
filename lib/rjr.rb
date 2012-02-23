@@ -7,6 +7,7 @@ lib = File.dirname(__FILE__)
 $: << lib + '/rjr/'
 
 require lib + '/rjr/common'
+require lib + '/rjr/errors'
 require lib + '/rjr/thread_pool'
 require lib + '/rjr/semaphore'
 require lib + '/rjr/node'
