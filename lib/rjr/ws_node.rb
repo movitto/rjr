@@ -16,11 +16,15 @@ class WSNodeCallback
   def initialize(socket, jr_method)
     @socket    = socket
     @jr_method = jr_method
+
+    #@socket.onclose {}
+    #@socket.onerror { |error|}
   end
 
   def invoke(*data)
     #msg = CallbackMessage.new(:data => data)
     msg = RequestMessage.new :method => @jr_method, :args => data
+    raise RJR::Errors::ConnectionError.new("websocket closed") if @socket.state == :closed
     @socket.send(msg.to_s)
   end
 end
