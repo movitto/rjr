@@ -9,6 +9,12 @@ function guid() {
   return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4()+S4());
 }
 
+// helper to determine if entity is an array
+// http://www.hunlock.com/blogs/Mastering_Javascript_Arrays#quickIDX34
+function isArray(testObject) {  
+  return testObject && !(testObject.propertyIsEnumerable('length')) && typeof testObject === 'object' && typeof testObject.length === 'number';
+}
+
 // encapsulates a json-rpc message
 function JRMessage(msg){
   this.json = msg;
