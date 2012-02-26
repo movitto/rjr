@@ -85,23 +85,26 @@ JRObject.from_json_array = function(json){
 function WSNode (host, port){
   var node = this;
   this.open = function(){
-    this.socket = new MozWebSocket("ws://" + host + ":" + port);
-    this.socket.onopen = function (){
+    node.socket = new MozWebSocket("ws://" + host + ":" + port);
+    node.socket.onopen = function (){
       // XXX hack, give other handlers time to register
       setTimeout(function(){
         if(node.onopen)
           node.onopen();
       }, 250);
     };
-    this.socket.onclose   = function (){
+    node.socket.onclose   = function (){
       if(node.onclose)
         node.onclose();
     };
-    this.socket.onmessage = function (e){
+    node.socket.onmessage = function (e){
       msg = new JRMessage(e.data);
       if(node.onmessage)
         node.onmessage(msg);
     };
+  };
+  this.close = function(){
+    this.socket.close();
   };
   this.invoke_request = function(){
     id = guid();
@@ -114,28 +117,28 @@ function WSNode (host, port){
                method: rpc_method,
                params: args,
                id: id};
-    this.onmessage = function(msg){
-      if(this.message_received)
-        this.message_received(msg);
+    node.onmessage = function(msg){
+      if(node.message_received)
+        node.message_received(msg);
       if(msg['id'] == id){
         success = !msg['error'];
-        if(success && this.onsuccess){
+        if(success && node.onsuccess){
           result = msg['result'];
-          this.onsuccess(result);
+          node.onsuccess(result);
         }
-        else if(!success && this.onfailed)
-          this.onfailed(msg['error']['code'], msg['error']['message']);
+        else if(!success && node.onfailed)
+          node.onfailed(msg['error']['code'], msg['error']['message']);
       }else{
-        if(msg['method'] && this.invoke_callback){
+        if(msg['method'] && node.invoke_callback){
           params = msg['params'];
-          this.invoke_callback(msg['method'], params);
+          node.invoke_callback(msg['method'], params);
         }
       }
     };
-    this.socket.send($.toJSON(request));
+    node.socket.send($.toJSON(request));
   };
   this.close = function(){
-    this.socket.close();
+    node.socket.close();
   };
 };
 
