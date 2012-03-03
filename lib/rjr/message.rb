@@ -24,10 +24,15 @@ class RequestMessage
 
   def initialize(args = {})
     if args.has_key?(:message)
-      request = JSON.parse(args[:message])
-      @jr_method = request['method']
-      @jr_args   = request['params']
-      @msg_id    = request['id']
+      begin
+        request = JSON.parse(args[:message])
+        @jr_method = request['method']
+        @jr_args   = request['params']
+        @msg_id    = request['id']
+      rescue Exception => e
+        # TODO
+        raise e
+      end
     elsif args.has_key?(:method)
       @jr_method = args[:method]
       @jr_args   = args[:args]
