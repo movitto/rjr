@@ -27,7 +27,7 @@ function JRMessage(msg){
     for(p=0;p<this.params.length;++p){
       if(JRObject.is_jrobject(this.params[p]))
         this.params[p] = JRObject.from_json(this.params[p]);
-      else if(JRObject.is_jrobject_array(obj[p]))
+      else if(JRObject.is_jrobject_array(this.params[p]))
         this.params[p] = JRObject.from_json_array(this.params[p]);
     }
   }
