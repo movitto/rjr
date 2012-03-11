@@ -94,6 +94,8 @@ class AMQPNode < RJR::Node
         end
       }
 
+      # TODO - make this optional, eg a non-blocking operation mode
+      #        (allowing event handler registration to be run on success / fail / etc)
       ## wait for result
       @queue.subscribe do |metadata, msg|
         msg    = ResponseMessage.new(:message => msg)

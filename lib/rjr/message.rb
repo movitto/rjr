@@ -18,6 +18,7 @@ class RequestMessage
         Array.new(16) {|x| rand(0xff) }
   end
 
+  attr_accessor :json_message
   attr_accessor :jr_method
   attr_accessor :jr_args
   attr_accessor :msg_id
@@ -26,10 +27,12 @@ class RequestMessage
     if args.has_key?(:message)
       begin
         request = JSON.parse(args[:message])
+        @json_message = args[:message]
         @jr_method = request['method']
         @jr_args   = request['params']
         @msg_id    = request['id']
       rescue Exception => e
+        puts "Exception Parsing Request #{e}"
         # TODO
         raise e
       end
@@ -51,12 +54,14 @@ end
 
 # Message sent from server to client in response to request message
 class ResponseMessage
+  attr_accessor :json_message
   attr_accessor :msg_id
   attr_accessor :result
 
   def initialize(args = {})
     if args.has_key?(:message)
       response = JSON.parse(args[:message])
+      @json_message  = args[:message]
       @msg_id  = response['id']
       @result   = Result.new
       @result.success   = response.has_key?('result')
