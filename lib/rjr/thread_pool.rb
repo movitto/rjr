@@ -56,7 +56,14 @@ class ThreadPool
             @timeout_lock.synchronize { @time_started = nil }
             work = @thread_pool.next_job
             @timeout_lock.synchronize { @time_started = Time.now }
-            work.handler.call *work.params unless work.nil?
+            unless work.nil?
+              begin
+                work.handler.call *work.params
+              rescue Exception => e
+                puts "Thread raised Fatal Exception #{e}"
+                puts "\n#{e.backtrace.join("\n")}"
+              end
+            end
           end
         }
       }
