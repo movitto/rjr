@@ -8,6 +8,27 @@
 
 module RJR
 
+class Request
+  attr_accessor :method
+  attr_accessor :method_args
+  attr_accessor :headers
+  attr_accessor :rjr_callback
+
+  attr_accessor :handler
+
+  def initialize(args = {})
+    @method       = args[:method]
+    @method_args  = args[:method_args]
+    @headers      = args[:headers]
+    @rjr_callback = args[:rjr_callback]
+    @handler      = args[:handler]
+  end
+
+  def handle
+    instance_exec(*@method_args, &@handler)
+  end
+end
+
 class Result
   attr_accessor :success
   attr_accessor :failed
@@ -63,30 +84,16 @@ class Dispatcher
 
   # Helper to handle request messages
   def self.dispatch_request(args = {})
-     @method   = args[:method]
-     @method_args = args[:method_args]
-     @headers  = args[:headers]
-     @rjr_callback = args[:rjr_callback]
+     method      = args[:method]
 
      @@handlers  ||= {}
      @@callbacks ||= {}
-     handler  = @@handlers[@method]
-     callback = @@callbacks[@method]
+     handler  = @@handlers[method]  || @@callbacks[method]
 
      if !handler.nil?
        begin
-         retval = instance_exec(*@method_args, &handler)
-         #retval = handler.call(*method_args)
-         return Result.new(:result => retval)
-       #rescue Exception => e
-         return Result.new(:error_code => -32000,
-                           :error_msg  => e.to_s)
-       end
-
-     elsif !callback.nil?
-       # ; if @rjr_callback.nil? # TODO handle callback method invoked via node type that doesn't support callbacks
-       begin
-         retval = instance_exec(*@method_args, &callback)
+         request = Request.new args.merge(:handler => handler)
+         retval = request.handle
          return Result.new(:result => retval)
        rescue Exception => e
          return Result.new(:error_code => -32000,
