@@ -42,7 +42,7 @@ class AMQPNode < RJR::Node
     result = Dispatcher.dispatch_request(:method => msg.jr_method,
                                          :method_args => msg.jr_args,
                                          :headers => headers,
-                                         :callback =>
+                                         :rjr_callback =>
                                            AMQPNodeCallback.new(:exchange => @exchange,
                                                                 :destination => reply_to,
                                                                 :jr_method => msg.jr_method,
