@@ -84,6 +84,7 @@ JRObject.from_json_array = function(json){
 // main json-rpc websocket interface
 function WSNode (host, port){
   var node = this;
+  this.headers = {};
   this.open = function(){
     node.socket = new MozWebSocket("ws://" + host + ":" + port);
     node.socket.onopen = function (){
@@ -117,6 +118,9 @@ function WSNode (host, port){
                method: rpc_method,
                params: args,
                id: id};
+    for(var header in node.headers){
+      request[header] = node.headers[header];
+    }
     node.onmessage = function(msg){
       if(node.message_received)
         node.message_received(msg);
@@ -145,6 +149,7 @@ function WSNode (host, port){
 // main json-rpc www interface
 function WebNode (uri){
   var node = this;
+  this.headers = {};
   this.invoke_request = function(){
     id = guid();
     rpc_method = arguments[0];
@@ -156,6 +161,9 @@ function WebNode (uri){
                method: rpc_method,
                params: args,
                id: id};
+    for(var header in node.headers){
+      request[header] = node.headers[header];
+    }
 
     $.ajax({type: 'POST',
             url: uri,
