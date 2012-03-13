@@ -15,8 +15,13 @@ class Node
   # node always has a node id
   attr_reader :node_id
 
+  # attitional parameters to set on messages
+  attr_accessor :message_headers
+
   def initialize(args = {})
      @node_id = args[:node_id]
+
+     @message_headers = {}
 
      # threads pool to handle incoming requests
      # FIXME make the # of threads and timeout configurable)
