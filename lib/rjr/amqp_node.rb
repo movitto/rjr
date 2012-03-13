@@ -13,10 +13,11 @@ module RJR
 # AMQP client node callback interface,
 # send data back to client via AMQP.
 class AMQPNodeCallback
-  def initialize(exchange, destination, jr_method)
-    @exchange    = exchange
-    @destination = destination
-    @jr_method   = jr_method
+  def initialize(args = {})
+    @exchange    = args[:exchange]
+    @destination = args[:destination]
+    @jr_method   = args[:jr_method]
+    @message_headers = args[:headers]
     @disconnected = false
 
     @exchange.on_return do |basic_return, metadata, payload|
@@ -26,7 +27,7 @@ class AMQPNodeCallback
   end
 
   def invoke(*data)
-    msg = RequestMessage.new :method => @jr_method, :args => data
+    msg = RequestMessage.new :method => @jr_method, :args => data, :headers => @message_headers
     raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
     @exchange.publish(msg.to_s, :routing_key => @destination, :mandatory => true)
   end
@@ -36,9 +37,17 @@ end
 class AMQPNode < RJR::Node
   private
   def handle_request(reply_to, message)
-    msg    = RequestMessage.new(:message => message)
-    result = Dispatcher.dispatch_request(msg.jr_method, msg.jr_args, AMQPNodeCallback.new(@exchange, reply_to, msg.jr_method))
-    response = ResponseMessage.new(:id => msg.msg_id, :result => result)
+    msg    = RequestMessage.new(:message => message, :headers => @message_headers)
+    headers = @message_headers.merge(msg.headers) # append request message headers
+    result = Dispatcher.dispatch_request(:method => msg.jr_method,
+                                         :method_args => msg.jr_args,
+                                         :headers => headers,
+                                         :callback =>
+                                           AMQPNodeCallback.new(:exchange => @exchange,
+                                                                :destination => reply_to,
+                                                                :jr_method => msg.jr_method,
+                                                                :headers => headers))
+    response = ResponseMessage.new(:id => msg.msg_id, :result => result, :headers => headers)
     @exchange.publish(response.to_s, :routing_key => reply_to)
   end
 
@@ -84,13 +93,17 @@ class AMQPNode < RJR::Node
     em_run do
       init_node
       message = RequestMessage.new :method => rpc_method,
-                                   :args   => args
+                                   :args   => args,
+                                   :headers => @message_headers
       @exchange.publish(message.to_s, :routing_key => routing_key, :reply_to => @queue_name)
 
       # check responses already received for matching id
       @response_queue.each { |response|
         if response.id == message.id
-          return Dispatcher.handle_response(response.result)
+          headers = @message_headers.merge(response.headers)
+          return Dispatcher.handle_response(:result => response.result,
+                                            :response => response,
+                                            :headers  => headers)
         end
       }
 
@@ -98,9 +111,12 @@ class AMQPNode < RJR::Node
       #        (allowing event handler registration to be run on success / fail / etc)
       ## wait for result
       @queue.subscribe do |metadata, msg|
-        msg    = ResponseMessage.new(:message => msg)
+        msg    = ResponseMessage.new(:message => msg, :headers => @message_headers)
         if msg.msg_id == message.msg_id
-          return Dispatcher.handle_response(msg.result)
+          headers = @message_headers.merge(msg.headers)
+          return Dispatcher.handle_response(:result   => msg.result,
+                                            :response => msg,
+                                            :headers  => headers)
         else
           @response_queue << msg
         end

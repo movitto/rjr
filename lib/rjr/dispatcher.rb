@@ -62,17 +62,23 @@ class Dispatcher
   end
 
   # Helper to handle request messages
-  def self.dispatch_request(method, args, node_callback = nil)
+  def self.dispatch_request(args = {})
+     @method   = args[:method]
+     @method_args = args[:method_args]
+     @headers  = args[:headers]
+     @node_callback = args[:node_callback]
+
      @@handlers  ||= {}
      @@callbacks ||= {}
-     handler  = @@handlers[method]
-     callback = @@callbacks[method]
+     handler  = @@handlers[@method]
+     callback = @@callbacks[@method]
 
      if !handler.nil?
        begin
-         retval = handler.call(*args)
+         retval = instance_exec(*@method_args, &handler)
+         #retval = handler.call(*method_args)
          return Result.new(:result => retval)
-       rescue Exception => e
+       #rescue Exception => e
          return Result.new(:error_code => -32000,
                            :error_msg  => e.to_s)
        end
@@ -80,7 +86,8 @@ class Dispatcher
      elsif !callback.nil?
        # ; if node_callback.nil? # TODO handle callback method invoked via node type that doesn't support callbacks
        begin
-         retval = callback.call(node_callback, *args)
+         @method_args.unshift(@node_callback) # FIXME remove
+         retval = instance_exec(*@method_args, &callback)
          return Result.new(:result => retval)
        rescue Exception => e
          return Result.new(:error_code => -32000,
@@ -96,7 +103,11 @@ class Dispatcher
   end
 
   # Helper to handle response messages
-  def self.handle_response(result)
+  def self.handle_response(args = {})
+     result   = args[:result]
+     response = args[:response]
+     headers  = args[:headers]
+
      raise Exception.new(result.error_msg) unless result.success
      return result.result
   end
