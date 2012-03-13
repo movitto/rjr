@@ -25,18 +25,26 @@ end
 class WebRequestHandler < EventMachine::Connection
   include EventMachine::HttpServer
 
+  def initialize(*args)
+    @web_node = args[0]
+  end
+
   def handle_request(message)
     msg    = nil
     result = nil
     begin
-      msg    = RequestMessage.new(:message => message)
-      result = Dispatcher.dispatch_request(msg.jr_method, msg.jr_args, WebNodeCallback.new())
+      msg    = RequestMessage.new(:message => message, :headers => @web_node.message_headers)
+      headers = @web_node.message_headers.merge(msg.headers)
+      result = Dispatcher.dispatch_request(:method => msg.jr_method,
+                                           :method_args => msg.jr_args,
+                                           :headers => headers,
+                                           :rjr_callback => WebNodeCallback.new())
     rescue JSON::ParserError => e
       result = Result.invalid_request
     end
 
     msg_id = msg.nil? ? nil : msg.msg_id
-    response = ResponseMessage.new(:id => msg_id, :result => result)
+    response = ResponseMessage.new(:id => msg_id, :result => result, :headers => headers)
 
     resp = EventMachine::DelegatedHttpResponse.new(self)
     #resp.status  = response.result.success ? 200 : 500
@@ -68,7 +76,7 @@ class WebNode < RJR::Node
      @response_queue = []
   end
 
-  # Initialize the ws subsystem
+  # Initialize the web subsystem
   def init_node
   end
 
@@ -76,7 +84,7 @@ class WebNode < RJR::Node
   def listen
     em_run do
       init_node
-      EventMachine::start_server(@host, @port, WebRequestHandler)
+      EventMachine::start_server(@host, @port, WebRequestHandler, self)
     end
   end
 
@@ -85,22 +93,29 @@ class WebNode < RJR::Node
     em_run do
       init_node
       message = RequestMessage.new :method => rpc_method,
-                                   :args   => args
+                                   :args   => args,
+                                   :headers => @message_headers
 
       http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
 
       # check responses already received for matching id
       @response_queue.each { |response|
         if response.id == message.id
-          return Dispatcher.handle_response(response.result)
+          headers = @message_headers.merge(response.headers)
+          return Dispatcher.handle_response(:result => response.result,
+                                            :response => response,
+                                            :headers => headers)
         end
       }
 
       #http.errback { }
       http.callback {
-        msg    = ResponseMessage.new(:message => http.response.to_s)
+        msg    = ResponseMessage.new(:message => http.response.to_s, :headers => @message_headers)
         if msg.msg_id == message.msg_id
-          return Dispatcher.handle_response(msg.result)
+          headers = @message_headers.merge(msg.headers)
+          return Dispatcher.handle_response(:result   => msg.result,
+                                            :response => msg,
+                                            :headers  => headers)
         else
           @response_queue << msg
         end

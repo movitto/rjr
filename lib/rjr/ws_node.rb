@@ -13,9 +13,10 @@ module RJR
 # Web Socket client node callback interface,
 # send data back to client via established web socket.
 class WSNodeCallback
-  def initialize(socket, jr_method)
-    @socket    = socket
-    @jr_method = jr_method
+  def initialize(args = {})
+    @socket    = args[:socket]
+    @jr_method = args[:jr_method]
+    @message_headers = args[:headers]
 
     #@socket.onclose {}
     #@socket.onerror { |error|}
@@ -23,7 +24,7 @@ class WSNodeCallback
 
   def invoke(*data)
     #msg = CallbackMessage.new(:data => data)
-    msg = RequestMessage.new :method => @jr_method, :args => data
+    msg = RequestMessage.new :method => @jr_method, :args => data, :headers => @message_headers
     raise RJR::Errors::ConnectionError.new("websocket closed") if @socket.state == :closed
     @socket.send(msg.to_s)
   end
@@ -33,9 +34,16 @@ end
 class WSNode < RJR::Node
   private
   def handle_request(socket, message)
-    msg    = RequestMessage.new(:message => message)
-    result = Dispatcher.dispatch_request(msg.jr_method, msg.jr_args, WSNodeCallback.new(socket, msg.jr_method))
-    response = ResponseMessage.new(:id => msg.msg_id, :result => result)
+    msg    = RequestMessage.new(:message => message, :headers => @message_headers)
+    headers = @message_headers.merge(msg.headers)
+    result = Dispatcher.dispatch_request(:method => msg.jr_method,
+                                         :method_args => msg.jr_args,
+                                         :headers => headers,
+                                         :rjr_callback =>
+                                           WSNodeCallback.new(:socket => socket,
+                                                              :jr_method => msg.jr_method,
+                                                              :headers => headers))
+    response = ResponseMessage.new(:id => msg.msg_id, :result => result, :headers => headers)
     socket.send(response.to_s)
   end
 
