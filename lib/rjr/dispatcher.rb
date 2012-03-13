@@ -74,21 +74,12 @@ class Dispatcher
     @@handlers[method] = handler
   end
 
-  # register a callback to the specified method.
-  # a callback is the same as a handler except it takes an additional argument
-  # specifying the node callback instance to use to send data back to client
-  def self.add_callback(method, &handler)
-    @@callbacks  ||= {}
-    @@callbacks[method] = handler
-  end
-
   # Helper to handle request messages
   def self.dispatch_request(args = {})
      method      = args[:method]
 
      @@handlers  ||= {}
-     @@callbacks ||= {}
-     handler  = @@handlers[method]  || @@callbacks[method]
+     handler  = @@handlers[method]
 
      if !handler.nil?
        begin
