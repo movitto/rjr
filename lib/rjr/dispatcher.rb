@@ -66,7 +66,7 @@ class Dispatcher
      @method   = args[:method]
      @method_args = args[:method_args]
      @headers  = args[:headers]
-     @node_callback = args[:node_callback]
+     @rjr_callback = args[:rjr_callback]
 
      @@handlers  ||= {}
      @@callbacks ||= {}
@@ -84,9 +84,8 @@ class Dispatcher
        end
 
      elsif !callback.nil?
-       # ; if node_callback.nil? # TODO handle callback method invoked via node type that doesn't support callbacks
+       # ; if @rjr_callback.nil? # TODO handle callback method invoked via node type that doesn't support callbacks
        begin
-         @method_args.unshift(@node_callback) # FIXME remove
          retval = instance_exec(*@method_args, &callback)
          return Result.new(:result => retval)
        rescue Exception => e
