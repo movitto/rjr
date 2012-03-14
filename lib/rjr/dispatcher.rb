@@ -25,7 +25,10 @@ class Request
   end
 
   def handle
-    instance_exec(*@method_args, &@handler)
+    RJR::Logger.info "Dipatching '#{@method}' request with parameters (#{@method_args.join(',')}) to #{@handler}"
+    retval = instance_exec(*@method_args, &@handler)
+    RJR::Logger.info "#{@method} request with parameters (#{@method_args.join(',')}) returning #{retval}"
+    return retval
   end
 end
 
@@ -87,6 +90,10 @@ class Dispatcher
          retval = request.handle
          return Result.new(:result => retval)
        rescue Exception => e
+         RJR::Logger.warn "Exception Raised in #{method} handler #{e}"
+         RJR::Logger.warn e.backtrace.join("\n")
+         # TODO store exception class to be raised later
+
          return Result.new(:error_code => -32000,
                            :error_msg  => e.to_s)
        end
@@ -105,6 +112,7 @@ class Dispatcher
      response = args[:response]
      headers  = args[:headers]
 
+     # TODO raise exception corresponding to one caught in dispatch_request above
      raise Exception.new(result.error_msg) unless result.success
      return result.result
   end
