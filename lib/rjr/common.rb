@@ -3,6 +3,8 @@
 # Copyright (C) 2011 Mohammed Morsi <mo@morsi.org>
 # Licensed under the AGPLv3+ http://www.gnu.org/licenses/agpl.txt
 
+require 'logger'
+
 module RJR
 
 # Logger helper class

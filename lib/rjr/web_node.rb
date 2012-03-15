@@ -17,7 +17,7 @@ class WebNodeCallback
   def initialize()
   end
 
-  def invoke(data)
+  def invoke(callback_method, *data)
   end
 end
 
@@ -35,7 +35,7 @@ class WebRequestHandler < EventMachine::Connection
     begin
       msg    = RequestMessage.new(:message => message, :headers => @web_node.message_headers)
       headers = @web_node.message_headers.merge(msg.headers)
-      result = Dispatcher.dispatch_request(:method => msg.jr_method,
+      result = Dispatcher.dispatch_request(msg.jr_method,
                                            :method_args => msg.jr_args,
                                            :headers => headers,
                                            :rjr_callback => WebNodeCallback.new())
@@ -98,24 +98,12 @@ class WebNode < RJR::Node
 
       http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
 
-      # check responses already received for matching id
-      @response_queue.each { |response|
-        if response.id == message.id
-          headers = @message_headers.merge(response.headers)
-          return Dispatcher.handle_response(:result => response.result,
-                                            :response => response,
-                                            :headers => headers)
-        end
-      }
-
       #http.errback { }
       http.callback {
         msg    = ResponseMessage.new(:message => http.response.to_s, :headers => @message_headers)
         if msg.msg_id == message.msg_id
           headers = @message_headers.merge(msg.headers)
-          return Dispatcher.handle_response(:result   => msg.result,
-                                            :response => msg,
-                                            :headers  => headers)
+          return Dispatcher.handle_response(msg.result)
         else
           @response_queue << msg
         end

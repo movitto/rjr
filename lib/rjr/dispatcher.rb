@@ -13,6 +13,7 @@ class Request
   attr_accessor :method_args
   attr_accessor :headers
   attr_accessor :rjr_callback
+  attr_accessor :rjr_node_type
 
   attr_accessor :handler
 
@@ -21,7 +22,8 @@ class Request
     @method_args  = args[:method_args]
     @headers      = args[:headers]
     @rjr_callback = args[:rjr_callback]
-    @handler      = args[:handler]
+    @rjr_node_type = args[:rjr_node_type]
+    @handler       = args[:handler]
   end
 
   def handle
@@ -40,15 +42,21 @@ class Result
   attr_accessor :error_msg
 
   def initialize(args = {})
+    @result        = nil
+    @error_code    = nil
+    @error_message = nil
+
     if args.has_key?(:result)
       @success = true
       @failed  = false
       @result  = args[:result]
+
     elsif args.has_key?(:error_code)
       @success = false
       @failed  = true
       @error_code  = args[:error_code]
       @error_msg   = args[:error_msg]
+
     end
   end
 
@@ -70,49 +78,60 @@ class Result
 
 end
 
+class Handler
+  attr_accessor :method_name
+  attr_accessor :handler_proc
+
+  def initialize(args = {})
+    @method_name          = args[:method]
+    @handler_proc         = args[:handler]
+  end
+
+  def handle(args = {})
+    return Result.method_not_found if @method_name.nil?
+
+    begin
+      request = Request.new args.merge(:method          => @method_name,
+                                       :handler         => @handler_proc)
+      retval = request.handle
+      return Result.new(:result => retval)
+
+    rescue Exception => e
+      RJR::Logger.warn "Exception Raised in #{method} handler #{e}"
+      RJR::Logger.warn e.backtrace.join("\n")
+      # TODO store exception class to be raised later
+
+      return Result.new(:error_code => -32000,
+                        :error_msg  => e.to_s)
+
+    end
+  end
+end
+
 class Dispatcher
   # register a handler to the specified method
-  def self.add_handler(method, &handler)
+  def self.add_handler(method_name, args = {}, &handler)
     @@handlers  ||= {}
-    @@handlers[method] = handler
+    @@handlers[method_name] = Handler.new args.merge(:method  => method_name,
+                                                     :handler => handler)
   end
 
   # Helper to handle request messages
-  def self.dispatch_request(args = {})
-     method      = args[:method]
-
+  def self.dispatch_request(method_name, args = {})
      @@handlers  ||= {}
-     handler  = @@handlers[method]
+     handler  = @@handlers[method_name]
 
-     if !handler.nil?
-       begin
-         request = Request.new args.merge(:handler => handler)
-         retval = request.handle
-         return Result.new(:result => retval)
-       rescue Exception => e
-         RJR::Logger.warn "Exception Raised in #{method} handler #{e}"
-         RJR::Logger.warn e.backtrace.join("\n")
-         # TODO store exception class to be raised later
-
-         return Result.new(:error_code => -32000,
-                           :error_msg  => e.to_s)
-       end
-
-     else
-       return Result.method_not_found
-
+     if handler.nil?
+       @@generic_handler ||= Handler.new :method => nil
+       return @@generic_handler.handle(args)
      end
 
-     return nil
+     return handler.handle args
   end
 
   # Helper to handle response messages
-  def self.handle_response(args = {})
-     result   = args[:result]
-     response = args[:response]
-     headers  = args[:headers]
-
-     # TODO raise exception corresponding to one caught in dispatch_request above
+  def self.handle_response(result)
+     # TODO raise exception corresponding to one caught in Handler::handle above
      raise Exception.new(result.error_msg) unless result.success
      return result.result
   end
