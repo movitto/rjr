@@ -29,10 +29,10 @@ class RequestMessage
       begin
         request = JSON.parse(args[:message])
         @json_message = args[:message]
-        @headers = args[:headers] || {}
         @jr_method = request['method']
         @jr_args   = request['params']
         @msg_id    = request['id']
+        @headers   = {}.merge!(args[:headers]) if args.has_key?(:headers)
 
         request.keys.select { |k|
           !['jsonrpc', 'id', 'method', 'params'].include?(k)
@@ -43,11 +43,13 @@ class RequestMessage
         # TODO
         raise e
       end
+
     elsif args.has_key?(:method)
       @jr_method = args[:method]
       @jr_args   = args[:args]
       @headers   = args[:headers]
       @msg_id    = RequestMessage.gen_uuid
+
     end
   end
 
@@ -59,6 +61,7 @@ class RequestMessage
     request.merge!(@headers)
     request.to_json.to_s
   end
+
 end
 
 # Message sent from server to client in response to request message
@@ -72,16 +75,19 @@ class ResponseMessage
     if args.has_key?(:message)
       response = JSON.parse(args[:message])
       @json_message  = args[:message]
-      @headers = args[:headers] || {}
       @msg_id  = response['id']
       @result   = Result.new
       @result.success   = response.has_key?('result')
       @result.failed    = !response.has_key?('result')
+      @headers   = {}.merge!(args[:headers]) if args.has_key?(:headers)
+
       if @result.success
         @result.result = response['result']
-      else
+
+      elsif response.has_key?('error')
         @result.error_code = response['error']['code']
         @result.error_msg  = response['error']['message']
+
       end
 
       response.keys.select { |k|
@@ -89,10 +95,15 @@ class ResponseMessage
       }.each { |k| @headers[k] = response[k] }
 
     elsif args.has_key?(:result)
-      @msg_id = args[:id]
-      @result = args[:result]
+      @msg_id  = args[:id]
+      @result  = args[:result]
       @headers = args[:headers]
+
+    #else
+    #  raise ArgumentError, "must specify :message or :result"
+
     end
+
   end
 
   def to_s

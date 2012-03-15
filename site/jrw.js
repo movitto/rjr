@@ -133,9 +133,9 @@ function WSNode (host, port){
         else if(!success && node.onfailed)
           node.onfailed(msg['error']['code'], msg['error']['message']);
       }else{
-        if(msg['method'] && node.invoke_callback){
+        if(msg['method'] && node.invoke_method){
           params = msg['params'];
-          node.invoke_callback(msg['method'], params);
+          node.invoke_method(msg['method'], params);
         }
       }
     };
