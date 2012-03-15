@@ -36,6 +36,7 @@ class LocalNode < RJR::Node
 
   # Instructs node to send rpc request, and wait for / return response
   def invoke_request(rpc_method, *args)
+    0.upto(args.size).each { |i| args[i] = args[i].to_s if args[i].is_a?(Symbol) }
     message = RequestMessage.new :method => rpc_method,
                                  :args   => args,
                                  :headers => @message_headers

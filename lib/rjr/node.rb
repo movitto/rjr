@@ -22,6 +22,7 @@ class Node
      @node_id = args[:node_id]
 
      @message_headers = {}
+     @message_headers.merge!(args[:headers]) if args.has_key?(:headers)
 
      # threads pool to handle incoming requests
      # FIXME make the # of threads and timeout configurable)
