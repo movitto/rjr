@@ -23,6 +23,8 @@ end
 # Local node definition, listen for and invoke json-rpc
 # requests via local handlers
 class LocalNode < RJR::Node
+  RJR_NODE_TYPE = :local
+
   # initialize the node w/ the specified params
   def initialize(args = {})
      super(args)
@@ -43,6 +45,7 @@ class LocalNode < RJR::Node
     result = Dispatcher.dispatch_request(rpc_method,
                                          :method_args => args,
                                          :headers => @message_headers,
+                                         :rjr_node_type => RJR_NODE_TYPE,
                                          :rjr_callback =>
                                            LocalNodeCallback.new(:node => self,
                                                                  :headers => @message_headers))

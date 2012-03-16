@@ -25,6 +25,8 @@ end
 class WebRequestHandler < EventMachine::Connection
   include EventMachine::HttpServer
 
+  RJR_NODE_TYPE = :web
+
   def initialize(*args)
     @web_node = args[0]
   end
@@ -38,6 +40,7 @@ class WebRequestHandler < EventMachine::Connection
       result = Dispatcher.dispatch_request(msg.jr_method,
                                            :method_args => msg.jr_args,
                                            :headers => headers,
+                                           :rjr_node_type => RJR_NODE_TYPE,
                                            :rjr_callback => WebNodeCallback.new())
     rescue JSON::ParserError => e
       result = Result.invalid_request

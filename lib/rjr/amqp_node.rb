@@ -34,6 +34,8 @@ end
 
 # AMQP node definition, listen for and invoke json-rpc requests  over AMQP
 class AMQPNode < RJR::Node
+  RJR_NODE_TYPE = :amqp
+
   private
   def handle_request(reply_to, message)
     # TODO test message, make sure it is a request message
@@ -42,6 +44,7 @@ class AMQPNode < RJR::Node
     result = Dispatcher.dispatch_request(msg.jr_method,
                                          :method_args => msg.jr_args,
                                          :headers => headers,
+                                         :rjr_node_type => RJR_NODE_TYPE,
                                          :rjr_callback =>
                                            AMQPNodeCallback.new(:exchange => @exchange,
                                                                 :destination => reply_to,
