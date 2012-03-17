@@ -14,6 +14,7 @@ class Request
   attr_accessor :headers
   attr_accessor :rjr_callback
   attr_accessor :rjr_node_type
+  attr_accessor :rjr_node_id
 
   attr_accessor :handler
 
@@ -22,12 +23,13 @@ class Request
     @method_args  = args[:method_args]
     @headers      = args[:headers]
     @rjr_callback = args[:rjr_callback]
+    @rjr_node_id   = args[:rjr_node_id]
     @rjr_node_type = args[:rjr_node_type]
     @handler       = args[:handler]
   end
 
   def handle
-    RJR::Logger.info "Dispatching '#{@method}' request with parameters (#{@method_args.join(',')}) to #{@handler}"
+    RJR::Logger.info "Dispatching '#{@method}' request with parameters (#{@method_args.join(',')})"
     retval = instance_exec(*@method_args, &@handler)
     RJR::Logger.info "#{@method} request with parameters (#{@method_args.join(',')}) returning #{retval}"
     return retval

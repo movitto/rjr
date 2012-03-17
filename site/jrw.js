@@ -35,13 +35,15 @@ function JRMessage(msg){
 
 // encapsulates an object w/ type
 //  - adaptor for the ruby 'json' library
-function JRObject (type, value){
+function JRObject (type, value, ignore_properties){
   this.type  = type;
   this.value = value;
+  this.ignore_properties = (typeof(ignore_properties) != 'undefined') ?
+                            ignore_properties : ["toJSON"];
   this.toJSON = function(){
      var data = {};
-     for(p in value)
-       if(p != "toJSON")
+     for(p in this.value)
+       if($.inArray(p, this.ignore_properties) == -1)
          data[p] = value[p];
      return {json_class: this.type, data: data };
   };
@@ -84,6 +86,7 @@ JRObject.from_json_array = function(json){
 // main json-rpc websocket interface
 function WSNode (host, port){
   var node = this;
+  this.node_id = null;
   this.headers = {};
   this.open = function(){
     node.socket = new MozWebSocket("ws://" + host + ":" + port);
@@ -118,6 +121,9 @@ function WSNode (host, port){
                method: rpc_method,
                params: args,
                id: id};
+    if(node.node_id){
+      request['node_id'] = node.node_id;
+    }
     for(var header in node.headers){
       request[header] = node.headers[header];
     }
@@ -149,6 +155,7 @@ function WSNode (host, port){
 // main json-rpc www interface
 function WebNode (uri){
   var node = this;
+  this.node_id = null;
   this.headers = {};
   this.invoke_request = function(){
     id = guid();
@@ -161,6 +168,9 @@ function WebNode (uri){
                method: rpc_method,
                params: args,
                id: id};
+    if(node.node_id){
+      request['node_id'] = node.node_id;
+    }
     for(var header in node.headers){
       request[header] = node.headers[header];
     }
