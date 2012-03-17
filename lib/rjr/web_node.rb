@@ -40,6 +40,7 @@ class WebRequestHandler < EventMachine::Connection
       result = Dispatcher.dispatch_request(msg.jr_method,
                                            :method_args => msg.jr_args,
                                            :headers => headers,
+                                           :rjr_node_id   => @node_id,
                                            :rjr_node_type => RJR_NODE_TYPE,
                                            :rjr_callback => WebNodeCallback.new())
     rescue JSON::ParserError => e

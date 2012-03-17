@@ -17,6 +17,7 @@ class WSNodeCallback
     @socket    = args[:socket]
     @message_headers = args[:headers]
 
+    # FIXME onclose, invalidate this callback / terminate outstanding handlers
     #@socket.onclose {}
     #@socket.onerror { |error|}
   end
@@ -40,6 +41,7 @@ class WSNode < RJR::Node
     result = Dispatcher.dispatch_request(msg.jr_method,
                                          :method_args => msg.jr_args,
                                          :headers => headers,
+                                         :rjr_node_id   => @node_id,
                                          :rjr_node_type => RJR_NODE_TYPE,
                                          :rjr_callback =>
                                            WSNodeCallback.new(:socket => socket,

@@ -45,6 +45,7 @@ class LocalNode < RJR::Node
     result = Dispatcher.dispatch_request(rpc_method,
                                          :method_args => args,
                                          :headers => @message_headers,
+                                         :rjr_node_id   => @node_id,
                                          :rjr_node_type => RJR_NODE_TYPE,
                                          :rjr_callback =>
                                            LocalNodeCallback.new(:node => self,
