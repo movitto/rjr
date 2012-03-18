@@ -24,6 +24,7 @@ class MultiNode < RJR::Node
       @nodes.each { |node|
         node.listen
       }
+      yield if block_given?
     end
   end
 end
