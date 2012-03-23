@@ -32,14 +32,14 @@ class RequestMessage
         @jr_method = request['method']
         @jr_args   = request['params']
         @msg_id    = request['id']
-        @headers   = {}.merge!(args[:headers]) if args.has_key?(:headers)
+        @headers   = args.has_key?(:headers) ? {}.merge!(args[:headers]) : {}
 
         request.keys.select { |k|
           !['jsonrpc', 'id', 'method', 'params'].include?(k)
         }.each { |k| @headers[k] = request[k] }
 
       rescue Exception => e
-        puts "Exception Parsing Request #{e}"
+        #puts "Exception Parsing Request #{e}"
         # TODO
         raise e
       end
@@ -79,7 +79,7 @@ class ResponseMessage
       @result   = Result.new
       @result.success   = response.has_key?('result')
       @result.failed    = !response.has_key?('result')
-      @headers   = {}.merge!(args[:headers]) if args.has_key?(:headers)
+      @headers   = args.has_key?(:headers) ? {}.merge!(args[:headers]) : {}
 
       if @result.success
         @result.result = response['result']
