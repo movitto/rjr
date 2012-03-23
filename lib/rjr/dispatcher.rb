@@ -6,6 +6,8 @@
 # establish client connection w/ specified args and invoke block w/ 
 # newly created client, returning it after block terminates
 
+require 'rjr/common'
+
 module RJR
 
 class Request
@@ -62,6 +64,14 @@ class Result
     end
   end
 
+  def ==(other)
+    @success == other.success &&
+    @failed  == other.failed  &&
+    @result  == other.result  &&
+    @error_code == other.error_code &&
+    @error_msg  == other.error_msg
+  end
+
   def to_s
     "#{@success} #{@result} #{@error_code} #{@error_msg}"
   end
@@ -111,6 +121,11 @@ class Handler
 end
 
 class Dispatcher
+  # clear handlers
+  def self.init_handlers
+    @@handlers = {}
+  end
+
   # register a handler to the specified method
   def self.add_handler(method_name, args = {}, &handler)
     @@handlers  ||= {}

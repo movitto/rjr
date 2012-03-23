@@ -4,16 +4,17 @@
 # Licensed under the AGPLv3+ http://www.gnu.org/licenses/agpl.txt
 
 require 'rake/rdoctask'
-require 'spec/rake/spectask'
-require 'rake/gempackagetask'
+require "rspec/core/rake_task"
+require 'rubygems/package_task'
 
 
 GEM_NAME="rjr"
 PKG_VERSION='0.4.1'
 
 desc "Run all specs"
-Spec::Rake::SpecTask.new('spec') do |t|
-  t.spec_files = FileList['spec/**/*_spec.rb']
+RSpec::Core::RakeTask.new(:spec) do |spec|
+  spec.pattern = 'specs/**/*_spec.rb'
+  spec.rspec_opts = ['--backtrace']
 end
 
 Rake::RDocTask.new do |rd|
