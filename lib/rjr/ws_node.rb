@@ -7,6 +7,7 @@
 # newly created client, returning it after block terminates
 
 require 'em-websocket'
+require 'rjr/web_socket'
 
 module RJR
 
@@ -74,6 +75,20 @@ class WSNode < RJR::Node
         @thread_pool << ThreadPoolJob.new { handle_request(ws, msg) }
       }
     end
+  end
+
+  # Instructs node to send rpc request, and wait for / return response
+  def invoke_request(uri, rpc_method, *args)
+    init_node
+    message = RequestMessage.new :method => rpc_method,
+                                 :args   => args,
+                                 :headers => @message_headers
+    socket = WebSocket.new(uri)
+    socket.send(message.to_s)
+    res = socket.receive()
+    msg    = ResponseMessage.new(:message => res, :headers => @message_headers)
+    headers = @message_headers.merge(msg.headers)
+    return Dispatcher.handle_response(msg.result)
   end
 end
 

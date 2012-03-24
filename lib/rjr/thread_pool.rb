@@ -69,6 +69,14 @@ class ThreadPool
       }
     end
 
+    def running?
+      res = nil
+      @thread_lock.synchronize{
+        res = (@thread.status != false)
+      }
+      res
+    end
+
     # TODO should not invoke after stop is called
     def check_timeout(timeout)
       @timeout_lock.synchronize {
@@ -119,6 +127,11 @@ class ThreadPool
         end
       }
     end
+  end
+
+  def running?
+    !terminate && (@timeout.nil? || @timeout_thread.status) &&
+    @job_runners.all? { |r| r.running? }
   end
 
   # terminate reader
