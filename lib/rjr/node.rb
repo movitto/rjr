@@ -6,6 +6,8 @@
 # establish client connection w/ specified args and invoke block w/ 
 # newly created client, returning it after block terminates
 
+require 'eventmachine'
+require 'rjr/thread_pool'
 
 module RJR
 

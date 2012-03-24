@@ -6,6 +6,8 @@
 # establish client connection w/ specified args and invoke block w/ 
 # newly created client, returning it after block terminates
 
+require 'curb'
+
 require 'evma_httpserver'
 require 'em-http-request'
 
@@ -40,7 +42,7 @@ class WebRequestHandler < EventMachine::Connection
       result = Dispatcher.dispatch_request(msg.jr_method,
                                            :method_args => msg.jr_args,
                                            :headers => headers,
-                                           :rjr_node_id   => @node_id,
+                                           :rjr_node_id   => @web_node.node_id,
                                            :rjr_node_type => RJR_NODE_TYPE,
                                            :rjr_callback => WebNodeCallback.new())
     rescue JSON::ParserError => e
@@ -77,7 +79,6 @@ class WebNode < RJR::Node
      super(args)
      @host      = args[:host]
      @port      = args[:port]
-     @response_queue = []
   end
 
   # Initialize the web subsystem
@@ -94,25 +95,14 @@ class WebNode < RJR::Node
 
   # Instructs node to send rpc request, and wait for / return response
   def invoke_request(uri, rpc_method, *args)
-    em_run do
-      init_node
-      message = RequestMessage.new :method => rpc_method,
-                                   :args   => args,
-                                   :headers => @message_headers
-
-      http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
-
-      #http.errback { }
-      http.callback {
-        msg    = ResponseMessage.new(:message => http.response.to_s, :headers => @message_headers)
-        if msg.msg_id == message.msg_id
-          headers = @message_headers.merge(msg.headers)
-          return Dispatcher.handle_response(msg.result)
-        else
-          @response_queue << msg
-        end
-      }
-    end
+    init_node
+    message = RequestMessage.new :method => rpc_method,
+                                 :args   => args,
+                                 :headers => @message_headers
+    res = Curl::Easy.http_post uri, message.to_s
+    msg    = ResponseMessage.new(:message => res.body_str, :headers => @message_headers)
+    headers = @message_headers.merge(msg.headers)
+    return Dispatcher.handle_response(msg.result)
   end
 end
 

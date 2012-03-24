@@ -94,25 +94,32 @@ class AMQPNode < RJR::Node
   def invoke_request(routing_key, rpc_method, *args)
     em_run do
       init_node
+
+      res = nil
+      req_mutex = Mutex.new
+      req_cv = ConditionVariable.new
+
       message = RequestMessage.new :method => rpc_method,
                                    :args   => args,
                                    :headers => @message_headers
       @exchange.publish(message.to_s, :routing_key => routing_key, :reply_to => @queue_name)
 
-      ## wait for result
-      # TODO - make this optional, eg a non-blocking operation mode
-      #        (allowing event handler registration to be run on success / fail / etc)
-      # FIXME this just returns, we need to block until we receive message back
+      # begin listening for result
       @queue.subscribe do |metadata, msg|
         # TODO test message, make sure it is a response message
         msg    = ResponseMessage.new(:message => msg, :headers => @message_headers)
         if msg.msg_id == message.msg_id
           headers = @message_headers.merge(msg.headers)
-          return Dispatcher.handle_response(msg.result)
+          res = Dispatcher.handle_response(msg.result)
+          req_mutex.synchronize { req_cv.signal }
         end
       end
 
-      #return nil
+      ## wait for result
+      # TODO - make this optional, eg a non-blocking operation mode
+      #        (allowing event handler registration to be run on success / fail / etc)
+      req_mutex.synchronize { req_cv.wait(req_mutex) }
+      return res
     end
   end
 
