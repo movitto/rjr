@@ -1,9 +1,12 @@
 #!/usr/bin/ruby
 # runs the integration test
 
+cd = File.expand_path(File.dirname(__FILE__))
+puts "!!! #{cd}"
+
 server_thread = Thread.new { 
   puts "Starting server"
-  `./server > output/server`
+  `#{cd}/server > output/server`
   puts "Server finished"
 }
 sleep 2
@@ -11,11 +14,11 @@ sleep 2
 finished = 0
 client_threads = []
 thread_map = {}
-0.upto(500) { |i|
+0.upto(150) { |i|
   client_threads <<
     Thread.new {
       puts "Starting client #{i}"
-      `./client #{i} > output/client#{i}`
+      `#{cd}/client #{i}`
       puts "Client #{i} finished (#{finished+=1})"
     }
   thread_map[client_threads.last] = i
