@@ -1,4 +1,5 @@
 require 'rjr/ws_node'
+require 'rjr/dispatcher'
 
 describe RJR::WSNode do
   it "should invoke and satisfy websocket requests" do
@@ -13,16 +14,12 @@ describe RJR::WSNode do
     }
 
     server = RJR::WSNode.new :node_id => 'ws', :host => 'localhost', :port => 9876
-    server.em_run do
-      server.listen
-
-      Thread.new{
-        client = RJR::WSNode.new
-        res = client.invoke_request 'ws://localhost:9876', 'foobar', 'myparam'
-        res.should == 'retval'
-        EventMachine.stop_event_loop
-      }
-    end
+    server.listen
+    client = RJR::WSNode.new
+    res = client.invoke_request 'ws://localhost:9876', 'foobar', 'myparam'
+    res.should == 'retval'
+    server.halt
+    server.join
     foobar_invoked.should == true
   end
 end

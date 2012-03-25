@@ -9,7 +9,10 @@
 require 'curb'
 
 require 'evma_httpserver'
-require 'em-http-request'
+#require 'em-http-request'
+
+require 'rjr/node'
+require 'rjr/message'
 
 module RJR
 

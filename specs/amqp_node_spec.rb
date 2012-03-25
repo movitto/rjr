@@ -1,4 +1,5 @@
 require 'rjr/amqp_node'
+require 'rjr/dispatcher'
 
 describe RJR::AMQPNode do
   it "should invoke and satisfy amqp requests" do
@@ -13,16 +14,12 @@ describe RJR::AMQPNode do
     }
 
     server = RJR::AMQPNode.new :node_id => 'amqp', :broker => 'localhost'
-    server.em_run do
-      server.listen
-
-      Thread.new {
-        client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost'
-        res = client.invoke_request 'amqp-queue', 'foobar', 'myparam'
-        res.should == 'retval'
-        EventMachine.stop_event_loop
-      }
-    end
+    server.listen
+    client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost'
+    res = client.invoke_request 'amqp-queue', 'foobar', 'myparam'
+    res.should == 'retval'
+    server.halt
+    server.join
     foobar_invoked.should == true
   end
 end

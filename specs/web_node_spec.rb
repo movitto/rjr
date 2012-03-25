@@ -1,4 +1,5 @@
 require 'rjr/web_node'
+require 'rjr/dispatcher'
 
 describe RJR::WebNode do
   it "should invoke and satisfy http requests" do
@@ -12,17 +13,15 @@ describe RJR::WebNode do
       'retval'
     }
 
-    server = RJR::WebNode.new :node_id => 'www', :host => 'localhost', :port => 9876
-    server.em_run do
-      server.listen
+    server = RJR::WebNode.new :node_id => 'www', :host => 'localhost', :port => 9678
+    server.listen
 
-      Thread.new{
-        client = RJR::WebNode.new
-        res = client.invoke_request 'http://localhost:9876', 'foobar', 'myparam'
-        res.should == 'retval'
-        EventMachine.stop_event_loop
-      }
-    end
+    client = RJR::WebNode.new
+    res = client.invoke_request 'http://localhost:9678', 'foobar', 'myparam'
+    res.should == 'retval'
+    server.halt
+
+    server.join
     foobar_invoked.should == true
   end
 end

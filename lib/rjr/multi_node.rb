@@ -7,6 +7,8 @@
 # newly created client, returning it after block terminates
 
 require 'eventmachine'
+require 'rjr/node'
+require 'rjr/message'
 
 module RJR
 
@@ -20,12 +22,9 @@ class MultiNode < RJR::Node
 
   # Instruct Node to start listening for and dispatching rpc requests
   def listen
-    em_run do
-      @nodes.each { |node|
-        node.listen
-      }
-      yield if block_given?
-    end
+    @nodes.each { |node|
+      node.listen
+    }
   end
 end
 

@@ -9,6 +9,9 @@
 require 'em-websocket'
 require 'rjr/web_socket'
 
+require 'rjr/node'
+require 'rjr/message'
+
 module RJR
 
 # Web Socket client node callback interface,
@@ -65,15 +68,17 @@ class WSNode < RJR::Node
 
   # Instruct Node to start listening for and dispatching rpc requests
   def listen
-    init_node
-    EventMachine::WebSocket.start(:host => @host, :port => @port) do |ws|
-      ws.onopen    {   }
-      ws.onclose   {   }
-      ws.onerror   {|e|}
-      ws.onmessage { |msg|
-        # TODO should delete handler threads as they complete & should handle timeout
-        @thread_pool << ThreadPoolJob.new { handle_request(ws, msg) }
-      }
+    em_run do
+      init_node
+      EventMachine::WebSocket.start(:host => @host, :port => @port) do |ws|
+        ws.onopen    {   }
+        ws.onclose   {   }
+        ws.onerror   {|e|}
+        ws.onmessage { |msg|
+          # TODO should delete handler threads as they complete & should handle timeout
+          @thread_pool << ThreadPoolJob.new { handle_request(ws, msg) }
+        }
+      end
     end
   end
 

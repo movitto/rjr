@@ -1,4 +1,7 @@
 require 'rjr/multi_node'
+require 'rjr/amqp_node'
+require 'rjr/web_node'
+require 'rjr/dispatcher'
 
 describe RJR::AMQPNode do
   it "should invoke and satisfy amqp requests" do
@@ -23,21 +26,17 @@ describe RJR::AMQPNode do
     amqp = RJR::AMQPNode.new :node_id => 'amqp', :broker => 'localhost'
     web  = RJR::WebNode.new :node_id => 'web', :host => 'localhost', :port => 9876
     multi = RJR::MultiNode.new :node_id => 'multi', :nodes => [amqp, web]
-    multi.em_run do
-      multi.listen
 
-      Thread.new {
-        amqp_client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost'
-        res = amqp_client.invoke_request 'amqp-queue', 'foobar', 'myparam1'
-        res.should == 'retval1'
+    multi.listen
+    amqp_client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost'
+    res = amqp_client.invoke_request 'amqp-queue', 'foobar', 'myparam1'
+    res.should == 'retval1'
 
-        web_client  = RJR::WebNode.new
-        res = web_client.invoke_request 'http://localhost:9876', 'barfoo', 'myparam2'
-        res.should == 'retval2'
+    web_client  = RJR::WebNode.new
+    res = web_client.invoke_request 'http://localhost:9876', 'barfoo', 'myparam2'
+    res.should == 'retval2'
 
-        EventMachine.stop_event_loop
-      }
-    end
+    multi.halt
     foobar_invoked.should == true
     barfoo_invoked.should == true
   end

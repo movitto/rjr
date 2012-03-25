@@ -3,7 +3,7 @@
 # Copyright (C) 2010 Mohammed Morsi <movitto@yahoo.com>
 # Licensed under the AGPLv3+ http://www.gnu.org/licenses/agpl.txt
 
-require 'rake/rdoctask'
+require 'rdoc/task'
 require "rspec/core/rake_task"
 require 'rubygems/package_task'
 
@@ -44,7 +44,7 @@ SPEC = Gem::Specification.new do |s|
     s.homepage = %q{http://morsi.org/projects/rjr}
 end
 
-Rake::GemPackageTask.new(SPEC) do |pkg|
-    pkg.need_tar = true
-    pkg.need_zip = true
-end
+#Rake::GemPackageTask.new(SPEC) do |pkg|
+#    pkg.need_tar = true
+#    pkg.need_zip = true
+#end
