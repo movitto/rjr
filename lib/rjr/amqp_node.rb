@@ -61,8 +61,8 @@ class AMQPNode < RJR::Node
       if lock
         headers = @message_headers.merge(msg.headers)
         res = Dispatcher.handle_response(msg.result)
+        lock << res
         lock[0].synchronize { lock[1].signal }
-        return res
       end
 
     end
@@ -95,7 +95,7 @@ class AMQPNode < RJR::Node
      @broker    = args[:broker]
 
      # tuple of message ids to locks/condition variables for the responses
-     # of those messages
+     # of those messages with optional result response
      @message_locks = {}
   end
 
@@ -127,21 +127,20 @@ class AMQPNode < RJR::Node
 
   # Instructs node to send rpc request, and wait for / return response
   def invoke_request(routing_key, rpc_method, *args)
-    res = nil
     req_mutex = Mutex.new
     req_cv = ConditionVariable.new
 
+    message = RequestMessage.new :method => rpc_method,
+                                 :args   => args,
+                                 :headers => @message_headers
     em_run do
       init_node
 
-      message = RequestMessage.new :method => rpc_method,
-                                   :args   => args,
-                                   :headers => @message_headers
       @message_locks[message.msg_id] = [req_mutex, req_cv]
 
       # begin listening for result
       @queue.subscribe do |metadata, msg|
-        res = handle_message(metadata, msg)
+        handle_message(metadata, msg)
       end
 
       @exchange_lock.synchronize{
@@ -153,9 +152,11 @@ class AMQPNode < RJR::Node
     # TODO - make this optional, eg a non-blocking operation mode
     #        (allowing event handler registration to be run on success / fail / etc)
     req_mutex.synchronize { req_cv.wait(req_mutex) }
+    result = @message_locks[message.msg_id][2] 
+    @message_locks.delete(message.msg_id)
     self.stop
     self.join unless self.em_running?
-    return res
+    return result
   end
 
 end
