@@ -1,4 +1,5 @@
 require 'rjr/local_node'
+require 'rjr/dispatcher'
 
 describe RJR::LocalNode do
   it "should invoke requests against local handler" do

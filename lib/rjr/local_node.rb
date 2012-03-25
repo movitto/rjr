@@ -6,6 +6,9 @@
 # establish client connection w/ specified args and invoke block w/ 
 # newly created client, returning it after block terminates
 
+require 'rjr/node'
+require 'rjr/message'
+
 module RJR
 
 # Local client node callback interface,

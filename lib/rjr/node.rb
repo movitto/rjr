@@ -31,27 +31,47 @@ class Node
      @thread_pool = ThreadPool.new(10, :timeout => 5)
   end
 
+  # run job in event machine
+  def em_run(&bl)
+    @@em_jobs ||= 0
+    @@em_jobs += 1
 
-  # instructs node to stop accepting
-  def terminate
-    @thread_pool.stop
+    @@em_thread  ||= nil
+
+    unless @@em_thread
+      @@em_thread  =
+        Thread.new{
+          begin
+            EventMachine.run
+          rescue Exception => e
+          ensure
+          end
+        }
+    end
+    EventMachine.schedule bl
   end
 
-  # run eventmachine if not running and invoke block
-  def em_run
-    @@em_running ||= false
-    if @@em_running
-      yield
-    else
-      begin
-        @@em_running = true
-        EventMachine.run do
-          yield
-        end
-      ensure
-        @@em_running = false
-      end
+  def join
+    if @@em_thread
+      @@em_thread.join
+      @@em_thread = nil
     end
   end
+
+  def stop
+    @@em_jobs -= 1
+    if @@em_jobs == 0
+      EventMachine.stop
+      join
+      #@thread_pool.stop
+    end
+  end
+
+  def halt
+    EventMachine.stop
+    join
+    @@em_jobs = 0
+  end
+
 end
 end # module RJR

@@ -7,6 +7,8 @@
 # newly created client, returning it after block terminates
 
 require 'amqp'
+require 'rjr/node'
+require 'rjr/message'
 
 module RJR
 
@@ -35,6 +37,7 @@ end
 # AMQP node definition, listen for and invoke json-rpc requests  over AMQP
 class AMQPNode < RJR::Node
   RJR_NODE_TYPE = :amqp
+
 
   private
   def handle_request(reply_to, message)
@@ -77,27 +80,27 @@ class AMQPNode < RJR::Node
 
   # Instruct Node to start listening for and dispatching rpc requests
   def listen
-     em_run do
-       init_node
+    em_run do
+      init_node
 
-       # start receiving messages
-       @queue.subscribe do |metadata, msg|
-          reply_to = metadata.reply_to
+      # start receiving messages
+      @queue.subscribe do |metadata, msg|
+         reply_to = metadata.reply_to
 
-          # TODO should delete handler threads as they complete & should handle timeout
-          @thread_pool << ThreadPoolJob.new { handle_request(reply_to, msg) }
-       end 
-     end
+         # TODO should delete handler threads as they complete & should handle timeout
+         @thread_pool << ThreadPoolJob.new { handle_request(reply_to, msg) }
+      end
+    end
   end
 
   # Instructs node to send rpc request, and wait for / return response
   def invoke_request(routing_key, rpc_method, *args)
+    res = nil
+    req_mutex = Mutex.new
+    req_cv = ConditionVariable.new
+
     em_run do
       init_node
-
-      res = nil
-      req_mutex = Mutex.new
-      req_cv = ConditionVariable.new
 
       message = RequestMessage.new :method => rpc_method,
                                    :args   => args,
@@ -114,13 +117,14 @@ class AMQPNode < RJR::Node
           req_mutex.synchronize { req_cv.signal }
         end
       end
-
-      ## wait for result
-      # TODO - make this optional, eg a non-blocking operation mode
-      #        (allowing event handler registration to be run on success / fail / etc)
-      req_mutex.synchronize { req_cv.wait(req_mutex) }
-      return res
     end
+
+    ## wait for result
+    # TODO - make this optional, eg a non-blocking operation mode
+    #        (allowing event handler registration to be run on success / fail / etc)
+    req_mutex.synchronize { req_cv.wait(req_mutex) }
+    self.stop
+    return res
   end
 
 end
