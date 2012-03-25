@@ -1,0 +1,37 @@
+#!/usr/bin/ruby
+# A rjr server to test jrw.js
+
+require 'rubygems'
+require 'rjr'
+
+def setup_signals
+  Signal.trap("INT") {
+    EventMachine.stop
+  }
+end
+
+RJR::Logger.log_level = ::Logger::DEBUG
+
+RJR::Dispatcher.add_handler("success_method") { |param1|
+  puts "Invoked success_method"
+  "response-#{param1}"
+}
+
+RJR::Dispatcher.add_handler("failed_method") {
+  puts "Invoked failed_method"
+  raise ArgumentError, "epic fail"
+}
+
+RJR::Dispatcher.add_handler("callback_method") {
+  puts "Invoked callback_method"
+  @rjr_callback.invoke_request 'client_callback', 'cb'
+}
+
+ws_node    = RJR::WSNode.new    :node_id => 'jrw_test', :host   => 'localhost', :port => 8080
+www_node   = RJR::WebNode.new   :node_id => 'jrw_test', :host   => 'localhost', :port => 8888
+
+multi_node = RJR::MultiNode.new :nodes => [ws_node, www_node]
+
+multi_node.listen {
+    setup_signals
+}
