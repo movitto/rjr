@@ -17,6 +17,13 @@ RSpec::Core::RakeTask.new(:spec) do |spec|
   spec.rspec_opts = ['--backtrace']
 end
 
+desc "run javascript tests"
+task :test_js do
+  ENV['RUBYLIB'] = "lib"
+  puts "Launching js test runner"
+  `tests/js/runner`
+end
+
 Rake::RDocTask.new do |rd|
     rd.main = "README.rdoc"
     rd.rdoc_dir = "doc/site/api"
@@ -44,7 +51,7 @@ SPEC = Gem::Specification.new do |s|
     s.homepage = %q{http://morsi.org/projects/rjr}
 end
 
-#Rake::GemPackageTask.new(SPEC) do |pkg|
-#    pkg.need_tar = true
-#    pkg.need_zip = true
-#end
+Gem::PackageTask.new(SPEC) do |pkg|
+    pkg.need_tar = true
+    pkg.need_zip = true
+end
