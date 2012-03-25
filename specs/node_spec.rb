@@ -24,9 +24,9 @@ describe RJR::Node do
       node.em_run {
         EventMachine.reactor_running?.should be_true
         block2_called = true
+        node.halt
       }
     }
-    node.halt
     node.join
 
     block1_called.should be_true

@@ -7,6 +7,7 @@
 # newly created client, returning it after block terminates
 
 require 'amqp'
+require 'thread'
 require 'rjr/node'
 require 'rjr/message'
 
@@ -17,20 +18,26 @@ module RJR
 class AMQPNodeCallback
   def initialize(args = {})
     @exchange    = args[:exchange]
+    @exchange_lock = args[:exchange_lock]
     @destination = args[:destination]
     @message_headers = args[:headers]
     @disconnected = false
 
-    @exchange.on_return do |basic_return, metadata, payload|
-        puts "#{payload} was returned! reply_code = #{basic_return.reply_code}, reply_text = #{basic_return.reply_text}"
-        @disconnected = true
-    end
+    @exchange_lock.synchronize{
+      # FIXME should disconnect all callbacks on_return
+      @exchange.on_return do |basic_return, metadata, payload|
+          puts "#{payload} was returned! reply_code = #{basic_return.reply_code}, reply_text = #{basic_return.reply_text}"
+          @disconnected = true
+      end
+    }
   end
 
   def invoke(callback_method, *data)
     msg = RequestMessage.new :method => callback_method, :args => data, :headers => @message_headers
     raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
-    @exchange.publish(msg.to_s, :routing_key => @destination, :mandatory => true)
+    @exchange_lock.synchronize{
+      @exchange.publish(msg.to_s, :routing_key => @destination, :mandatory => true)
+    }
   end
 end
 
@@ -40,8 +47,28 @@ class AMQPNode < RJR::Node
 
 
   private
+  def handle_message(metadata, msg)
+    if RequestMessage.is_request_message?(msg)
+      reply_to = metadata.reply_to
+
+      # TODO should delete handler threads as they complete & should handle timeout
+      @thread_pool << ThreadPoolJob.new { handle_request(reply_to, msg) }
+
+    elsif ResponseMessage.is_response_message?(msg)
+      # TODO test message, make sure it is a response message
+      msg    = ResponseMessage.new(:message => msg, :headers => @message_headers)
+      lock   = @message_locks[msg.msg_id]
+      if lock
+        headers = @message_headers.merge(msg.headers)
+        res = Dispatcher.handle_response(msg.result)
+        lock[0].synchronize { lock[1].signal }
+        return res
+      end
+
+    end
+  end
+
   def handle_request(reply_to, message)
-    # TODO test message, make sure it is a request message
     msg    = RequestMessage.new(:message => message, :headers => @message_headers)
     headers = @message_headers.merge(msg.headers) # append request message headers
     result = Dispatcher.dispatch_request(msg.jr_method,
@@ -51,10 +78,13 @@ class AMQPNode < RJR::Node
                                          :rjr_node_type => RJR_NODE_TYPE,
                                          :rjr_callback =>
                                            AMQPNodeCallback.new(:exchange => @exchange,
+                                                                :exchange_lock => @exchange_lock,
                                                                 :destination => reply_to,
                                                                 :headers => headers))
     response = ResponseMessage.new(:id => msg.msg_id, :result => result, :headers => headers)
-    @exchange.publish(response.to_s, :routing_key => reply_to)
+    @exchange_lock.synchronize{
+      @exchange.publish(response.to_s, :routing_key => reply_to)
+    }
   end
 
   public
@@ -63,6 +93,10 @@ class AMQPNode < RJR::Node
   def initialize(args = {})
      super(args)
      @broker    = args[:broker]
+
+     # tuple of message ids to locks/condition variables for the responses
+     # of those messages
+     @message_locks = {}
   end
 
   # Initialize the amqp subsystem
@@ -76,6 +110,7 @@ class AMQPNode < RJR::Node
      @queue_name  = "#{@node_id.to_s}-queue"
      @queue       = @channel.queue(@queue_name, :auto_delete => true)
      @exchange    = @channel.default_exchange
+     @exchange_lock = Mutex.new
   end
 
   # Instruct Node to start listening for and dispatching rpc requests
@@ -85,10 +120,7 @@ class AMQPNode < RJR::Node
 
       # start receiving messages
       @queue.subscribe do |metadata, msg|
-         reply_to = metadata.reply_to
-
-         # TODO should delete handler threads as they complete & should handle timeout
-         @thread_pool << ThreadPoolJob.new { handle_request(reply_to, msg) }
+         handle_message(metadata, msg)
       end
     end
   end
@@ -105,18 +137,16 @@ class AMQPNode < RJR::Node
       message = RequestMessage.new :method => rpc_method,
                                    :args   => args,
                                    :headers => @message_headers
-      @exchange.publish(message.to_s, :routing_key => routing_key, :reply_to => @queue_name)
+      @message_locks[message.msg_id] = [req_mutex, req_cv]
 
       # begin listening for result
       @queue.subscribe do |metadata, msg|
-        # TODO test message, make sure it is a response message
-        msg    = ResponseMessage.new(:message => msg, :headers => @message_headers)
-        if msg.msg_id == message.msg_id
-          headers = @message_headers.merge(msg.headers)
-          res = Dispatcher.handle_response(msg.result)
-          req_mutex.synchronize { req_cv.signal }
-        end
+        res = handle_message(metadata, msg)
       end
+
+      @exchange_lock.synchronize{
+        @exchange.publish(message.to_s, :routing_key => routing_key, :reply_to => @queue_name)
+      }
     end
 
     ## wait for result
@@ -124,6 +154,7 @@ class AMQPNode < RJR::Node
     #        (allowing event handler registration to be run on success / fail / etc)
     req_mutex.synchronize { req_cv.wait(req_mutex) }
     self.stop
+    self.join unless self.em_running?
     return res
   end
 
