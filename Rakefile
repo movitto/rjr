@@ -21,7 +21,14 @@ desc "run javascript tests"
 task :test_js do
   ENV['RUBYLIB'] = "lib"
   puts "Launching js test runner"
-  `tests/js/runner`
+  system("tests/js/runner")
+end
+
+desc "run integration/stress tests"
+task :integration do
+  ENV['RUBYLIB'] = "lib"
+  puts "Launching integration test runner"
+  system("tests/integration/runner")
 end
 
 Rake::RDocTask.new do |rd|
