@@ -58,7 +58,7 @@ class RequestMessage
                 'method' => @jr_method,
                 'params' => @jr_args }
     request['id'] = @msg_id unless @msg_id.nil?
-    request.merge!(@headers)
+    request.merge!(@headers) unless @headers.nil?
     request.to_json.to_s
   end
 
@@ -120,7 +120,7 @@ class ResponseMessage
                              'message' => @result.error_msg }}
     end
 
-    s.merge! @headers
+    s.merge! @headers unless headers.nil?
     return s.to_json.to_s
   end
 end

@@ -108,7 +108,7 @@ function WSNode (host, port){
     };
   };
   this.close = function(){
-    this.socket.close();
+    node.socket.close();
   };
   this.invoke_request = function(){
     id = guid();
@@ -146,9 +146,6 @@ function WSNode (host, port){
       }
     };
     node.socket.send($.toJSON(request));
-  };
-  this.close = function(){
-    node.socket.close();
   };
 };
 
@@ -195,5 +192,6 @@ function WebNode (uri){
               if(node.onfailed)
                 node.onfailed(jqXHR.status, textStatus);
             }});
+
   };
 };

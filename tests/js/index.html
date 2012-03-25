@@ -1,0 +1,188 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" 
+                    "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <script src="http://localhost/rjr-test/jquery-latest.js"></script>
+  <link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
+  <script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
+  <script type="text/javascript" src="http://localhost/rjr-test/rjr/jrw.js"></script>
+  <script type="text/javascript" src="http://localhost/rjr-test/rjr/json.js"></script>
+
+  <script>
+  $(document).ready(function(){
+
+module("JRObject");
+
+test("convert to json", function() {
+  var obj = new JRObject('Foo', {'a': 123, 'aaa': 'bbb'}, ['toJSON', 'aaa']);
+  var json = obj.toJSON();
+  ok('json_class' in json);
+  ok('data' in json);
+  ok('a' in json['data']);
+  ok(!json['data'].hasOwnProperty('aaa'));
+  equal('Foo', json['json_class']);
+  equal(123, json['data']['a']);
+});
+
+test("convert from json", function() {
+  var json = {'json_class': 'Foo', 'data': {'a': 123, 'b' : {'json_class' : 'Bar', 'data': {'z': 654 }}}};
+  var obj = JRObject.from_json(json);
+  ok('a' in obj);
+  ok('b' in obj);
+  ok('z' in obj['b']);
+  equal(123, obj['a']);
+  equal(654, obj['b']['z']);
+});
+
+test("convert from json array", function() {
+  var json = [{'json_class': 'Foo', 'data': {'a': 123, 'b' : {'json_class' : 'Bar', 'data': {'z': 654 }}}},
+              {'json_class': 'Foo', 'data': {'a': 456, 'b' : {'json_class' : 'Bar', 'data': {'z': 987 }}}}];
+  var objs = JRObject.from_json_array(json);
+  equal(2, objs.length);
+  ok('a' in objs[0]);
+  ok('b' in objs[0]);
+  ok('z' in objs[0]['b']);
+  ok('a' in objs[1]);
+  ok('b' in objs[1]);
+  ok('z' in objs[1]['b']);
+  equal(123, objs[0]['a']);
+  equal(654, objs[0]['b']['z']);
+  equal(456, objs[1]['a']);
+  equal(987, objs[1]['b']['z']);
+});
+
+test("is_jrobject helper", function() {
+  var json = {'json_class': 'Foo', 'data': 'bar'};
+  ok(JRObject.is_jrobject(json))
+
+  json = {'json_class': 'Foo'};
+  ok(!JRObject.is_jrobject(json))
+
+  json = {'data': 'bar'};
+  ok(!JRObject.is_jrobject(json))
+});
+
+test("is_jrobject_array helper", function() {
+  expect(3);
+
+  var json = [{'json_class': 'Foo', 'data': 'bar'}];
+  ok(JRObject.is_jrobject_array(json))
+
+  json = [{'json_class': 'Foo'}];
+  ok(!JRObject.is_jrobject(json))
+
+  json = {'json_class': 'Foo', 'data': 'bar'};
+  ok(!JRObject.is_jrobject_array(json))
+});
+
+module("JRMessage");
+
+test("create jr method message", function() {
+  var id  = guid(); 
+  var msg = new JRMessage('{"jsonrpc":"2.0","method":"foobar","id":"'+id+'","params":[1,"abc"]}');
+  equal(id, msg.id);
+  equal('foobar', msg.method);
+  equal(2, msg.params.length);
+  equal(1, msg.params[0]);
+  equal('abc', msg.params[1]);
+});
+
+test("convert jr method object params", function() {
+  var id  = guid(); 
+  var json = '{"json_class": "Foo", "data": {"a": 123 }}';
+  var msg = new JRMessage('{"jsonrpc":"2.0","method":"foobar","id":"'+id+'","params":['+json+']}');
+  equal(1, msg.params.length);
+  ok('a' in msg.params[0]);
+  equal(123, msg.params[0]['a']);
+});
+
+test("create jr success response message", function() {
+  var id  = guid(); 
+  var msg = new JRMessage('{"id":"'+id+'","jsonrpc":"2.0","result":5}');
+  equal(id, msg.id);
+  equal(5, msg.result);
+});
+
+test("create jr failed response message", function() {
+  var id  = guid(); 
+  var msg = new JRMessage('{"id":"'+id+'","jsonrpc":"2.0","error":{"code":101,"message":"arg"}}');
+  equal(id, msg.id);
+  equal(101, msg.error['code']);
+  equal('arg', msg.error['message']);
+});
+
+module("WSNode");
+
+asyncTest("invoke rpc request", 2, function() {
+  var ws_node = new WSNode('localhost', 8080);
+  ws_node.onopen = function(result){
+    ok(true);
+    ws_node.invoke_request("callback_method");
+  }
+  ws_node.onsuccess = function(result){
+    start(2); // continue the test runner
+  }
+  ws_node.onfailed = function(error, msg){
+    start(2); // continue the test runner
+  }
+  ws_node.message_received = function(msg){
+    ok(true);
+  }
+  ws_node.invoke_method = function(method, params){
+    equal('client_callback', method);
+    equal(1, params.length);
+    equal('cb', params[0]);
+    start(2);
+  }
+  ws_node.open();
+  stop(1); // pause the testrunner to wait for callback
+});
+
+module("WebNode");
+
+asyncTest("invoke successful rpc request", 2, function() {
+  var web_node = new WebNode("http://localhost/motel");
+  web_node.onsuccess = function(result){
+    equal('response-haha', result);
+    start(2); // continue the test runner
+  }
+  web_node.onfailed = function(error, msg){
+    start(2); // continue the test runner
+  }
+  web_node.message_received = function(msg){
+    ok(true);
+  }
+  web_node.invoke_request("success_method", "haha");
+  stop(1); // pause the testrunner to wait for callback
+});
+
+asyncTest("invoke failed rpc request", 3, function() {
+  var web_node = new WebNode("http://localhost/motel");
+  web_node.onsuccess = function(result){
+    start(2); // continue the test runner
+  }
+  web_node.onfailed = function(error, msg){
+    equal(-32000, error);
+    equal("epic fail", msg);
+    start(2); // continue the test runner
+  }
+  web_node.message_received = function(msg){
+    ok(true);
+  }
+  web_node.invoke_request("failed_method");
+  stop(1); // pause the testrunner to wait for callback
+});
+
+  });
+  </script>
+  
+</head>
+<body>
+  <h1 id="qunit-header">QUnit example</h1>
+ <h2 id="qunit-banner"></h2>
+ <div id="qunit-testrunner-toolbar"></div>
+ <h2 id="qunit-userAgent"></h2>
+ <ol id="qunit-tests"></ol>
+ <div id="qunit-fixture">test markup, will be hidden</div>
+</body>
+</html>
