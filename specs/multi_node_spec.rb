@@ -5,14 +5,14 @@ require 'rjr/dispatcher'
 
 describe RJR::AMQPNode do
   it "should invoke and satisfy amqp requests" do
-    foobar_invoked = false
+    foolbar_invoked = false
     barfoo_invoked = false
     RJR::Dispatcher.init_handlers
-    RJR::Dispatcher.add_handler('foobar') { |param|
+    RJR::Dispatcher.add_handler('foolbar') { |param|
       @rjr_node_id.should == 'amqp'
       @rjr_node_type.should == :amqp
       param.should == 'myparam1'
-      foobar_invoked = true
+      foolbar_invoked = true
       'retval1'
     }
     RJR::Dispatcher.add_handler('barfoo') { |param|
@@ -29,7 +29,7 @@ describe RJR::AMQPNode do
 
     multi.listen
     amqp_client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost'
-    res = amqp_client.invoke_request 'amqp-queue', 'foobar', 'myparam1'
+    res = amqp_client.invoke_request 'amqp-queue', 'foolbar', 'myparam1'
     res.should == 'retval1'
 
     web_client  = RJR::WebNode.new
@@ -37,7 +37,8 @@ describe RJR::AMQPNode do
     res.should == 'retval2'
 
     multi.halt
-    foobar_invoked.should == true
+    multi.join
+    foolbar_invoked.should == true
     barfoo_invoked.should == true
   end
 end

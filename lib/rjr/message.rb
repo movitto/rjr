@@ -53,6 +53,14 @@ class RequestMessage
     end
   end
 
+  def self.is_request_message?(message)
+    begin
+       JSON.parse(message).has_key?('method')
+    rescue Exception => e
+      false
+    end
+  end
+
   def to_s
     request = { 'jsonrpc' => '2.0',
                 'method' => @jr_method,
@@ -104,6 +112,14 @@ class ResponseMessage
 
     end
 
+  end
+
+  def self.is_response_message?(message)
+    begin
+      JSON.parse(message).has_key?('result')
+    rescue Exception => e
+      false
+    end
   end
 
   def to_s

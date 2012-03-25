@@ -4,9 +4,9 @@
 require 'rubygems'
 require 'rjr'
 
-def setup_signals
+def setup_signals(node)
   Signal.trap("INT") {
-    EventMachine.stop
+    node.halt
   }
 end
 
@@ -32,6 +32,6 @@ www_node   = RJR::WebNode.new   :node_id => 'jrw_test', :host   => 'localhost', 
 
 multi_node = RJR::MultiNode.new :nodes => [ws_node, www_node]
 
-multi_node.listen {
-    setup_signals
-}
+setup_signals(multi_node)
+multi_node.listen
+multi_node.join

@@ -38,17 +38,23 @@ class Node
 
     @@em_thread  ||= nil
 
-    unless @@em_thread
+    if @@em_thread.nil?
       @@em_thread  =
         Thread.new{
           begin
             EventMachine.run
           rescue Exception => e
+            puts "Critical exception #{e}"
           ensure
           end
         }
+#sleep 0.5 until EventMachine.reactor_running? # XXX hacky way to do this
     end
     EventMachine.schedule bl
+  end
+
+  def em_running?
+    EventMachine.reactor_running?
   end
 
   def join
@@ -62,15 +68,13 @@ class Node
     @@em_jobs -= 1
     if @@em_jobs == 0
       EventMachine.stop
-      join
-      #@thread_pool.stop
+      @thread_pool.stop
     end
   end
 
   def halt
-    EventMachine.stop
-    join
     @@em_jobs = 0
+    EventMachine.stop
   end
 
 end
