@@ -2,11 +2,10 @@
 # runs the integration test
 
 cd = File.expand_path(File.dirname(__FILE__))
-puts "!!! #{cd}"
 
 server_thread = Thread.new { 
   puts "Starting server"
-  `#{cd}/server > output/server`
+  system("#{cd}/server > output/server")
   puts "Server finished"
 }
 sleep 2
@@ -18,7 +17,7 @@ thread_map = {}
   client_threads <<
     Thread.new {
       puts "Starting client #{i}"
-      `#{cd}/client #{i}`
+      system("#{cd}/client #{i}")
       puts "Client #{i} finished (#{finished+=1})"
     }
   thread_map[client_threads.last] = i

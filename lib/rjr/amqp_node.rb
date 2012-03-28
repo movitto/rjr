@@ -102,6 +102,7 @@ class AMQPNode < RJR::Node
   # Initialize the amqp subsystem
   def init_node
      @conn = AMQP.connect(:host => @broker)
+     @conn.on_tcp_connection_failure { puts "OTCF #{@node_id}" }
 
      ### connect to qpid broker
      @channel = AMQP::Channel.new(@conn)

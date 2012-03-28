@@ -9,6 +9,41 @@
   <script type="text/javascript" src="http://localhost/rjr-test/rjr/json.js"></script>
   <script>
   $(document).ready(function(){
+    function onopen(){
+      for(var i = 0; i < 50; ++i){
+        ws_node.invoke_request('stress_callback', 'foobar');
+        web_node.invoke_request('stress', 'barfoo');
+      }
+    }
+    function onsuccess(result){
+      console.log("success");
+      console.log(result);
+    }
+    function onfailed(error, msg){
+      console.log("failed");
+      console.log(error);
+      console.log(msg);
+    }
+    function invoke_method(method, params){
+      console.log("invoke_method")
+      console.log(method);
+      console.log(params);
+    }
+
+    web_node = new WebNode('http://localhost/motel');
+    ws_node  = new WSNode('127.0.0.1', '8080');
+    ws_node.onopen    = function(){ onopen(); };
+    ws_node.onsuccess = function(result)     { onsuccess(result); }
+    ws_node.onfailed  = function(error, msg) { onfailed(error, msg);  }
+    //ws_node.message_received = function(msg) { }
+    ws_node.invoke_method  = function(method, params){ invoke_method(method, params); }
+
+    web_node.onsuccess = function(result)     { onsuccess(result); }
+    web_node.onfailed  = function(error, msg) { onfailed(error, msg);  }
+    //web_node.message_received = function(msg) { }
+
+    ws_node.open();
+  });
   </script>
   
 </head>
