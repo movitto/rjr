@@ -44,11 +44,13 @@ class Result
   attr_accessor :result
   attr_accessor :error_code
   attr_accessor :error_msg
+  attr_accessor :error_class
 
   def initialize(args = {})
     @result        = nil
     @error_code    = nil
     @error_message = nil
+    @error_class = nil
 
     if args.has_key?(:result)
       @success = true
@@ -60,6 +62,7 @@ class Result
       @failed  = true
       @error_code  = args[:error_code]
       @error_msg   = args[:error_msg]
+      @error_class = args[:error_class]
 
     end
   end
@@ -69,11 +72,12 @@ class Result
     @failed  == other.failed  &&
     @result  == other.result  &&
     @error_code == other.error_code &&
-    @error_msg  == other.error_msg
+    @error_msg  == other.error_msg  &&
+    @error_class == other.error_class
   end
 
   def to_s
-    "#{@success} #{@result} #{@error_code} #{@error_msg}"
+    "#{@success} #{@result} #{@error_code} #{@error_msg} #{@error_class}"
   end
 
   ######### Specific request types
@@ -114,7 +118,8 @@ class Handler
       # TODO store exception class to be raised later
 
       return Result.new(:error_code => -32000,
-                        :error_msg  => e.to_s)
+                        :error_msg  => e.to_s,
+                        :error_class => e.class)
 
     end
   end
@@ -148,8 +153,14 @@ class Dispatcher
 
   # Helper to handle response messages
   def self.handle_response(result)
-     # TODO raise exception corresponding to one caught in Handler::handle above
-     raise Exception.new(result.error_msg) unless result.success
+     unless result.success
+       #if result.error_class
+       #  TODO needs to be constantized first (see TODO in lib/rjr/message)
+       #  raise result.error_class.new(result.error_msg) unless result.success
+       #else
+         raise Exception.new(result.error_msg)
+       #end
+     end
      return result.result
   end
 
