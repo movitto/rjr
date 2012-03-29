@@ -87,9 +87,9 @@ class Result
                        :error_msg => '  Invalid Request')
   end
 
-  def self.method_not_found
+  def self.method_not_found(name)
      return Result.new(:error_code => -32602,
-                       :error_msg => 'Method not found')
+                       :error_msg => "Method '#{name}' not found")
   end
 
 end
@@ -104,7 +104,7 @@ class Handler
   end
 
   def handle(args = {})
-    return Result.method_not_found if @method_name.nil?
+    return Result.method_not_found(args[:missing_name]) if @method_name.nil?
 
     begin
       request = Request.new args.merge(:method          => @method_name,
@@ -145,7 +145,7 @@ class Dispatcher
 
      if handler.nil?
        @@generic_handler ||= Handler.new :method => nil
-       return @@generic_handler.handle(args)
+       return @@generic_handler.handle(args.merge(:missing_name => method_name))
      end
 
      return handler.handle args
@@ -158,7 +158,7 @@ class Dispatcher
        #  TODO needs to be constantized first (see TODO in lib/rjr/message)
        #  raise result.error_class.new(result.error_msg) unless result.success
        #else
-         raise Exception.new(result.error_msg)
+         raise Exception, result.error_msg
        #end
      end
      return result.result

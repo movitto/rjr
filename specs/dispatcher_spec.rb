@@ -52,7 +52,7 @@ describe RJR::Handler do
   it "should return method not found result if method name is not specified" do
     handler = RJR::Handler.new :method => nil
     result = handler.handle
-    result.should == RJR::Result.method_not_found
+    result.should == RJR::Result.method_not_found(nil)
   end
 
   it "should invoke registered handler for request" do
@@ -114,7 +114,7 @@ describe RJR::Dispatcher do
   it "should return method not found result if handler for specified message is missing" do
     RJR::Dispatcher.init_handlers
     res = RJR::Dispatcher.dispatch_request('foobar')
-    res.should == RJR::Result.method_not_found
+    res.should == RJR::Result.method_not_found('foobar')
   end
 
   it "should handle success response" do
