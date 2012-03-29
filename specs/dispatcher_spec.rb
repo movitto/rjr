@@ -33,15 +33,17 @@ describe RJR::Result do
     result.result.should  == 'foobar'
     result.error_code.should == nil
     result.error_msg.should == nil
+    result.error_class.should == nil
   end
 
   it "should handle errors" do
-    result = RJR::Result.new :error_code => 123, :error_msg => 'abc'
+    result = RJR::Result.new :error_code => 123, :error_msg => 'abc', :error_class => ArgumentError
     result.success.should == false
     result.failed.should  == true
     result.result.should  == nil
     result.error_code.should == 123
     result.error_msg.should == 'abc'
+    result.error_class.should == ArgumentError
   end
 end
 
@@ -78,12 +80,13 @@ describe RJR::Handler do
     handler = RJR::Handler.new :method => 'foobar',
                                :method_args => [],
                                :handler => lambda {
-                                 raise Exception, "uh oh!"
+                                 raise ArgumentError, "uh oh!"
                                }
     res = handler.handle({:method_args => [] })
     res.failed.should == true
     res.error_code.should == -32000
     res.error_msg.should == "uh oh!"
+    res.error_class.should == ArgumentError
   end
 end
 
@@ -122,8 +125,9 @@ describe RJR::Dispatcher do
 
   it "should handle error response" do
     lambda{
-      res = RJR::Result.new :error_code => 123, :error_msg => "bah"
+      res = RJR::Result.new :error_code => 123, :error_msg => "bah", :error_class => ArgumentError
       RJR::Dispatcher.handle_response(res)
     }.should raise_error(Exception, "bah")
+    #}.should raise_error(ArgumentError, "bah")
   end
 end

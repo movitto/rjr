@@ -87,7 +87,8 @@ describe RJR::ResponseMessage do
     msg_id = RJR::RequestMessage.gen_uuid
     msg = RJR::ResponseMessage.new :id      => msg_id,
                                    :result  => RJR::Result.new(:error_code => 404,
-                                                               :error_msg => 'not found'),
+                                                               :error_msg => 'not found',
+                                                               :error_class => ArgumentError),
                                    :headers => {:h => 2}
     msg_string = msg.to_s
     msg_string.should include('"id":"'+msg_id+'"')
@@ -115,7 +116,7 @@ describe RJR::ResponseMessage do
 
     msg_id = RJR::RequestMessage.gen_uuid
     msg_string = '{"id":"' + msg_id + '", ' +
-                  '"error":{"code":404,"message":"not found"}, "jsonrpc":"2.0"}'
+                  '"error":{"code":404,"message":"not found","class":"ArgumentError"}, "jsonrpc":"2.0"}'
     msg = RJR::ResponseMessage.new :message => msg_string
     msg.json_message.should == msg_string
     msg.msg_id.should == msg_id
@@ -123,6 +124,7 @@ describe RJR::ResponseMessage do
     msg.result.failed.should == true
     msg.result.error_code.should == 404
     msg.result.error_msg.should == "not found"
+    msg.result.error_class.should == 'ArgumentError'
   end
 
   it "should extract optional headers from message string" do

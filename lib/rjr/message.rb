@@ -95,6 +95,7 @@ class ResponseMessage
       elsif response.has_key?('error')
         @result.error_code = response['error']['code']
         @result.error_msg  = response['error']['message']
+        @result.error_class = response['error']['class']  # TODO safely constantize this
 
       end
 
@@ -133,7 +134,8 @@ class ResponseMessage
       s =    {'jsonrpc' => '2.0',
               'id'      => @msg_id,
               'error'   => { 'code'    => @result.error_code,
-                             'message' => @result.error_msg }}
+                             'message' => @result.error_msg,
+                             'class'   => @result.error_class}}
     end
 
     s.merge! @headers unless headers.nil?
