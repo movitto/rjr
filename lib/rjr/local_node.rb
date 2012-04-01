@@ -20,6 +20,7 @@ class LocalNodeCallback
 
   def invoke(callback_method, *data)
     @node.invoke_request(callback_method, *data)
+    # TODO support local_node 'disconnections'
   end
 end
 
@@ -28,9 +29,13 @@ end
 class LocalNode < RJR::Node
   RJR_NODE_TYPE = :local
 
+  # allow clients to override the node type for the local node
+  attr_accessor :node_type
+
   # initialize the node w/ the specified params
   def initialize(args = {})
      super(args)
+     @node_type = RJR_NODE_TYPE
   end
 
   # Instruct Node to start listening for and dispatching rpc requests
@@ -49,7 +54,7 @@ class LocalNode < RJR::Node
                                          :method_args => args,
                                          :headers => @message_headers,
                                          :rjr_node_id   => @node_id,
-                                         :rjr_node_type => RJR_NODE_TYPE,
+                                         :rjr_node_type => @node_type,
                                          :rjr_callback =>
                                            LocalNodeCallback.new(:node => self,
                                                                  :headers => @message_headers))
