@@ -19,6 +19,10 @@ class MultiNode < RJR::Node
     @nodes = args[:nodes]
   end
 
+  def <<(node)
+    @nodes << node
+  end
+
 
   # Instruct Node to start listening for and dispatching rpc requests
   def listen
