@@ -31,7 +31,7 @@ class Request
   end
 
   def handle
-    RJR::Logger.info "Dispatching '#{@method}' request with parameters (#{@method_args.join(',')})"
+    RJR::Logger.info "Dispatching '#{@method}' request with parameters (#{@method_args.join(',')}) on #{@rjr_node_type}-node(#{@rjr_node_id})"
     retval = instance_exec(*@method_args, &@handler)
     RJR::Logger.info "#{@method} request with parameters (#{@method_args.join(',')}) returning #{retval}"
     return retval
