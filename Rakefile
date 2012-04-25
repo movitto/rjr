@@ -9,7 +9,7 @@ require 'rubygems/package_task'
 
 
 GEM_NAME="rjr"
-PKG_VERSION='0.4.1'
+PKG_VERSION='0.5.4'
 
 desc "Run all specs"
 RSpec::Core::RakeTask.new(:spec) do |spec|
@@ -38,7 +38,7 @@ Rake::RDocTask.new do |rd|
 end
 
 PKG_FILES = FileList['lib/**/*.rb', 
-  'COPYING', 'LICENSE', 'Rakefile', 'README.rdoc', 'spec/**/*.rb' ]
+  'LICENSE', 'Rakefile', 'README.rdoc', 'spec/**/*.rb' ]
 
 SPEC = Gem::Specification.new do |s|
     s.name = GEM_NAME
@@ -52,10 +52,10 @@ SPEC = Gem::Specification.new do |s|
 
     s.author = "Mohammed Morsi"
     s.email = "mo@morsi.org"
-    s.date = %q{2010-09-05}
+    s.date = %q{2012-04-25}
     s.description = %q{Ruby Json Rpc library}
     s.summary = %q{JSON RPC server and client library over amqp, websockets}
-    s.homepage = %q{http://morsi.org/projects/rjr}
+    s.homepage = %q{http://github.com/movitto/rjr}
 end
 
 Gem::PackageTask.new(SPEC) do |pkg|
