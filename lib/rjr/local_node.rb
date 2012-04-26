@@ -50,15 +50,28 @@ class LocalNode < RJR::Node
     message = RequestMessage.new :method => rpc_method,
                                  :args   => args,
                                  :headers => @message_headers
-    result = Dispatcher.dispatch_request(rpc_method,
-                                         :method_args => args,
+
+    # we serialize / unserialze messages to ensure local node complies
+    # to same json-rpc restrictions as other nodes
+    message = RequestMessage.new :message => message.to_s,
+                                 :headers => @message_headers
+
+    result = Dispatcher.dispatch_request(message.jr_method,
+                                         :method_args => message.jr_args,
                                          :headers => @message_headers,
                                          :rjr_node_id   => @node_id,
                                          :rjr_node_type => @node_type,
                                          :rjr_callback =>
                                            LocalNodeCallback.new(:node => self,
                                                                  :headers => @message_headers))
-    return Dispatcher.handle_response(result)
+    response = ResponseMessage.new(:id => message.msg_id,
+                                   :result => result,
+                                   :headers => @message_headers)
+
+    # same comment on serialization/unserialization as above
+    response = ResponseMessage.new(:message => response.to_s,
+                                   :headers => @message_headers)
+    return Dispatcher.handle_response(response.result)
   end
 
 end

@@ -36,4 +36,7 @@ describe RJR::LocalNode do
     node = RJR::LocalNode.new
     node.invoke_request 'foobar', 'myparam'
   end
+
+  # TODO make sure object attributes not serialized to json
+  # are not available on remote end of local node invocation/response
 end
