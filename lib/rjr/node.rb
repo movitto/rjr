@@ -54,7 +54,7 @@ class Node
   end
 
   def em_running?
-    EventMachine.reactor_running?
+    @@em_jobs > 0 && EventMachine.reactor_running?
   end
 
   def join
@@ -67,7 +67,7 @@ class Node
   def stop
     @@em_jobs -= 1
     if @@em_jobs == 0
-      EventMachine.stop
+      EventMachine.stop_event_loop
       @thread_pool.stop
     end
   end

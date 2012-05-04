@@ -117,8 +117,10 @@ class ResponseMessage
 
   def self.is_response_message?(message)
     begin
-      JSON.parse(message).has_key?('result')
+      json = JSON.parse(message)
+      json.has_key?('result') || json.has_key?('error')
     rescue Exception => e
+      # TODO handle parsing errors
       false
     end
   end
