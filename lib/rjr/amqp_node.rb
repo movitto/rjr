@@ -60,9 +60,15 @@ class AMQPNode < RJR::Node
       lock   = @message_locks[msg.msg_id]
       if lock
         headers = @message_headers.merge(msg.headers)
-        res = Dispatcher.handle_response(msg.result)
-        lock << res
-        lock[0].synchronize { lock[1].signal }
+        begin
+          res = Dispatcher.handle_response(msg.result)
+          lock << res
+        rescue Exception => e
+          lock << nil
+          lock << e
+        ensure
+          lock[0].synchronize { lock[1].signal }
+        end
       end
 
     end
@@ -154,9 +160,13 @@ class AMQPNode < RJR::Node
     #        (allowing event handler registration to be run on success / fail / etc)
     req_mutex.synchronize { req_cv.wait(req_mutex) }
     result = @message_locks[message.msg_id][2] 
+    error  = @message_locks[message.msg_id].size > 3 ?
+                 @message_locks[message.msg_id][3]   :
+                 nil
     @message_locks.delete(message.msg_id)
     self.stop
     self.join unless self.em_running?
+    raise error unless error.nil?
     return result
   end
 
