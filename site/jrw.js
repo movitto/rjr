@@ -89,7 +89,7 @@ function WSNode (host, port){
   this.node_id = null;
   this.headers = {};
   this.open = function(){
-    node.socket = new MozWebSocket("ws://" + host + ":" + port);
+    node.socket = new WebSocket("ws://" + host + ":" + port);
     node.socket.onopen = function (){
       // XXX hack, give other handlers time to register
       setTimeout(function(){
