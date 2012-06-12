@@ -25,10 +25,6 @@ class Node
 
      @message_headers = {}
      @message_headers.merge!(args[:headers]) if args.has_key?(:headers)
-
-     # threads pool to handle incoming requests
-     # FIXME make the # of threads and timeout configurable)
-     @thread_pool = ThreadPool.new(10, :timeout => 5)
   end
 
   # run job in event machine
@@ -42,6 +38,10 @@ class Node
       @@em_thread  =
         Thread.new{
           begin
+            # threads pool to handle incoming requests
+            # FIXME make the # of threads and timeout configurable)
+            @thread_pool = ThreadPool.new(10, :timeout => 5)
+
             EventMachine.run
           rescue Exception => e
             puts "Critical exception #{e}"
