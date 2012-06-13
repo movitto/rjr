@@ -8,53 +8,59 @@ require 'logger'
 module RJR
 
 # Logger helper class
-class Logger
-  private
+  class Logger
+    private
     def self._instantiate_logger
-       unless defined? @@logger
-         @@logger = ::Logger.new(STDOUT)
-         @@logger.level = ::Logger::FATAL
-       end 
-    end 
+      unless defined? @@logger
+        @@logger = ::Logger.new(STDOUT)
+        @@logger.level = ::Logger::FATAL
+      end
+    end
 
-  public
+    public
 
     def self.method_missing(method_id, *args)
-       _instantiate_logger
-       @@logger.send(method_id, args)
-    end 
+      _instantiate_logger
+      @@logger.send(method_id, args)
+    end
 
     def self.logger
-       _instantiate_logger
-       @@logger
+      _instantiate_logger
+      @@logger
     end
 
     def self.log_level=(level)
       _instantiate_logger
       @@logger.level = level
     end
-end
+  end
 
 end # module RJR
 
+# is included in 1.9
+if RUBY_VERSION < "1.9"
 # http://blog.jayfields.com/2006/09/ruby-instanceexec-aka-instanceeval.html
-class Object
-  module InstanceExecHelper; end
-  include InstanceExecHelper
-  def instance_exec(*args, &block)
-    begin
-      old_critical, Thread.critical = Thread.critical, true
-      n = 0
-      n += 1 while respond_to?(mname="__instance_exec#{n}")
-      InstanceExecHelper.module_eval{ define_method(mname, &block) }
-    ensure
-      Thread.critical = old_critical
+  class Object
+    module InstanceExecHelper
+      ;
     end
-    begin
-      ret = send(mname, *args)
-    ensure
-      InstanceExecHelper.module_eval{ remove_method(mname) } rescue nil
+    include InstanceExecHelper
+
+    def instance_exec(*args, &block)
+      begin
+        old_critical, Thread.critical = Thread.critical, true
+        n = 0
+        n += 1 while respond_to?(mname="__instance_exec#{n}")
+        InstanceExecHelper.module_eval { define_method(mname, &block) }
+      ensure
+        Thread.critical = old_critical
+      end
+      begin
+        ret = send(mname, *args)
+      ensure
+        InstanceExecHelper.module_eval { remove_method(mname) } rescue nil
+      end
+      ret
     end
-    ret
   end
 end
