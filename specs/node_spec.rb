@@ -6,10 +6,6 @@ describe RJR::Node do
                          :headers => {:h => 123}
     node.node_id.should == 'foobar'
     node.message_headers[:h].should == 123
-    node.instance_variable_get(:@thread_pool).running?.should be_true
-
-    #node.terminate
-    #node.instance_variable_get(:@thread_pool).running?.should be_false
   end
 
   it "should start eventmachine and allow multiple blocks to be invoked in its context" do
@@ -19,6 +15,8 @@ describe RJR::Node do
     node = RJR::Node.new :node_id => 'foobar',
                          :headers => {:h => 123}
     node.em_run {
+      node.instance_variable_get(:@thread_pool).running?.should be_true
+
       EventMachine.reactor_running?.should be_true
       block1_called = true
       node.em_run {
