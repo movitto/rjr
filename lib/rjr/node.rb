@@ -34,14 +34,14 @@ class Node
 
     @@em_thread  ||= nil
 
+    # threads pool to handle incoming requests
+    # FIXME make the # of threads and timeout configurable)
+    @thread_pool = ThreadPool.new(10, :timeout => 5)
+
     if @@em_thread.nil?
       @@em_thread  =
         Thread.new{
           begin
-            # threads pool to handle incoming requests
-            # FIXME make the # of threads and timeout configurable)
-            @thread_pool = ThreadPool.new(10, :timeout => 5)
-
             EventMachine.run
           rescue Exception => e
             puts "Critical exception #{e}"
