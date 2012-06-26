@@ -34,9 +34,11 @@ class Node
 
     @@em_thread  ||= nil
 
-    # threads pool to handle incoming requests
-    # FIXME make the # of threads and timeout configurable)
-    @thread_pool = ThreadPool.new(10, :timeout => 5)
+    unless !@thread_pool.nil? && @thread_pool.running?
+      # threads pool to handle incoming requests
+      # FIXME make the # of threads and timeout configurable)
+      @thread_pool = ThreadPool.new(10, :timeout => 5)
+    end
 
     if @@em_thread.nil?
       @@em_thread  =
