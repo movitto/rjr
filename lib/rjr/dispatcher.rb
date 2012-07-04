@@ -132,10 +132,13 @@ class Dispatcher
   end
 
   # register a handler to the specified method
-  def self.add_handler(method_name, args = {}, &handler)
+  def self.add_handler(method_names, args = {}, &handler)
+    method_names = Array(method_names) unless method_names.is_a?(Array)
     @@handlers  ||= {}
-    @@handlers[method_name] = Handler.new args.merge(:method  => method_name,
-                                                     :handler => handler)
+    method_names.each { |method_name|
+      @@handlers[method_name] = Handler.new args.merge(:method  => method_name,
+                                                       :handler => handler)
+    }
   end
 
   # Helper to handle request messages

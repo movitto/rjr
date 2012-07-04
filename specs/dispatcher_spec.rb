@@ -111,6 +111,17 @@ describe RJR::Dispatcher do
     invoked_barfoo.should == false
   end
 
+  it "should allow a single handler to be subscribed to multiple methods" do
+    invoked_handler = 0
+    RJR::Dispatcher.init_handlers
+    RJR::Dispatcher.add_handler(['foobar', 'barfoo']) { |param1, param2|
+      invoked_handler += 1
+    }
+    RJR::Dispatcher.dispatch_request('foobar', :method_args => ['param1', 'param2'])
+    RJR::Dispatcher.dispatch_request('barfoo', :method_args => ['param1', 'param2'])
+    invoked_handler.should == 2
+  end
+
   it "should return method not found result if handler for specified message is missing" do
     RJR::Dispatcher.init_handlers
     res = RJR::Dispatcher.dispatch_request('foobar')
