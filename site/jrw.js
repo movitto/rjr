@@ -106,6 +106,10 @@ function WSNode (host, port){
       if(node.onmessage)
         node.onmessage(msg);
     };
+    node.socket.onerror = function(e){
+      if(node.onerror)
+        node.onerror(e);
+    }
   };
   this.close = function(){
     node.socket.close();
