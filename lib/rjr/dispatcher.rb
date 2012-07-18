@@ -24,6 +24,8 @@ class Request
     @method       = args[:method]
     @method_args  = args[:method_args]
     @headers      = args[:headers]
+    @client_ip    = args[:client_ip]
+    @client_port  = args[:client_port]
     @rjr_callback = args[:rjr_callback]
     @rjr_node_id   = args[:rjr_node_id]
     @rjr_node_type = args[:rjr_node_type]
@@ -115,7 +117,6 @@ class Handler
     rescue Exception => e
       RJR::Logger.warn "Exception Raised in #{method_name} handler #{e}"
       e.backtrace.each { |b| RJR::Logger.warn b }
-      # TODO store exception class to be raised later
 
       return Result.new(:error_code => -32000,
                         :error_msg  => e.to_s,

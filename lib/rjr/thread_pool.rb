@@ -77,7 +77,7 @@ class ThreadPool
       res
     end
 
-    # TODO should not invoke after stop is called
+    # should not invoke after stop is called
     def check_timeout(timeout)
       @timeout_lock.synchronize {
         if !@time_started.nil? && Time.now - @time_started > timeout

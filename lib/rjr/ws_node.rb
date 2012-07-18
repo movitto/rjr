@@ -40,11 +40,14 @@ class WSNode < RJR::Node
 
   private
   def handle_request(socket, message)
+    client_port, client_ip = Socket.unpack_sockaddr_in(socket.get_peername)
     msg    = RequestMessage.new(:message => message, :headers => @message_headers)
     headers = @message_headers.merge(msg.headers)
     result = Dispatcher.dispatch_request(msg.jr_method,
                                          :method_args => msg.jr_args,
                                          :headers => headers,
+                                         :client_ip => client_ip,
+                                         :client_port => client_port,
                                          :rjr_node_id   => @node_id,
                                          :rjr_node_type => RJR_NODE_TYPE,
                                          :rjr_callback =>

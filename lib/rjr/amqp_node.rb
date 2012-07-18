@@ -55,7 +55,6 @@ class AMQPNode < RJR::Node
       @thread_pool << ThreadPoolJob.new { handle_request(reply_to, msg) }
 
     elsif ResponseMessage.is_response_message?(msg)
-      # TODO test message, make sure it is a response message
       msg    = ResponseMessage.new(:message => msg, :headers => @message_headers)
       lock   = @message_locks[msg.msg_id]
       if lock
@@ -80,6 +79,8 @@ class AMQPNode < RJR::Node
     result = Dispatcher.dispatch_request(msg.jr_method,
                                          :method_args => msg.jr_args,
                                          :headers => headers,
+                                         :client_ip => nil,    # since client doesn't directly connect to server, we can't leverage
+                                         :client_port => nil,  # client ip / port for requests received via the amqp node type
                                          :rjr_node_id   => @node_id,
                                          :rjr_node_type => RJR_NODE_TYPE,
                                          :rjr_callback =>

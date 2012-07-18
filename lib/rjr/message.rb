@@ -40,7 +40,6 @@ class RequestMessage
 
       rescue Exception => e
         #puts "Exception Parsing Request #{e}"
-        # TODO
         raise e
       end
 
@@ -95,7 +94,7 @@ class ResponseMessage
       elsif response.has_key?('error')
         @result.error_code = response['error']['code']
         @result.error_msg  = response['error']['message']
-        @result.error_class = response['error']['class']  # TODO safely constantize this
+        @result.error_class = response['error']['class']  # TODO safely constantize this ?
 
       end
 
@@ -120,7 +119,6 @@ class ResponseMessage
       json = JSON.parse(message)
       json.has_key?('result') || json.has_key?('error')
     rescue Exception => e
-      # TODO handle parsing errors
       false
     end
   end

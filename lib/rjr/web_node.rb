@@ -40,11 +40,14 @@ class WebRequestHandler < EventMachine::Connection
     msg    = nil
     result = nil
     begin
+      client_port, client_ip = Socket.unpack_sockaddr_in(get_peername)
       msg    = RequestMessage.new(:message => message, :headers => @web_node.message_headers)
       headers = @web_node.message_headers.merge(msg.headers)
       result = Dispatcher.dispatch_request(msg.jr_method,
                                            :method_args => msg.jr_args,
                                            :headers => headers,
+                                           :client_ip => client_ip,
+                                           :client_port => client_port,
                                            :rjr_node_id   => @web_node.node_id,
                                            :rjr_node_type => RJR_NODE_TYPE,
                                            :rjr_callback => WebNodeCallback.new())
