@@ -6,6 +6,8 @@ describe RJR::AMQPNode do
     foozbar_invoked = false
     RJR::Dispatcher.init_handlers
     RJR::Dispatcher.add_handler('foozbar') { |param|
+      @client_ip.should == nil
+      @client_port.should == nil
       @rjr_node_id.should == 'amqp'
       @rjr_node_type.should == :amqp
       param.should == 'myparam'

@@ -6,6 +6,8 @@ describe RJR::WebNode do
     foobar_invoked = false
     RJR::Dispatcher.init_handlers
     RJR::Dispatcher.add_handler('foobar') { |param|
+      @client_ip.should == "127.0.0.1"
+      #@client_port.should == 9678
       @rjr_node_id.should == 'www'
       @rjr_node_type.should == :web
       param.should == 'myparam'
