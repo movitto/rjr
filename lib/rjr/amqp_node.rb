@@ -53,7 +53,6 @@ class AMQPNode < RJR::Node
     if RequestMessage.is_request_message?(msg)
       reply_to = metadata.reply_to
 
-      # TODO should delete handler threads as they complete & should handle timeout
       @thread_pool << ThreadPoolJob.new { handle_request(reply_to, msg) }
 
     elsif ResponseMessage.is_response_message?(msg)

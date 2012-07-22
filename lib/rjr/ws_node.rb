@@ -92,7 +92,6 @@ class WSNode < RJR::Node
           }
         }
         ws.onmessage { |msg|
-          # TODO should delete handler threads as they complete & should handle timeout
           @thread_pool << ThreadPoolJob.new { handle_request(ws, msg) }
         }
       end

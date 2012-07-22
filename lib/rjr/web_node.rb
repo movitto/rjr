@@ -69,7 +69,6 @@ class WebRequestHandler < EventMachine::Connection
 
   def process_http_request
     # TODO support http protocols other than POST
-    # TODO should delete handler threads as they complete & should handle timeout
     msg = @http_post_content.nil? ? '' : @http_post_content
     #@thread_pool << ThreadPoolJob.new { handle_request(msg) }
     handle_request(msg)
