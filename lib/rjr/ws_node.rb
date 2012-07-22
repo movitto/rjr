@@ -20,10 +20,6 @@ class WSNodeCallback
   def initialize(args = {})
     @socket    = args[:socket]
     @message_headers = args[:headers]
-
-    # FIXME onclose, invalidate this callback / terminate outstanding handlers
-    #@socket.onclose {}
-    #@socket.onerror { |error|}
   end
 
   def invoke(callback_method, *data)
@@ -48,6 +44,7 @@ class WSNode < RJR::Node
                                          :headers => headers,
                                          :client_ip => client_ip,
                                          :client_port => client_port,
+                                         :rjr_node      => self,
                                          :rjr_node_id   => @node_id,
                                          :rjr_node_type => RJR_NODE_TYPE,
                                          :rjr_callback =>
@@ -63,6 +60,15 @@ class WSNode < RJR::Node
      super(args)
      @host      = args[:host]
      @port      = args[:port]
+
+     @connection_event_handlers = {:closed => [], :error => []}
+  end
+
+  # register connection event handler
+  def on(event, &handler)
+    if @connection_event_handlers.keys.include?(event)
+      @connection_event_handlers[event] << handler
+    end
   end
 
   # Initialize the ws subsystem
@@ -74,9 +80,17 @@ class WSNode < RJR::Node
     em_run do
       init_node
       EventMachine::WebSocket.start(:host => @host, :port => @port) do |ws|
-        ws.onopen    {   }
-        ws.onclose   {   }
-        ws.onerror   {|e|}
+        ws.onopen    {}
+        ws.onclose   {
+          @connection_event_handlers[:closed].each { |h|
+            h.call self
+          }
+        }
+        ws.onerror   {|e|
+          @connection_event_handlers[:error].each { |h|
+            h.call self
+          }
+        }
         ws.onmessage { |msg|
           # TODO should delete handler threads as they complete & should handle timeout
           @thread_pool << ThreadPoolJob.new { handle_request(ws, msg) }

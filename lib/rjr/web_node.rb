@@ -48,6 +48,7 @@ class WebRequestHandler < EventMachine::Connection
                                            :headers => headers,
                                            :client_ip => client_ip,
                                            :client_port => client_port,
+                                           :rjr_node      => @web_node,
                                            :rjr_node_id   => @web_node.node_id,
                                            :rjr_node_type => RJR_NODE_TYPE,
                                            :rjr_callback => WebNodeCallback.new())
@@ -89,6 +90,12 @@ class WebNode < RJR::Node
 
   # Initialize the web subsystem
   def init_node
+  end
+
+  # register connection event handler,
+  # since web node connections aren't persistant, we don't do anything here
+  def on(event, &handler)
+    # TODO raise error?
   end
 
   # Instruct Node to start listening for and dispatching rpc requests

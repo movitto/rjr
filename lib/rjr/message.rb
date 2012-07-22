@@ -54,6 +54,7 @@ class RequestMessage
 
   def self.is_request_message?(message)
     begin
+       # TODO log error
        JSON.parse(message).has_key?('method')
     rescue Exception => e
       false
@@ -119,6 +120,7 @@ class ResponseMessage
       json = JSON.parse(message)
       json.has_key?('result') || json.has_key?('error')
     rescue Exception => e
+      # TODO log error
       false
     end
   end

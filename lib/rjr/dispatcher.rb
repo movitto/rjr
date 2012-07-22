@@ -27,6 +27,7 @@ class Request
     @client_ip    = args[:client_ip]
     @client_port  = args[:client_port]
     @rjr_callback = args[:rjr_callback]
+    @rjr_node      = args[:rjr_node]
     @rjr_node_id   = args[:rjr_node_id]
     @rjr_node_type = args[:rjr_node_type]
     @handler       = args[:handler]

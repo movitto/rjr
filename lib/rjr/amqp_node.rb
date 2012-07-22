@@ -17,6 +17,7 @@ module RJR
 # send data back to client via AMQP.
 class AMQPNodeCallback
   def initialize(args = {})
+    @node        = args[:node]
     @exchange    = args[:exchange]
     @exchange_lock = args[:exchange_lock]
     @destination = args[:destination]
@@ -24,10 +25,11 @@ class AMQPNodeCallback
     @disconnected = false
 
     @exchange_lock.synchronize{
-      # FIXME should disconnect all callbacks on_return
       @exchange.on_return do |basic_return, metadata, payload|
           puts "#{payload} was returned! reply_code = #{basic_return.reply_code}, reply_text = #{basic_return.reply_text}"
           @disconnected = true
+          @node.connection_event(:error)
+          @node.connection_event(:closed)
       end
     }
   end
@@ -81,10 +83,12 @@ class AMQPNode < RJR::Node
                                          :headers => headers,
                                          :client_ip => nil,    # since client doesn't directly connect to server, we can't leverage
                                          :client_port => nil,  # client ip / port for requests received via the amqp node type
+                                         :rjr_node      => self,
                                          :rjr_node_id   => @node_id,
                                          :rjr_node_type => RJR_NODE_TYPE,
                                          :rjr_callback =>
-                                           AMQPNodeCallback.new(:exchange => @exchange,
+                                           AMQPNodeCallback.new(:node => self,
+                                                                :exchange => @exchange,
                                                                 :exchange_lock => @exchange_lock,
                                                                 :destination => reply_to,
                                                                 :headers => headers))
@@ -104,6 +108,8 @@ class AMQPNode < RJR::Node
      # tuple of message ids to locks/condition variables for the responses
      # of those messages with optional result response
      @message_locks = {}
+
+     @connection_event_handlers = {:closed => [], :error => []}
   end
 
   # Initialize the amqp subsystem
@@ -119,6 +125,23 @@ class AMQPNode < RJR::Node
      @queue       = @channel.queue(@queue_name, :auto_delete => true)
      @exchange    = @channel.default_exchange
      @exchange_lock = Mutex.new
+  end
+
+  # register connection event handler
+  def on(event, &handler)
+    if @connection_event_handlers.keys.include?(event)
+      @connection_event_handlers[event] << handler
+    end
+  end
+
+  # run connection event handlers for specified event
+  # TODO these are only run when we fail to send message to queue, need to detect when that queue is shutdown & other events
+  def connection_event(event)
+    if @connection_event_handlers.keys.include?(event)
+      @connection_event_handlers[event].each { |h|
+        h.call self
+      }
+    end
   end
 
   # Instruct Node to start listening for and dispatching rpc requests

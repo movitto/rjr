@@ -38,6 +38,13 @@ class LocalNode < RJR::Node
      @node_type = RJR_NODE_TYPE
   end
 
+  # register connection event handler,
+  # until we support manual disconnections of the local node, we don't
+  # have to do anything here
+  def on(event, &handler)
+    # TODO raise error (for the time being)?
+  end
+
   # Instruct Node to start listening for and dispatching rpc requests
   def listen
     em_run do
@@ -59,6 +66,7 @@ class LocalNode < RJR::Node
     result = Dispatcher.dispatch_request(message.jr_method,
                                          :method_args => message.jr_args,
                                          :headers => @message_headers,
+                                         :rjr_node      => self,
                                          :rjr_node_id   => @node_id,
                                          :rjr_node_type => @node_type,
                                          :rjr_callback =>
