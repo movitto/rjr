@@ -18,28 +18,12 @@ module RJR
 class AMQPNodeCallback
   def initialize(args = {})
     @node        = args[:node]
-    @exchange    = args[:exchange]
-    @exchange_lock = args[:exchange_lock]
     @destination = args[:destination]
-    @message_headers = args[:headers]
-    @disconnected = false
-
-    @exchange_lock.synchronize{
-      @exchange.on_return do |basic_return, metadata, payload|
-          puts "#{payload} was returned! reply_code = #{basic_return.reply_code}, reply_text = #{basic_return.reply_text}"
-          @disconnected = true
-          @node.connection_event(:error)
-          @node.connection_event(:closed)
-      end
-    }
   end
 
   def invoke(callback_method, *data)
     msg = RequestMessage.new :method => callback_method, :args => data, :headers => @message_headers
-    raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
-    @exchange_lock.synchronize{
-      @exchange.publish(msg.to_s, :routing_key => @destination, :mandatory => true)
-    }
+    @node.publish msg.to_s, :routing_key => @destination, :mandatory => true
   end
 end
 
@@ -47,29 +31,14 @@ end
 class AMQPNode < RJR::Node
   RJR_NODE_TYPE = :amqp
 
-
   private
   def handle_message(metadata, msg)
     if RequestMessage.is_request_message?(msg)
       reply_to = metadata.reply_to
-
       @thread_pool << ThreadPoolJob.new { handle_request(reply_to, msg) }
 
     elsif ResponseMessage.is_response_message?(msg)
-      msg    = ResponseMessage.new(:message => msg, :headers => @message_headers)
-      lock   = @message_locks[msg.msg_id]
-      if lock
-        headers = @message_headers.merge(msg.headers)
-        begin
-          res = Dispatcher.handle_response(msg.result)
-          lock << res
-        rescue Exception => e
-          lock << nil
-          lock << e
-        ensure
-          lock[0].synchronize { lock[1].signal }
-        end
-      end
+      handle_response(msg)
 
     end
   end
@@ -88,12 +57,26 @@ class AMQPNode < RJR::Node
                                          :rjr_callback =>
                                            AMQPNodeCallback.new(:node => self,
                                                                 :exchange => @exchange,
-                                                                :exchange_lock => @exchange_lock,
+                                                                :amqp_lock => @amqp_lock,
                                                                 :destination => reply_to,
                                                                 :headers => headers))
     response = ResponseMessage.new(:id => msg.msg_id, :result => result, :headers => headers)
-    @exchange_lock.synchronize{
-      @exchange.publish(response.to_s, :routing_key => reply_to)
+    publish response.to_s, :routing_key => reply_to
+  end
+
+  def handle_response(message)
+    msg    = ResponseMessage.new(:message => message, :headers => @message_headers)
+    res = err = nil
+    begin
+      res = Dispatcher.handle_response(msg.result)
+    rescue Exception => e
+      err = e
+    end
+
+    @response_lock.synchronize{
+      @result = [res]
+      @result << err if !err.nil?
+      @response_cv.signal
     }
   end
 
@@ -103,12 +86,9 @@ class AMQPNode < RJR::Node
   def initialize(args = {})
      super(args)
      @broker    = args[:broker]
-
-     # tuple of message ids to locks/condition variables for the responses
-     # of those messages with optional result response
-     @message_locks = {}
-
      @connection_event_handlers = {:closed => [], :error => []}
+     @response_lock = Mutex.new
+     @response_cv = ConditionVariable.new
   end
 
   # Initialize the amqp subsystem
@@ -123,7 +103,37 @@ class AMQPNode < RJR::Node
      @queue_name  = "#{@node_id.to_s}-queue"
      @queue       = @channel.queue(@queue_name, :auto_delete => true)
      @exchange    = @channel.default_exchange
-     @exchange_lock = Mutex.new
+
+     @disconnected = false
+
+     @exchange.on_return do |basic_return, metadata, payload|
+         puts "#{payload} was returned! reply_code = #{basic_return.reply_code}, reply_text = #{basic_return.reply_text}"
+         @disconnected = true
+         @node.connection_event(:error)
+         @node.connection_event(:closed)
+     end
+  end
+
+  # publish a message using the amqp exchange
+  def publish(*args)
+    raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
+    @exchange.publish *args
+  end
+
+  # subscribe to messages using the amqp queue
+  def subscribe(*args, &bl)
+    @queue.subscribe do |metadata, msg|
+      bl.call metadata, msg
+    end
+  end
+
+  def wait_for_result(message)
+    res = nil
+    @response_lock.synchronize{
+      @response_cv.wait @response_lock
+      res = @result
+    }
+    return res
   end
 
   # register connection event handler
@@ -149,48 +159,36 @@ class AMQPNode < RJR::Node
       init_node
 
       # start receiving messages
-      @queue.subscribe do |metadata, msg|
-         handle_message(metadata, msg)
-      end
+      subscribe { |metadata, msg|
+        handle_message(metadata, msg)
+      }
     end
   end
 
   # Instructs node to send rpc request, and wait for / return response
   def invoke_request(routing_key, rpc_method, *args)
-    req_mutex = Mutex.new
-    req_cv = ConditionVariable.new
-
     message = RequestMessage.new :method => rpc_method,
                                  :args   => args,
                                  :headers => @message_headers
     em_run do
       init_node
 
-      @message_locks[message.msg_id] = [req_mutex, req_cv]
-
       # begin listening for result
-      @queue.subscribe do |metadata, msg|
+      subscribe { |metadata, msg|
         handle_message(metadata, msg)
-      end
-
-      @exchange_lock.synchronize{
-        @exchange.publish(message.to_s, :routing_key => routing_key, :reply_to => @queue_name)
       }
+
+      publish message.to_s, :routing_key => routing_key, :reply_to => @queue_name
     end
 
-    ## wait for result
-    # TODO - make this optional, eg a non-blocking operation mode
-    #        (allowing event handler registration to be run on success / fail / etc)
-    req_mutex.synchronize { req_cv.wait(req_mutex) }
-    result = @message_locks[message.msg_id][2] 
-    error  = @message_locks[message.msg_id].size > 3 ?
-                 @message_locks[message.msg_id][3]   :
-                 nil
-    @message_locks.delete(message.msg_id)
+    result = wait_for_result(message)
     self.stop
     self.join unless self.em_running?
-    raise error unless error.nil?
-    return result
+
+    if result.size > 1
+      raise result[1]
+    end
+    return result.first
   end
 
 end
