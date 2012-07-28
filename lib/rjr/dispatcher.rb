@@ -116,8 +116,7 @@ class Handler
       return Result.new(:result => retval)
 
     rescue Exception => e
-      RJR::Logger.warn "Exception Raised in #{method_name} handler #{e}"
-      e.backtrace.each { |b| RJR::Logger.warn b }
+      RJR::Logger.warn ["Exception Raised in #{method_name} handler #{e}"] + e.backtrace
 
       return Result.new(:error_code => -32000,
                         :error_msg  => e.to_s,

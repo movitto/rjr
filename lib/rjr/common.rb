@@ -12,8 +12,10 @@ class Logger
   private
     def self._instantiate_logger
        unless defined? @@logger
+         #STDOUT.sync = true
          @@logger = ::Logger.new(STDOUT)
          @@logger.level = ::Logger::FATAL
+         @@logger_mutex = Mutex.new
        end 
     end 
 
@@ -21,7 +23,15 @@ class Logger
 
     def self.method_missing(method_id, *args)
        _instantiate_logger
-       @@logger.send(method_id, args)
+       @@logger_mutex.synchronize {
+         if args.first.is_a?(Array)
+           args.first.each{ |a|
+             @@logger.send(method_id, a)
+           }
+         else
+           @@logger.send(method_id, args)
+         end
+       }
     end 
 
     def self.logger
