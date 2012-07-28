@@ -93,6 +93,7 @@ class AMQPNode < RJR::Node
 
   # Initialize the amqp subsystem
   def init_node
+     return unless @conn.nil? || !@conn.connected?
      @conn = AMQP.connect(:host => @broker)
      @conn.on_tcp_connection_failure { puts "OTCF #{@node_id}" }
 
@@ -104,13 +105,14 @@ class AMQPNode < RJR::Node
      @queue       = @channel.queue(@queue_name, :auto_delete => true)
      @exchange    = @channel.default_exchange
 
+     @listening = false
      @disconnected = false
 
      @exchange.on_return do |basic_return, metadata, payload|
          puts "#{payload} was returned! reply_code = #{basic_return.reply_code}, reply_text = #{basic_return.reply_text}"
-         @disconnected = true
-         @node.connection_event(:error)
-         @node.connection_event(:closed)
+         @disconnected = true # FIXME member will be set on wrong class
+         connection_event(:error)
+         connection_event(:closed)
      end
   end
 
@@ -122,6 +124,8 @@ class AMQPNode < RJR::Node
 
   # subscribe to messages using the amqp queue
   def subscribe(*args, &bl)
+    return if @listening
+    @listening = true
     @queue.subscribe do |metadata, msg|
       bl.call metadata, msg
     end

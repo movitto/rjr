@@ -20,6 +20,7 @@ describe RJR::WSNode do
     }
 
     server.listen
+    sleep 1
     res = client.invoke_request 'ws://localhost:9876', 'foobar', 'myparam'
     res.should == 'retval'
     server.halt
