@@ -47,6 +47,7 @@ end
 
 end # module RJR
 
+if RUBY_VERSION < "1.9"
 # http://blog.jayfields.com/2006/09/ruby-instanceexec-aka-instanceeval.html
 class Object
   module InstanceExecHelper; end
@@ -67,4 +68,5 @@ class Object
     end
     ret
   end
+end
 end
