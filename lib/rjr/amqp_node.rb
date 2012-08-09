@@ -186,8 +186,8 @@ class AMQPNode < RJR::Node
     end
 
     result = wait_for_result(message)
-    self.stop
-    self.join unless self.em_running?
+    #self.stop
+    #self.join unless self.em_running?
 
     if result.size > 1
       raise result[1]

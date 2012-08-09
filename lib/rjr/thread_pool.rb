@@ -72,7 +72,7 @@ class ThreadPool
     def running?
       res = nil
       @thread_lock.synchronize{
-        res = (@thread.status != false)
+        res = (!@thread.nil? && (@thread.status != false))
       }
       res
     end
@@ -93,6 +93,13 @@ class ThreadPool
           @thread.kill
           @thread.join
         end
+        @thread = nil
+      }
+    end
+
+    def join
+      @thread_lock.synchronize {
+        @thread.join unless @thread.nil?
       }
     end
   end
@@ -130,7 +137,7 @@ class ThreadPool
   end
 
   def running?
-    !terminate && (@timeout.nil? || @timeout_thread.status) &&
+    !terminate && (@timeout.nil? || (!@timeout_thread.nil? && @timeout_thread.status)) &&
     @job_runners.all? { |r| r.running? }
   end
 
@@ -157,9 +164,17 @@ class ThreadPool
   # Terminate the thread pool
   def stop
     terminate = true
-    @timeout_thread.join unless @timout_thread.nil?
+    unless @timout_thread.nil?
+      @timeout_thread.join
+      @timeout_thread.terminate
+    end
+    @timeout_thread = nil
     @work_queue.clear
     @job_runners_lock.synchronize { @job_runners.each { |jr| jr.stop } }
+  end
+
+  def join
+    @job_runners_lock.synchronize { @job_runners.each { |jr| jr.join } }
   end
 end
 

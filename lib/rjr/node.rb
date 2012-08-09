@@ -25,6 +25,12 @@ class Node
 
      @message_headers = {}
      @message_headers.merge!(args[:headers]) if args.has_key?(:headers)
+
+     ObjectSpace.define_finalizer(self, self.class.finalize(self))
+  end
+
+  def self.finalize(node)
+    proc { node.halt ; node.join }
   end
 
   # run job in event machine
@@ -60,10 +66,10 @@ class Node
   end
 
   def join
-    if @@em_thread
-      @@em_thread.join
-      @@em_thread = nil
-    end
+    @@em_thread.join if @@em_thread
+    @@em_thread = nil
+    @thread_pool.join if @thread_pool
+    @thread_pool = nil
   end
 
   def stop
@@ -77,6 +83,7 @@ class Node
   def halt
     @@em_jobs = 0
     EventMachine.stop
+    @thread_pool.stop unless @thread_pool.nil?
   end
 
 end
