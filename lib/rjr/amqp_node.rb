@@ -106,11 +106,11 @@ class AMQPNode < RJR::Node
      @exchange    = @channel.default_exchange
 
      @listening = false
-     @disconnected = false
+     #@disconnected = false
 
      @exchange.on_return do |basic_return, metadata, payload|
          puts "#{payload} was returned! reply_code = #{basic_return.reply_code}, reply_text = #{basic_return.reply_text}"
-         @disconnected = true # FIXME member will be set on wrong class
+         #@disconnected = true # FIXME member will be set on wrong class
          connection_event(:error)
          connection_event(:closed)
      end
@@ -118,7 +118,7 @@ class AMQPNode < RJR::Node
 
   # publish a message using the amqp exchange
   def publish(*args)
-    raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
+    #raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
     @exchange.publish *args
   end
 
@@ -185,6 +185,7 @@ class AMQPNode < RJR::Node
       publish message.to_s, :routing_key => routing_key, :reply_to => @queue_name
     end
 
+    # TODO optional timeout for response ?
     result = wait_for_result(message)
     #self.stop
     #self.join unless self.em_running?
