@@ -26,6 +26,7 @@ class WSNodeCallback
     #msg = CallbackMessage.new(:data => data)
     msg = RequestMessage.new :method => callback_method, :args => data, :headers => @message_headers
     raise RJR::Errors::ConnectionError.new("websocket closed") if @socket.state == :closed
+    # TODO surround w/ begin/rescue block incase of other socket errors?
     @socket.send(msg.to_s)
   end
 end

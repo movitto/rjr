@@ -52,7 +52,7 @@ class Node
           begin
             EventMachine.run
           rescue Exception => e
-            puts "Critical exception #{e}"
+            puts "Critical exception #{e}\n#{e.backtrace.join("\n")}"
           ensure
           end
         }

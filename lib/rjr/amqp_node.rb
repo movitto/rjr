@@ -57,7 +57,6 @@ class AMQPNode < RJR::Node
                                          :rjr_callback =>
                                            AMQPNodeCallback.new(:node => self,
                                                                 :exchange => @exchange,
-                                                                :amqp_lock => @amqp_lock,
                                                                 :destination => reply_to,
                                                                 :headers => headers))
     response = ResponseMessage.new(:id => msg.msg_id, :result => result, :headers => headers)

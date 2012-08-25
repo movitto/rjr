@@ -19,6 +19,7 @@ class LocalNodeCallback
   end
 
   def invoke(callback_method, *data)
+    # TODO any exceptions from handler will propagate here, surround w/ begin/rescue block
     @node.invoke_request(callback_method, *data)
     # TODO support local_node 'disconnections'
   end
