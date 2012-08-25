@@ -73,8 +73,9 @@ class AMQPNode < RJR::Node
     end
 
     @response_lock.synchronize{
-      @result = [res]
-      @result << err if !err.nil?
+      result = [msg.msg_id, res]
+      result << err if !err.nil?
+      @responses << result
       @response_cv.signal
     }
   end
@@ -87,7 +88,10 @@ class AMQPNode < RJR::Node
      @broker    = args[:broker]
      @connection_event_handlers = {:closed => [], :error => []}
      @response_lock = Mutex.new
-     @response_cv = ConditionVariable.new
+     @response_cv   = ConditionVariable.new
+     @response_check_cv   = ConditionVariable.new
+     @responses     = []
+     @amqp_lock     = Mutex.new
   end
 
   # Initialize the amqp subsystem
@@ -117,25 +121,41 @@ class AMQPNode < RJR::Node
 
   # publish a message using the amqp exchange
   def publish(*args)
-    #raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
-    @exchange.publish *args
+    @amqp_lock.synchronize {
+      #raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
+      @exchange.publish *args
+    }
+    nil
   end
 
   # subscribe to messages using the amqp queue
   def subscribe(*args, &bl)
     return if @listening
-    @listening = true
-    @queue.subscribe do |metadata, msg|
-      bl.call metadata, msg
-    end
+    @amqp_lock.synchronize {
+      @listening = true
+      @queue.subscribe do |metadata, msg|
+        bl.call metadata, msg
+      end
+    }
+    nil
   end
 
   def wait_for_result(message)
     res = nil
-    @response_lock.synchronize{
-      @response_cv.wait @response_lock
-      res = @result
-    }
+    while res.nil?
+      @response_lock.synchronize{
+        @response_cv.wait @response_lock
+        # FIXME throw err if more than 1 match found
+        res = @responses.select { |response| message.msg_id == response.first }.first
+        unless res.nil?
+          @responses.delete(res)
+        else
+          @response_cv.signal
+          @response_check_cv.wait @response_lock
+        end
+        @response_check_cv.signal
+      }
+    end
     return res
   end
 
@@ -189,10 +209,10 @@ class AMQPNode < RJR::Node
     #self.stop
     #self.join unless self.em_running?
 
-    if result.size > 1
-      raise result[1]
+    if result.size > 2
+      raise result[2]
     end
-    return result.first
+    return result[1]
   end
 
 end
