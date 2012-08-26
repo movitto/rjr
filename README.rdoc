@@ -2,9 +2,7 @@
 
 Copyright (C) 2012 Mo Morsi <mo@morsi.org>
 
-RJR is made available under the GNU AFFERO GENERAL PUBLIC LICENSE
-as published by the Free Software Foundation, either version 3
-of the License, or (at your option) any later version.
+RJR is made available under the Apache License, Version 2.0
 
 === Intro
 To install rjr simply run:
