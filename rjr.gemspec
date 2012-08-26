@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 GEM_NAME    = 'rjr'
-PKG_VERSION = '0.6.1'
+PKG_VERSION = '0.7.0'
 
 PKG_FILES =
   Dir.glob('{lib,specs}/**/*.rb') + ['LICENSE', 'Rakefile', 'README.rdoc']
@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
 
     s.author = "Mohammed Morsi"
     s.email = "mo@morsi.org"
-    s.date = %q{2012-08-02}
+    s.date = %q{2012-08-26}
     s.description = %q{Ruby Json Rpc library}
     s.summary = %q{JSON RPC server and client library over amqp, websockets, http, etc}
     s.homepage = %q{http://github.com/movitto/rjr}
