@@ -1,7 +1,7 @@
 # rjr - Ruby Json Rpc
 #
 # Copyright (C) 2010-2012 Mohammed Morsi <mo@morsi.org>
-# Licensed under the AGPLv3+ http://www.gnu.org/licenses/agpl.txt
+# Licensed under the Apache License, Version 2.0
 
 require 'rjr/common'
 require 'rjr/errors'

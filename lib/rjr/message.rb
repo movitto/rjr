@@ -1,7 +1,7 @@
 # RJR Message
 #
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
-# Licensed under the AGPLv3+ http://www.gnu.org/licenses/agpl.txt
+# Licensed under the Apache License, Version 2.0
 
 # establish client connection w/ specified args and invoke block w/ 
 # newly created client, returning it after block terminates
