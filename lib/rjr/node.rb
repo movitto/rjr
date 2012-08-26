@@ -20,6 +20,8 @@ class Node
   # attitional parameters to set on messages
   attr_accessor :message_headers
 
+  attr_reader :thread_pool
+
   def initialize(args = {})
      @node_id = args[:node_id]
 
