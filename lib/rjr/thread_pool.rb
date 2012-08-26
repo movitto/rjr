@@ -1,6 +1,6 @@
 # Thread Pool
 #
-# Copyright (C) 2010 Mohammed Morsi <movitto@yahoo.com>
+# Copyright (C) 2010-2012 Mohammed Morsi <mo@morsi.org>
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
