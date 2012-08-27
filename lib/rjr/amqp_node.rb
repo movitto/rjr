@@ -1,5 +1,7 @@
 # RJR AMQP Endpoint
 #
+# Implements the RJR::Node interface to satisty JSON-RPC requests over the AMQP protocol
+#
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
@@ -13,25 +15,57 @@ require 'rjr/message'
 
 module RJR
 
-# AMQP client node callback interface,
-# send data back to client via AMQP.
+# AMQP client node callback interface, used to invoke json-rpc methods on a
+# remote node which previously invoked a method on the local one.
+#
+# After a node sends a json-rpc request to another, the remote node may send
+# additional requests to the local one via amqp through this callback interface
+# until the local one closes its queue.
 class AMQPNodeCallback
+
+  # AMQPNodeCallback initializer
+  # @param [Hash] args the options to create the amqp node callback with
+  # @option args [AMQPNOde] :node amqp node used to send/receive messages
+  # @option args [String]   :destination name of the queue to invoke callbacks on
   def initialize(args = {})
     @node        = args[:node]
     @destination = args[:destination]
   end
 
+  # Implementation of {RJR::Node#invoke}
   def invoke(callback_method, *data)
     msg = RequestMessage.new :method => callback_method, :args => data, :headers => @message_headers
     @node.publish msg.to_s, :routing_key => @destination, :mandatory => true
   end
 end
 
-# AMQP node definition, listen for and invoke json-rpc requests  over AMQP
-class AMQPNode < RJR::Node
+# AMQP node definition, implements the {RJR::Node} interface to
+# listen for and invoke json-rpc requests over
+# {http://en.wikipedia.org/wiki/Advanced_Message_Queuing_Protocol AMQP}.
+#
+# Clients should specify the amqp broker to connect to when initializing
+# a node and specify the remote queue when invoking requests.
+#
+# @example Listening for json-rpc requests over amqp
+#   # register rjr dispatchers (see RJR::Dispatcher)
+#   RJR::Dispatcher.add_handler('hello') { |name|
+#     "Hello #{name}!"
+#   }
+#
+#   # initialize node, listen, and block
+#   server = RJR::AMQPNode.new :node_id => 'server', :broker => 'localhost'
+#   server.listen
+#   server.join
+#
+# @example Invoking json-rpc requests over amqp
+#   client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost'
+#   puts client.invoke_request('server-queue', 'hello', 'mo') # the queue name is set to "#{node_id}-queue"
+class  AMQPNode < RJR::Node
   RJR_NODE_TYPE = :amqp
 
   private
+
+  # Internal helper, handle message pulled off queue
   def handle_message(metadata, msg)
     if RequestMessage.is_request_message?(msg)
       reply_to = metadata.reply_to
@@ -43,6 +77,7 @@ class AMQPNode < RJR::Node
     end
   end
 
+  # Internal helper, handle request message pulled off queue
   def handle_request(reply_to, message)
     msg    = RequestMessage.new(:message => message, :headers => @message_headers)
     headers = @message_headers.merge(msg.headers) # append request message headers
@@ -63,6 +98,7 @@ class AMQPNode < RJR::Node
     publish response.to_s, :routing_key => reply_to
   end
 
+  # Internal helper, handle response message pulled off queue
   def handle_response(message)
     msg    = ResponseMessage.new(:message => message, :headers => @message_headers)
     res = err = nil
@@ -78,20 +114,6 @@ class AMQPNode < RJR::Node
       @responses << result
       @response_cv.signal
     }
-  end
-
-  public
-
-  # initialize the node w/ the specified params
-  def initialize(args = {})
-     super(args)
-     @broker    = args[:broker]
-     @connection_event_handlers = {:closed => [], :error => []}
-     @response_lock = Mutex.new
-     @response_cv   = ConditionVariable.new
-     @response_check_cv   = ConditionVariable.new
-     @responses     = []
-     @amqp_lock     = Mutex.new
   end
 
   # Initialize the amqp subsystem
@@ -119,16 +141,39 @@ class AMQPNode < RJR::Node
      end
   end
 
-  # publish a message using the amqp exchange
-  def publish(*args)
-    @amqp_lock.synchronize {
-      #raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
-      @exchange.publish *args
-    }
-    nil
+  # Internal helper, block until response matching message id is received
+  def wait_for_result(message)
+    res = nil
+    while res.nil?
+      @response_lock.synchronize{
+        @response_cv.wait @response_lock
+        # FIXME throw err if more than 1 match found
+        res = @responses.select { |response| message.msg_id == response.first }.first
+        unless res.nil?
+          @responses.delete(res)
+        else
+          # we can't just go back to waiting for message here, need to give
+          # other nodes a chance to check it first
+          @response_cv.signal
+          @response_check_cv.wait @response_lock
+        end
+        @response_check_cv.signal
+      }
+    end
+    return res
   end
 
-  # subscribe to messages using the amqp queue
+  # Internal helper, run connection event handlers for specified event
+  # TODO these are only run when we fail to send message to queue, need to detect when that queue is shutdown & other events
+  def connection_event(event)
+    if @connection_event_handlers.keys.include?(event)
+      @connection_event_handlers[event].each { |h|
+        h.call self
+      }
+    end
+  end
+
+  # Internal helper, subscribe to messages using the amqp queue
   def subscribe(*args, &bl)
     return if @listening
     @amqp_lock.synchronize {
@@ -140,43 +185,47 @@ class AMQPNode < RJR::Node
     nil
   end
 
-  def wait_for_result(message)
-    res = nil
-    while res.nil?
-      @response_lock.synchronize{
-        @response_cv.wait @response_lock
-        # FIXME throw err if more than 1 match found
-        res = @responses.select { |response| message.msg_id == response.first }.first
-        unless res.nil?
-          @responses.delete(res)
-        else
-          @response_cv.signal
-          @response_check_cv.wait @response_lock
-        end
-        @response_check_cv.signal
-      }
-    end
-    return res
+
+  public
+
+  # AMQPNode initializer
+  # @param [Hash] args the options to create the amqp node with
+  # @option args [String] :broker the amqp message broker which to connect to
+  def initialize(args = {})
+     super(args)
+     @broker    = args[:broker]
+     @connection_event_handlers = {:closed => [], :error => []}
+     @response_lock = Mutex.new
+     @response_cv   = ConditionVariable.new
+     @response_check_cv   = ConditionVariable.new
+     @responses     = []
+     @amqp_lock     = Mutex.new
   end
 
-  # register connection event handler
+  # Publish a message using the amqp exchange (*do* *not* *use*).
+  #
+  # XXX hack should be private, declared publically so as to be able to be used by {RJR::AMQPNodeCallback}
+  def publish(*args)
+    @amqp_lock.synchronize {
+      #raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
+      @exchange.publish *args
+    }
+    nil
+  end
+
+  # Register connection event handler
+  # @param [:error, :close] event the event to register the handler for
+  # @param [Callbable] handler block param to be added to array of handlers that are called when event occurs
+  # @yeild [AMQPNode] self is passed to each registered handler when event occurs
   def on(event, &handler)
     if @connection_event_handlers.keys.include?(event)
       @connection_event_handlers[event] << handler
     end
   end
 
-  # run connection event handlers for specified event
-  # TODO these are only run when we fail to send message to queue, need to detect when that queue is shutdown & other events
-  def connection_event(event)
-    if @connection_event_handlers.keys.include?(event)
-      @connection_event_handlers[event].each { |h|
-        h.call self
-      }
-    end
-  end
-
-  # Instruct Node to start listening for and dispatching rpc requests
+  # Instruct Node to start listening for and dispatching rpc requests.
+  #
+  # Implementation of {RJR::Node#listen}
   def listen
     em_run do
       init_node
@@ -188,7 +237,12 @@ class AMQPNode < RJR::Node
     end
   end
 
-  # Instructs node to send rpc request, and wait for / return response
+  # Instructs node to send rpc request, and wait for and return response
+  # @param [String] routing_key destination queue to send request to
+  # @param [String] rpc_method json-rpc method to invoke on destination
+  # @param [Array] args array of arguments to convert to json and invoke remote method wtih
+  # @return [Object] the json result retrieved from destination converted to a ruby object
+  # @raise [Exception] if the destination raises an exception, it will be converted to json and re-raised here 
   def invoke_request(routing_key, rpc_method, *args)
     message = RequestMessage.new :method => rpc_method,
                                  :args   => args,

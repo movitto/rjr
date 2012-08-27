@@ -1,13 +1,22 @@
 # RJR Utility Methods
 #
-# Copyright (C) 2011 Mohammed Morsi <mo@morsi.org>
+# Assortment of helper methods and methods that don't fit elsewhere
+#
+# Copyright (C) 2011-2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 require 'logger'
 
 module RJR
 
-# Logger helper class
+# Logger helper class.
+#
+# Encapsulates the standard ruby logger in a thread safe manner. Dispatches
+# class methods to an internally tracked logger to provide global access.
+#
+# @example
+#   RJR::Logger.info 'my message'
+#   RJR::Logger.warn 'my warning'
 class Logger
   private
     def self._instantiate_logger
@@ -39,6 +48,8 @@ class Logger
        @@logger
     end
 
+    # Set log level.
+    # @param level one of the standard rails log levels (default fatal)
     def self.log_level=(level)
       _instantiate_logger
       @@logger.level = level
@@ -48,10 +59,15 @@ end
 end # module RJR
 
 if RUBY_VERSION < "1.9"
-# http://blog.jayfields.com/2006/09/ruby-instanceexec-aka-instanceeval.html
+# We extend object in ruby 1.9 to define 'instance_exec'
+#
+# {http://blog.jayfields.com/2006/09/ruby-instanceexec-aka-instanceeval.html Further reference}
 class Object
   module InstanceExecHelper; end
   include InstanceExecHelper
+  # Execute the specified block in the scope of the local object
+  # @param [Array] args array of args to be passed to block
+  # @param [Callable] block callable object to bind and invoke in the local namespace
   def instance_exec(*args, &block)
     begin
       old_critical, Thread.critical = Thread.critical, true
