@@ -11,17 +11,30 @@ require 'rjr/thread_pool'
 
 module RJR
 
-# Defines a node which can be used to dispatch rpc requests and/or register
-# handlers for incomping requests.
+# Base RJR Node interface. Nodes are the central transport mechanism of rjr,
+# this class provides the core methods common among all transport types and
+# mechanisms to start and run the eventmachine reactor which drives all requests.
+#
+# A subclass of RJR::Node should be defined for each transport that is supported,
+# implementing the 'listen' operation to listen for new requests and 'invoke_request'
+# to issue them.
 class Node
-  # node always has a node id
+  # Unique string identifier of the node
   attr_reader :node_id
 
-  # attitional parameters to set on messages
+  # Attitional header fields to set on all
+  # requests and responses received and sent by node
   attr_accessor :message_headers
 
+  # Nodes use internal thread pools to handle requests and free
+  # up the eventmachine reactor to continue processing requests
+  # @see ThreadPool
   attr_reader :thread_pool
 
+  # RJR::Node initializer
+  # @param [Hash] args options to set on request
+  # @option args [String] :node_id unique id of the node *required*!!!
+  # @option args [Hash<String,String>] :headers optional headers to set on all json-rpc messages
   def initialize(args = {})
      @node_id = args[:node_id]
 
@@ -31,11 +44,23 @@ class Node
      ObjectSpace.define_finalizer(self, self.class.finalize(self))
   end
 
+  # Ruby ObjectSpace finalizer to ensure that node terminates all
+  # operations when object is destroyed
   def self.finalize(node)
     proc { node.halt ; node.join }
   end
 
-  # run job in event machine
+  # Run a job in event machine.
+  #
+  # This will start the eventmachine reactor and thread pool if not already
+  # running, schedule the specified block to be run and immediately return.
+  #
+  # For use by subclasses to start listening and sending operations within
+  # the context of event machine.
+  #
+  # Keeps track of an internal counter of how many times this was invoked so
+  # a specific node can be shutdown / started up without affecting the
+  # eventmachine reactor (@see #stop)
   def em_run(&bl)
     @@em_jobs ||= 0
     @@em_jobs += 1
@@ -63,10 +88,12 @@ class Node
     EventMachine.schedule bl
   end
 
+  # Returns boolean indicating if this node is still running or not
   def em_running?
     @@em_jobs > 0 && EventMachine.reactor_running?
   end
 
+  # Block until the eventmachine reactor and thread pool have both completed running
   def join
     @@em_thread.join if @@em_thread
     @@em_thread = nil
@@ -74,6 +101,8 @@ class Node
     @thread_pool = nil
   end
 
+  # Decrement the event machine job counter and if equal to zero,
+  # immediately terminate the node
   def stop
     @@em_jobs -= 1
     if @@em_jobs == 0
@@ -82,6 +111,8 @@ class Node
     end
   end
 
+  # Immediately terminate the node, halting the eventmachine reactor and
+  # terminating the thread pool
   def halt
     @@em_jobs = 0
     EventMachine.stop

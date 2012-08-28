@@ -70,9 +70,15 @@ ws_client.js:
     node.open();
     </script>
 
+### Reference ###
+
+The source repository can be found {https://github.com/movitto/rjr here}
+
+Online API documentation and examples can be found {http://rubydoc.info/github/movitto/rjr here}
+
 Generate documentation via
 
-    rake rdoc
+    rake yard
 
 Also see specs for detailed usage.
 

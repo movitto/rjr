@@ -3,7 +3,7 @@
 # Copyright (C) 2010-2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-require 'rdoc/task'
+require "yard"
 require "rspec/core/rake_task"
 
 desc "Run all specs"
@@ -26,11 +26,11 @@ task :integration do
   system("tests/integration/runner")
 end
 
-Rake::RDocTask.new do |rd|
-    rd.main = "README.rdoc"
-    rd.rdoc_dir = "doc/site/api"
-    rd.rdoc_files.include("README.rdoc", "lib/**/*.rb")
+YARD::Rake::YardocTask.new do |t|
+  #t.files   = ['lib/**/*.rb', OTHER_PATHS]   # optional
+  #t.options = ['--any', '--extra', '--opts'] # optional
 end
+
 
 desc "build the rjr gem"
 task :build do

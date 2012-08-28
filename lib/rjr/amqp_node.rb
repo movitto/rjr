@@ -5,9 +5,6 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-# establish client connection w/ specified args and invoke block w/ 
-# newly created client, returning it after block terminates
-
 require 'amqp'
 require 'thread'
 require 'rjr/node'
@@ -15,24 +12,24 @@ require 'rjr/message'
 
 module RJR
 
-# AMQP client node callback interface, used to invoke json-rpc methods on a
+# AMQP node callback interface, used to invoke json-rpc methods on a
 # remote node which previously invoked a method on the local one.
 #
-# After a node sends a json-rpc request to another, the remote node may send
-# additional requests to the local one via amqp through this callback interface
-# until the local one closes its queue.
+# After a node sends a json-rpc request to another, the either node may send
+# additional requests to each other via amqp through this callback interface
+# until the queues are closed
 class AMQPNodeCallback
 
   # AMQPNodeCallback initializer
   # @param [Hash] args the options to create the amqp node callback with
-  # @option args [AMQPNOde] :node amqp node used to send/receive messages
+  # @option args [AMQPNode] :node amqp node used to send/receive messages
   # @option args [String]   :destination name of the queue to invoke callbacks on
   def initialize(args = {})
     @node        = args[:node]
     @destination = args[:destination]
   end
 
-  # Implementation of {RJR::Node#invoke}
+  # Implementation of {RJR::NodeCallback#invoke}
   def invoke(callback_method, *data)
     msg = RequestMessage.new :method => callback_method, :args => data, :headers => @message_headers
     @node.publish msg.to_s, :routing_key => @destination, :mandatory => true
@@ -215,8 +212,8 @@ class  AMQPNode < RJR::Node
 
   # Register connection event handler
   # @param [:error, :close] event the event to register the handler for
-  # @param [Callbable] handler block param to be added to array of handlers that are called when event occurs
-  # @yeild [AMQPNode] self is passed to each registered handler when event occurs
+  # @param [Callable] handler block param to be added to array of handlers that are called when event occurs
+  # @yield [AMQPNode] self is passed to each registered handler when event occurs
   def on(event, &handler)
     if @connection_event_handlers.keys.include?(event)
       @connection_event_handlers[event] << handler

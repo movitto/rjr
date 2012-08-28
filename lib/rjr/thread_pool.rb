@@ -3,11 +3,14 @@
 # Copyright (C) 2010-2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-# Work item to be executed in thread pool
+# Work item to be executed in a thread launched by pool
 class ThreadPoolJob
   attr_accessor :handler
   attr_accessor :params
 
+  # ThreadPoolJob initializer
+  # @param [Array] params arguments to pass to the job when it is invoked
+  # @param [Callable] block handle to callable object corresponding to job to invoke
   def initialize(*params, &block)
     @params = params
     @handler = block
@@ -15,11 +18,15 @@ class ThreadPoolJob
 end
 
 
-# Launches a specified number of threads on instantiation,
-# assigning work to them as it arrives
+# Utility to launches a specified number of threads on instantiation,
+# assigning work to them in order as it arrives.
+#
+# Supports optional timeout which allows the developer to kill and restart
+# threads if a job is taking too long to run.
 class ThreadPool
 
-  # Encapsulate each thread pool thread in object
+  # @private
+  # Helper class to encapsulate each thread pool thread
   class ThreadPoolJobRunner
     attr_accessor :time_started
 
@@ -29,6 +36,10 @@ class ThreadPool
       @thread_lock  = Mutex.new
     end
 
+    # Start thread and pull a work items off the thread pool work queue and execute them.
+    #
+    # This method will return immediately after the worker thread is started but the
+    # thread launched will persist until {#stop} is invoked
     def run
       @thread_lock.synchronize {
         @thread = Thread.new {
@@ -49,6 +60,7 @@ class ThreadPool
       }
     end
 
+    # Return boolean indicating if worker thread is running or not
     def running?
       res = nil
       @thread_lock.synchronize{
@@ -57,7 +69,8 @@ class ThreadPool
       res
     end
 
-    # should not invoke after stop is called
+    # Return boolean indicating if worker thread run time has exceeded timeout
+    # Should not invoke after stop is called
     def check_timeout(timeout)
       @timeout_lock.synchronize {
         if !@time_started.nil? && Time.now - @time_started > timeout
@@ -67,6 +80,7 @@ class ThreadPool
       }
     end
 
+    # Stop the worker thread being executed
     def stop
       @thread_lock.synchronize {
         if @thread.alive?
@@ -77,6 +91,7 @@ class ThreadPool
       }
     end
 
+    # Block until the worker thread is finished
     def join
       @thread_lock.synchronize {
         @thread.join unless @thread.nil?
@@ -85,6 +100,9 @@ class ThreadPool
   end
 
   # Create a thread pool with a specified number of threads
+  # @param [Integer] num_threads the number of worker threads to create
+  # @param [Hash] args optional arguments to initialize thread pool with
+  # @option args [Integer] :timeout optional timeout to use to kill long running worker jobs
   def initialize(num_threads, args = {})
     @num_threads = num_threads
     @timeout     = args[:timeout]
@@ -116,32 +134,37 @@ class ThreadPool
     end
   end
 
+  # Return boolean indicated if thread pool is running.
+  #
+  # If at least one worker thread isn't terminated, the pool is still considered running
   def running?
     !terminate && (@timeout.nil? || (!@timeout_thread.nil? && @timeout_thread.status)) &&
     @job_runners.all? { |r| r.running? }
   end
 
-  # terminate reader
+  # Return boolean indicating if the thread pool should be terminated
   def terminate
     @terminate_lock.synchronize { @terminate }
   end
 
-  # terminate setter
+  # Instruct thread pool to terminate
+  # @param [Boolean] val true/false indicating if thread pool should terminate
   def terminate=(val)
     @terminate_lock.synchronize { @terminate = val }
   end
 
   # Add work to the pool
+  # @param [ThreadPoolJob] work job to execute in first available thread
   def <<(work)
     @work_queue.push work
   end
 
-  # Return the next job queued up
+  # Return the next job queued up and remove it from the queue
   def next_job
     @work_queue.pop
   end
 
-  # Terminate the thread pool
+  # Terminate the thread pool, stopping all worker threads
   def stop
     terminate = true
     unless @timout_thread.nil?
@@ -153,6 +176,7 @@ class ThreadPool
     @job_runners_lock.synchronize { @job_runners.each { |jr| jr.stop } }
   end
 
+  # Block until all worker threads have finished executing
   def join
     @job_runners_lock.synchronize { @job_runners.each { |jr| jr.join } }
   end
