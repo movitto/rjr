@@ -37,6 +37,8 @@ class Node
   # @option args [Hash<String,String>] :headers optional headers to set on all json-rpc messages
   def initialize(args = {})
      @node_id = args[:node_id]
+     @number_of_threads = args[:number_of_threads]
+     @timeout = args[:timeout]
 
      @message_headers = {}
      @message_headers.merge!(args[:headers]) if args.has_key?(:headers)
@@ -70,7 +72,10 @@ class Node
     unless !@thread_pool.nil? && @thread_pool.running?
       # threads pool to handle incoming requests
       # FIXME make the # of threads and timeout configurable)
-      @thread_pool = ThreadPool.new(15, :timeout => 200)
+      @number_of_threads ||= 10
+      @timeout ||= 5
+
+      @thread_pool = ThreadPool.new(@number_of_threads, :timeout => @timeout)
     end
 
     if @@em_thread.nil?
