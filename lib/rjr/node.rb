@@ -70,7 +70,7 @@ class Node
     unless !@thread_pool.nil? && @thread_pool.running?
       # threads pool to handle incoming requests
       # FIXME make the # of threads and timeout configurable)
-      @thread_pool = ThreadPool.new(10, :timeout => 5)
+      @thread_pool = ThreadPool.new(15, :timeout => 200)
     end
 
     if @@em_thread.nil?
