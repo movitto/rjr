@@ -4,7 +4,7 @@ GEM_NAME    = 'rjr'
 PKG_VERSION = '0.7.0'
 
 PKG_FILES =
-  Dir.glob('{lib,specs}/**/*.rb') + ['LICENSE', 'Rakefile', 'README.rdoc']
+  Dir.glob('{lib,specs}/**/*.rb') + ['LICENSE', 'Rakefile', 'README.md']
 
 
 Gem::Specification.new do |s|
