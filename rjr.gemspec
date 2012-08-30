@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 GEM_NAME    = 'rjr'
-PKG_VERSION = '0.8.0'
+PKG_VERSION = '0.9.0'
 
 PKG_FILES =
   Dir.glob('{lib,specs}/**/*.rb') + ['LICENSE', 'Rakefile', 'README.md']
@@ -16,7 +16,7 @@ Gem::Specification.new do |s|
     s.required_ruby_version = '>= 1.8.1'
     s.required_rubygems_version = Gem::Requirement.new(">= 1.3.3")
     s.add_development_dependency('rspec', '~> 1.3.0')
-    s.add_dependency('eventmachine')
+    s.add_dependency('eventmachine', '~> 0.12.10')
     s.add_dependency('json')
 
     # FIXME right now we don't add any of these dependencies,
@@ -28,7 +28,7 @@ Gem::Specification.new do |s|
 
     s.author = "Mohammed Morsi"
     s.email = "mo@morsi.org"
-    s.date = %q{2012-08-26}
+    s.date = %q{2012-08-30}
     s.description = %q{Ruby Json Rpc library}
     s.summary = %q{JSON RPC server and client library over amqp, websockets, http, etc}
     s.homepage = %q{http://github.com/movitto/rjr}

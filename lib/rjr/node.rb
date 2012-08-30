@@ -50,7 +50,7 @@ class Node
   # @option args [Integer] :threads number of handler to threads to instantiate in local worker pool
   # @option args [Integer] :timeout timeout after which worker thread being run is killed
   def initialize(args = {})
-     RJR::Node.default_threads ||=  15
+     RJR::Node.default_threads ||=  10
      RJR::Node.default_timeout ||=  5
 
      @node_id     = args[:node_id]
