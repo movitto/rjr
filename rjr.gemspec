@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 GEM_NAME    = 'rjr'
-PKG_VERSION = '0.7.0'
+PKG_VERSION = '0.8.0'
 
 PKG_FILES =
   Dir.glob('{lib,specs}/**/*.rb') + ['LICENSE', 'Rakefile', 'README.md']
@@ -16,6 +16,15 @@ Gem::Specification.new do |s|
     s.required_ruby_version = '>= 1.8.1'
     s.required_rubygems_version = Gem::Requirement.new(">= 1.3.3")
     s.add_development_dependency('rspec', '~> 1.3.0')
+    s.add_dependency('eventmachine')
+    s.add_dependency('json')
+
+    # FIXME right now we don't add any of these dependencies,
+    #       but rjr should check to determine which modules
+    #       are present of system before loading features
+    #s.add_dependency('amqp')
+    #s.add_dependency('eventmachine_httpserver')
+    #s.add_dependency('curb')
 
     s.author = "Mohammed Morsi"
     s.email = "mo@morsi.org"
