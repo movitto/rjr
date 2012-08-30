@@ -45,7 +45,8 @@ def main()
   rjr_node = RJR::MultiNode.new :nodes => [amqp_node, ws_node, www_node]
 
   rjr_node.listen
-  rjr_node.terminate # TODO run in signal handler
+  rjr_node.join
+  rjr_node.stop # TODO run in signal handler
 end
 
 main()
