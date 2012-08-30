@@ -141,3 +141,4 @@ RJR as this is not standard JSON-RPC.
 
 ### Authors ###
 Mo Morsi <mo@morsi.org>
+Ladislav Smola <ladislav.smola@it-logica.cz>
