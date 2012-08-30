@@ -225,6 +225,8 @@ class Dispatcher
   #     val
   #   }
   #
+  # # TODO define yard macros to construct documentation for a rjr based api
+  #        from calls to add_handler
   def self.add_handler(method_names, args = {}, &handler)
     method_names = Array(method_names) unless method_names.is_a?(Array)
     @@handlers  ||= {}

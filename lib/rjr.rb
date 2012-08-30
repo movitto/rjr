@@ -3,6 +3,9 @@
 # Copyright (C) 2010-2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
+# rjr - Ruby Json Rpc
+module RJR ; end
+
 require 'rjr/common'
 require 'rjr/errors'
 require 'rjr/thread_pool'

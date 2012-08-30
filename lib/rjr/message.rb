@@ -79,7 +79,7 @@ class RequestMessage
   # Class helper to determine if the specified string is a valid json-rpc
   # method request
   # @param [String] message string message to check
-  # @returns [true,false] indicating if message is request message 
+  # @return [true,false] indicating if message is request message
   def self.is_request_message?(message)
     begin
        # TODO log error
@@ -168,7 +168,7 @@ class ResponseMessage
   # Class helper to determine if the specified string is a valid json-rpc
   # method response
   # @param [String] message string message to check
-  # @returns [true,false] indicating if message is response message 
+  # @return [true,false] indicating if message is response message
   def self.is_response_message?(message)
     begin
       json = JSON.parse(message)

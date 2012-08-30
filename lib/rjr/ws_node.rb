@@ -39,9 +39,9 @@ class WSNodeCallback
   end
 end
 
-# Web node definition, listen for and invoke json-rpc requests via web sockets
+# Web socket node definition, listen for and invoke json-rpc requests via web sockets
 #
-# Clients should specify the hostname / port when listening for requests.
+# Clients should specify the hostname / port when listening for and invoking requests.
 #
 # *note* the RJR javascript client also supports sending / receiving json-rpc
 # messages over web sockets
