@@ -121,6 +121,8 @@ class WebNode < RJR::Node
   def init_node
   end
 
+  public
+
   # TCPNode initializer
   # @param [Hash] args the options to create the tcp node with
   # @option args [String] :host the hostname/ip which to listen on
