@@ -19,6 +19,18 @@ module RJR
 # implementing the 'listen' operation to listen for new requests and 'invoke_request'
 # to issue them.
 class Node
+  class << self
+    # @!group Config options
+
+    # Default number of threads to instantiate in local worker pool
+    attr_accessor :default_threads
+
+    # Default timeout after which worker threads are killed
+    attr_accessor :default_timeout
+
+    # @!endgroup
+  end
+
   # Unique string identifier of the node
   attr_reader :node_id
 
@@ -35,10 +47,15 @@ class Node
   # @param [Hash] args options to set on request
   # @option args [String] :node_id unique id of the node *required*!!!
   # @option args [Hash<String,String>] :headers optional headers to set on all json-rpc messages
+  # @option args [Integer] :threads number of handler to threads to instantiate in local worker pool
+  # @option args [Integer] :timeout timeout after which worker thread being run is killed
   def initialize(args = {})
-     @node_id = args[:node_id]
-     @number_of_threads = args[:number_of_threads]
-     @timeout = args[:timeout]
+     RJR::Node.default_threads ||=  15
+     RJR::Node.default_timeout ||=  5
+
+     @node_id     = args[:node_id]
+     @num_threads = args[:threads]  || RJR::Node.default_threads
+     @timeout     = args[:timeout]  || RJR::Node.default_timeout
 
      @message_headers = {}
      @message_headers.merge!(args[:headers]) if args.has_key?(:headers)
@@ -71,11 +88,7 @@ class Node
 
     unless !@thread_pool.nil? && @thread_pool.running?
       # threads pool to handle incoming requests
-      # FIXME make the # of threads and timeout configurable)
-      @number_of_threads ||= 10
-      @timeout ||= 5
-
-      @thread_pool = ThreadPool.new(@number_of_threads, :timeout => @timeout)
+      @thread_pool = ThreadPool.new(@num_threads, :timeout => @timeout)
     end
 
     if @@em_thread.nil?
