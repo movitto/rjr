@@ -29,9 +29,6 @@ class Node
     attr_accessor :default_timeout
 
     # @!endgroup
-
-    # timer for closing em after timeout
-    attr_accessor :timer
   end
 
   # Unique string identifier of the node
@@ -46,8 +43,6 @@ class Node
   # @see ThreadPool
   attr_reader :thread_pool
 
-
-
   # RJR::Node initializer
   # @param [Hash] args options to set on request
   # @option args [String] :node_id unique id of the node *required*!!!
@@ -55,7 +50,7 @@ class Node
   # @option args [Integer] :threads number of handler to threads to instantiate in local worker pool
   # @option args [Integer] :timeout timeout after which worker thread being run is killed
   def initialize(args = {})
-     RJR::Node.default_threads ||=  15
+     RJR::Node.default_threads ||=  10
      RJR::Node.default_timeout ||=  5
 
      @node_id     = args[:node_id]
@@ -121,7 +116,6 @@ class Node
         end
       }
     end
-
 
     EventMachine.schedule bl
   end
