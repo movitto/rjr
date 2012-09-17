@@ -69,7 +69,7 @@ class Node
 
   # Run a job in event machine.
   # @param [Callable] bl callback to be invoked by eventmachine
-  def em_run(&bl)
+  def em_run(&bl)                        y
     # Nodes use shared thread pool to handle requests and free
     # up the eventmachine reactor to continue processing requests
     # @see ThreadPool2, ThreadPool2Manager
