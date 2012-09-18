@@ -94,28 +94,39 @@ class Node
 
     if @@em_thread.nil?
       @@em_thread  =
-        Thread.new{
+        Thread.new(Thread.current){ |parent|
+          Thread.current[:parent] = parent
           begin
-            EventMachine.run
+            EventMachine.run {
+              unless @em_timeout.nil?
+                EventMachine::add_periodic_timer(@em_timeout) do
+                  # invoke requesst timeout, if process if still running in two periodical timeouts, it will be stopped
+                  puts Thread.current[:running].inspect
+                  puts Thread.current[:first_cycle_passed].inspect
+                  if (Thread.current[:running])
+                    if Thread.current[:first_cycle_passed]
+                      puts "EM closing by timeout " + @em_timeout.to_s + "s"
+                      EventMachine.stop_event_loop
+                      raise("Invoke request em timeout")
+                    else
+                      Thread.current[:first_cycle_passed] = true
+                    end
+                  else
+                    Thread.current[:first_cycle_passed] = false
+                  end
+                end
+              end
+            }
           rescue Exception => e
             puts "Critical exception #{e}\n#{e.backtrace.join("\n")}"
+            Thread.current[:parent].raise e
           ensure
           end
         }
 #sleep 0.5 until EventMachine.reactor_running? # XXX hacky way to do this
     end
 
-    # timeout for processing response, should be only at invoke request
-    unless @em_timeout.nil?
-      EventMachine::run {
-        @timer.cancel unless @timer.nil?
-        @timer = EventMachine.add_timer(@em_timeout) do
-          puts "EM closing by timeout " + @em_timeout.to_s + "s"
-          EventMachine.stop
-          raise("Invoke request em timeout")
-        end
-      }
-    end
+    @@em_thread[:running] = true
 
     EventMachine.schedule bl
   end
