@@ -31,7 +31,7 @@ class ThreadPool2
 
   # Internal helper, launch worker thread
   def launch_worker
-    @worker_lock.synchronize{
+    @pool_lock.synchronize{
       @worker_threads << Thread.new {
         while work = @work_queue.pop
           begin
@@ -42,14 +42,13 @@ class ThreadPool2
             puts "\n#{e.backtrace.join("\n")}"
           end
         end
-      }
+      } unless @worker_threads.size == @num_threads
     }
   end
 
   # Internal helper, kill specified worker
   def stop_worker(old_worker)
-    old_worker.kill
-    @worker_lock.synchronize { @worker_threads.delete(old_worker) }
+    @pool_lock.synchronize { old_worker.kill ; @worker_threads.delete(old_worker) }
   end
 
   # Internal helper, kill/restart specified worker
@@ -80,13 +79,16 @@ class ThreadPool2
 
   # Internal helper, launch management thread
   def launch_manager
-    @manager_thread = Thread.new {
-      until @terminate
-        # sleep needs to occur b4 check workers so
-        # workers are guaranteed to be terminated on @terminate
-        sleep @timeout
-        check_workers
-      end
+    @pool_lock.synchronize {
+      @manager_thread = Thread.new {
+        until @terminate
+          # sleep needs to occur b4 check workers so
+          # workers are guaranteed to be terminated on @terminate
+          sleep @timeout
+          check_workers
+        end
+        @pool_lock.synchronize { @manager_thread = nil }
+      } unless @manager_thread
     }
   end
 
@@ -96,19 +98,24 @@ class ThreadPool2
   # @param [Hash] args optional arguments to initialize thread pool with
   # @option args [Integer] :timeout optional timeout to use to kill long running worker jobs
   def initialize(num_threads, args = {})
-    @terminate = false
     @work_queue  = Queue.new
     @timeout_queue  = Queue.new
 
     @num_threads = num_threads
-    @worker_lock = Mutex.new
+    @pool_lock = Mutex.new
     @worker_threads = []
-    0.upto(@num_threads) { |i| launch_worker }
 
     @timeout     = args[:timeout]
-    launch_manager
 
     ObjectSpace.define_finalizer(self, self.class.finalize(self))
+  end
+
+  # Start the thread pool
+  def start
+    # clear work and timeout queues?
+    @pool_lock.synchronize { @terminate = false }
+    launch_manager
+    0.upto(@num_threads) { |i| launch_worker }
   end
 
   # Ruby ObjectSpace finalizer to ensure that thread pool terminates all
@@ -121,7 +128,7 @@ class ThreadPool2
   #
   # If at least one worker thread isn't terminated, the pool is still considered running
   def running?
-    @worker_lock.synchronize { @worker_threads.all? { |t| t.status } }
+    @pool_lock.synchronize { @worker_threads.all? { |t| t.status } }
   end
 
   # Add work to the pool
@@ -132,22 +139,27 @@ class ThreadPool2
 
   # Terminate the thread pool, stopping all worker threads
   def stop
-    @terminate = true
+    @pool_lock.synchronize {
+      @terminate = true
 
-    # wakeup management thread so it can kill workers
-    # before terminating on its own
-    begin
-      @manager_thread.wakeup
+      # wakeup management thread so it can kill workers
+      # before terminating on its own
+      begin
+        @manager_thread.wakeup
 
-    # incase thread wakes up / terminates on its own
-    rescue ThreadError
-    end
+      # incase thread wakes up / terminates on its own
+      rescue ThreadError
+
+      end
+    }
+    join
   end
 
   # Block until all worker threads have finished executing
   def join
-    #@worker_lock.synchronize { @worker_threads.each { |t| t.join unless @terminate } }
-    @manager_thread.join
+    #@pool_lock.synchronize { @worker_threads.each { |t| t.join unless @terminate } }
+    # TODO protect w/ pool_lock? (causes deadlock)
+    @manager_thread.join if @manager_thread
   end
 end
 
@@ -166,6 +178,7 @@ class ThreadPool2Manager
     if @thread_pool.nil?
       @thread_pool = ThreadPool2.new(num_threads, params)
     end
+    @thread_pool.start
   end
 
   # Delegates all methods invoked on calls to thread pool

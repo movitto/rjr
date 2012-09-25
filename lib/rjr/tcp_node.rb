@@ -217,6 +217,8 @@ class TCPNode < RJR::Node
       }
     end
 
+    # FIXME invoke 'stop'
+
     # raise error or return result
     if res.size > 2
       raise res[2]

@@ -47,15 +47,17 @@ class EMManager
 
   # Start the eventmachine reactor thread if not running
   def start
-    @reactor_thread  = Thread.new {
-      begin
-        EventMachine.run
-      rescue Exception => e
-        puts "Critical exception #{e}\n#{e.backtrace.join("\n")}"
-      ensure
-        @reactor_thread = nil
-      end
-     } unless @reactor_thread
+    @em_lock.synchronize{
+      @reactor_thread  = Thread.new {
+        begin
+          EventMachine.run
+        rescue Exception => e
+          puts "Critical exception #{e}\n#{e.backtrace.join("\n")}"
+        ensure
+          @reactor_thread = nil
+        end
+       } unless @reactor_thread
+     }
    end
 
 
@@ -65,6 +67,7 @@ class EMManager
     @em_lock.synchronize{
       @em_jobs += 1
     }
+    # TODO move into block? causes deadlock
     EventMachine.schedule bl
   end
 
@@ -97,6 +100,7 @@ class EMManager
       @em_jobs -= 1
       if !@keep_alive && @em_jobs == 0
         EventMachine.stop_event_loop
+        @reactor_thread.join
       end
       old_em_jobs != 0 && @em_jobs == 0 # only return true if this operation stopped the reactor
     }
@@ -106,6 +110,7 @@ class EMManager
   def halt
     @em_lock.synchronize{
       EventMachine.stop_event_loop
+      @reactor_thread.join
     }
   end
 end

@@ -52,22 +52,23 @@ class Node
      @node_id     = args[:node_id]
      @num_threads = args[:threads]  || RJR::Node.default_threads
      @timeout     = args[:timeout]  || RJR::Node.default_timeout
+     @keep_alive  = args[:keep_alive] || false
 
      @message_headers = {}
      @message_headers.merge!(args[:headers]) if args.has_key?(:headers)
-
-     # Nodes use shared thread pool to handle requests and free
-     # up the eventmachine reactor to continue processing requests
-     # @see ThreadPool2, ThreadPool2Manager
-     ThreadPool2Manager.init @num_threads, :timeout => @timeout
-
-     # Nodes make use of an EM helper interface to schedule operations
-     EMAdapter.init args
   end
 
   # Run a job in event machine.
   # @param [Callable] bl callback to be invoked by eventmachine
   def em_run(&bl)
+    # Nodes use shared thread pool to handle requests and free
+    # up the eventmachine reactor to continue processing requests
+    # @see ThreadPool2, ThreadPool2Manager
+    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+
+    # Nodes make use of an EM helper interface to schedule operations
+    EMAdapter.init :keep_alive => @keep_alive
+
     EMAdapter.schedule &bl
   end
 

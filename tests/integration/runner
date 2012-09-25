@@ -13,7 +13,7 @@ sleep 2
 finished = 0
 client_threads = []
 thread_map = {}
-0.upto(500) { |i|
+0.upto(250) { |i|
   client_threads <<
     Thread.new {
       puts "Starting client #{i}"
@@ -21,6 +21,13 @@ thread_map = {}
       puts "Client #{i} finished (#{finished+=1})"
     }
   thread_map[client_threads.last] = i
+
+  client_threads <<
+    Thread.new {
+      puts "Starting long running client #{i}"
+      system("#{cd}/long-client #{i}")
+      puts "Long Client #{i} finished (#{finished+=1})"
+    }
 }
 
 client_threads.each { |th| th.join }
