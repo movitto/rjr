@@ -105,13 +105,13 @@ class EMManager
   # Terminate the event machine reactor under all conditions
   def halt
     @em_lock.synchronize{
-      EventMachine.stop_event_loop 
+      EventMachine.stop_event_loop
     }
   end
 end
 
 
-# Provides a singleton helper interface which to access 
+# Provides a singleton helper interface which to access
 # a shared EMManager
 #
 # EMManager operations may be invoked on this class after

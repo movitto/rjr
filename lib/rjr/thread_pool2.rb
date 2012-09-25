@@ -82,8 +82,10 @@ class ThreadPool2
   def launch_manager
     @manager_thread = Thread.new {
       until @terminate
-        check_workers
+        # sleep needs to occur b4 check workers so
+        # workers are guaranteed to be terminated on @terminate
         sleep @timeout
+        check_workers
       end
     }
   end
