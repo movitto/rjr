@@ -63,7 +63,7 @@ class TCPNodeEndpoint < EventMachine::Connection
   # {EventMachine::Connection#receive_data} callback, handle request / response messages
   def receive_data(data)
     if RequestMessage.is_request_message?(data)
-      @rjr_node.thread_pool << ThreadPoolJob.new { handle_request(data) }
+      ThreadPool2Manager << ThreadPool2Job.new { handle_request(data) }
 
     elsif ResponseMessage.is_response_message?(data)
       handle_response(data)

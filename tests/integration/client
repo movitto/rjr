@@ -12,13 +12,14 @@ amqp_node  = RJR::AMQPNode.new :node_id => "stress_test_client#{client_id}", :br
 amqp_node.listen
 
 RJR::Dispatcher.add_handler("client_callback") { |p|
-  puts "invoked #{client_id} client_callback method"
+  puts "invoked #{client_id} client_callback method #{p}"
   #amqp_node.invoke_request('stress_test-queue', 'stress', "foozmoney#{client_id}")
   amqp_node.stop
   nil
 }
 
 #res = amqp_node.invoke_request('stress_test-queue', 'stress', "foobar#{client_id}")
-res = amqp_node.invoke_request('stress_test-queue', 'stress_callback', 'foobar')
+res = amqp_node.invoke_request('stress_test-queue', 'stress_callback', "#{client_id}")
 puts "Result #{amqp_node.node_id} #{res}"
+
 amqp_node.join

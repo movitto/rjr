@@ -15,12 +15,11 @@ describe RJR::Node do
     node = RJR::Node.new :node_id => 'foobar',
                          :headers => {:h => 123}
     node.em_run {
-      node.instance_variable_get(:@thread_pool).running?.should be_true
-
-      EventMachine.reactor_running?.should be_true
+      ThreadPool2Manager.running?.should be_true
+      EMAdapter.running?.should be_true
       block1_called = true
       node.em_run {
-        EventMachine.reactor_running?.should be_true
+        EMAdapter.running?.should be_true
         block2_called = true
         node.halt
       }

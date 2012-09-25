@@ -131,7 +131,7 @@ class WSNode < RJR::Node
           }
         }
         ws.onmessage { |msg|
-          @thread_pool << ThreadPoolJob.new { handle_request(ws, msg) }
+          ThreadPool2Manager << ThreadPool2Job.new { handle_request(ws, msg) }
         }
       end
     end

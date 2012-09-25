@@ -3,8 +3,8 @@ require 'rjr/amqp_node'
 require 'rjr/web_node'
 require 'rjr/dispatcher'
 
-describe RJR::AMQPNode do
-  it "should invoke and satisfy amqp requests" do
+describe RJR::MultiNode do
+  it "should invoke and satisfy requests over multiple protocols" do
     foolbar_invoked = false
     barfoo_invoked = false
     RJR::Dispatcher.init_handlers
@@ -25,9 +25,10 @@ describe RJR::AMQPNode do
 
     amqp = RJR::AMQPNode.new :node_id => 'amqp', :broker => 'localhost'
     web  = RJR::WebNode.new :node_id => 'web', :host => 'localhost', :port => 9876
-    multi = RJR::MultiNode.new :node_id => 'multi', :nodes => [amqp, web]
+    multi = RJR::MultiNode.new :node_id => 'multi', :nodes => [amqp, web], :keep_alive => true
 
     multi.listen
+
     amqp_client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost'
     res = amqp_client.invoke_request 'amqp-queue', 'foolbar', 'myparam1'
     res.should == 'retval1'

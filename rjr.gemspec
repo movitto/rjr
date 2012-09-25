@@ -11,7 +11,8 @@ Gem::Specification.new do |s|
     s.name    = GEM_NAME
     s.version = PKG_VERSION
     s.files   = PKG_FILES
-    s.executables << 'rjr-server'
+    s.executables   = ['rjr-server']
+    s.require_paths = ['lib']
 
     s.required_ruby_version = '>= 1.8.1'
     s.required_rubygems_version = Gem::Requirement.new(">= 1.3.3")

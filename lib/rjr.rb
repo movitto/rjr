@@ -9,6 +9,8 @@ module RJR ; end
 require 'rjr/common'
 require 'rjr/errors'
 require 'rjr/thread_pool'
+require 'rjr/thread_pool2'
+require 'rjr/em_adapter'
 require 'rjr/semaphore'
 require 'rjr/node'
 require 'rjr/dispatcher'

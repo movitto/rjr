@@ -7,7 +7,8 @@
 # newly created client, returning it after block terminates
 
 require 'eventmachine'
-require 'rjr/thread_pool'
+require 'rjr/em_adapter'
+require 'rjr/thread_pool2'
 
 module RJR
 
@@ -38,11 +39,6 @@ class Node
   # requests and responses received and sent by node
   attr_accessor :message_headers
 
-  # Nodes use internal thread pools to handle requests and free
-  # up the eventmachine reactor to continue processing requests
-  # @see ThreadPool
-  attr_reader :thread_pool
-
   # RJR::Node initializer
   # @param [Hash] args options to set on request
   # @option args [String] :node_id unique id of the node *required*!!!
@@ -60,81 +56,38 @@ class Node
      @message_headers = {}
      @message_headers.merge!(args[:headers]) if args.has_key?(:headers)
 
-     ObjectSpace.define_finalizer(self, self.class.finalize(self))
-  end
+     # Nodes use shared thread pool to handle requests and free
+     # up the eventmachine reactor to continue processing requests
+     # @see ThreadPool2, ThreadPool2Manager
+     ThreadPool2Manager.init @num_threads, :timeout => @timeout
 
-  # Ruby ObjectSpace finalizer to ensure that node terminates all
-  # operations when object is destroyed
-  def self.finalize(node)
-    proc { node.halt ; node.join }
+     # Nodes make use of an EM helper interface to schedule operations
+     EMAdapter.init args
   end
 
   # Run a job in event machine.
-  #
-  # This will start the eventmachine reactor and thread pool if not already
-  # running, schedule the specified block to be run and immediately return.
-  #
-  # For use by subclasses to start listening and sending operations within
-  # the context of event machine.
-  #
-  # Keeps track of an internal counter of how many times this was invoked so
-  # a specific node can be shutdown / started up without affecting the
-  # eventmachine reactor (@see #stop)
+  # @param [Callable] bl callback to be invoked by eventmachine
   def em_run(&bl)
-    @@em_jobs ||= 0
-    @@em_jobs += 1
-
-    @@em_thread  ||= nil
-
-    unless !@thread_pool.nil? && @thread_pool.running?
-      # threads pool to handle incoming requests
-      @thread_pool = ThreadPool.new(@num_threads, :timeout => @timeout)
-    end
-
-    if @@em_thread.nil?
-      @@em_thread  =
-        Thread.new{
-          begin
-            EventMachine.run
-          rescue Exception => e
-            puts "Critical exception #{e}\n#{e.backtrace.join("\n")}"
-          ensure
-          end
-        }
-#sleep 0.5 until EventMachine.reactor_running? # XXX hacky way to do this
-    end
-    EventMachine.schedule bl
-  end
-
-  # Returns boolean indicating if this node is still running or not
-  def em_running?
-    @@em_jobs > 0 && EventMachine.reactor_running?
+    EMAdapter.schedule &bl
   end
 
   # Block until the eventmachine reactor and thread pool have both completed running
   def join
-    @@em_thread.join if @@em_thread
-    @@em_thread = nil
-    @thread_pool.join if @thread_pool
-    @thread_pool = nil
+    ThreadPool2Manager.join
+    EMAdapter.join
   end
 
-  # Decrement the event machine job counter and if equal to zero,
-  # immediately terminate the node
+  # Terminate the node if no other jobs are running
   def stop
-    @@em_jobs -= 1
-    if @@em_jobs == 0
-      EventMachine.stop_event_loop
-      @thread_pool.stop
+    if EMAdapter.stop
+      ThreadPool2Manager.stop
     end
   end
 
-  # Immediately terminate the node, halting the eventmachine reactor and
-  # terminating the thread pool
+  # Immediately terminate the node
   def halt
-    @@em_jobs = 0
-    EventMachine.stop
-    @thread_pool.stop unless @thread_pool.nil?
+    EMAdapter.halt
+    ThreadPool2Manager.stop
   end
 
 end

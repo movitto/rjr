@@ -141,7 +141,7 @@ asyncTest("invoke rpc request", 2, function() {
 module("WebNode");
 
 asyncTest("invoke successful rpc request", 2, function() {
-  var web_node = new WebNode("http://localhost/motel");
+  var web_node = new WebNode("http://localhost/omega");
   web_node.onsuccess = function(result){
     equal('response-haha', result);
     start(2); // continue the test runner
@@ -157,7 +157,7 @@ asyncTest("invoke successful rpc request", 2, function() {
 });
 
 asyncTest("invoke failed rpc request", 3, function() {
-  var web_node = new WebNode("http://localhost/motel");
+  var web_node = new WebNode("http://localhost/omega");
   web_node.onsuccess = function(result){
     start(2); // continue the test runner
   }

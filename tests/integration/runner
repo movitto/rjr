@@ -5,7 +5,7 @@ cd = File.expand_path(File.dirname(__FILE__))
 
 server_thread = Thread.new { 
   puts "Starting server"
-  system("#{cd}/server > output/server")
+  system("#{cd}/server")
   puts "Server finished"
 }
 sleep 2
@@ -13,7 +13,7 @@ sleep 2
 finished = 0
 client_threads = []
 thread_map = {}
-0.upto(150) { |i|
+0.upto(500) { |i|
   client_threads <<
     Thread.new {
       puts "Starting client #{i}"

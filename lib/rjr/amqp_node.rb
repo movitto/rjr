@@ -66,7 +66,7 @@ class  AMQPNode < RJR::Node
   def handle_message(metadata, msg)
     if RequestMessage.is_request_message?(msg)
       reply_to = metadata.reply_to
-      @thread_pool << ThreadPoolJob.new { handle_request(reply_to, msg) }
+      ThreadPool2Manager << ThreadPool2Job.new { handle_request(reply_to, msg) }
 
     elsif ResponseMessage.is_response_message?(msg)
       handle_response(msg)
@@ -257,8 +257,7 @@ class  AMQPNode < RJR::Node
 
     # TODO optional timeout for response ?
     result = wait_for_result(message)
-    #self.stop
-    #self.join unless self.em_running?
+    self.stop
 
     if result.size > 2
       raise result[2]
