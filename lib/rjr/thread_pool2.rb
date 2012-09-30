@@ -62,9 +62,9 @@ class ThreadPool2
     if @terminate
       @worker_threads.each { |t| stop_worker(t) }
 
-    elsif @timeout && @timeout_queue.size > 0
+    elsif @timeout
       readd = []
-      while to = @timeout_queue.pop
+      while @timeout_queue.size > 0 && to = @timeout_queue.pop
         if (Time.now - to.first) > @timeout
           relaunch_worker(to.last)
         else

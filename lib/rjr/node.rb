@@ -72,6 +72,26 @@ class Node
     EMAdapter.schedule &bl
   end
 
+  # TODO em_run_aysnc
+
+  # Run a job via an event machine timer
+  def em_schedule(seconds, &bl)
+    # same init as em_run
+    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.add_periodic_timer seconds, &bl
+  end
+
+  # Run an job async via an event machine timer
+  def em_schedule_async(seconds, &bl)
+    # same init as em_schedule
+    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.add_periodic_timer(seconds){
+      ThreadPool2Manager << ThreadPool2Job.new { bl.call }
+    }
+  end
+
   # Block until the eventmachine reactor and thread pool have both completed running
   def join
     ThreadPool2Manager.join

@@ -58,6 +58,7 @@ class EMManager
         end
        } unless @reactor_thread
      }
+     sleep 0.1 until EventMachine.reactor_running? # XXX hack but needed
    end
 
 
@@ -69,6 +70,14 @@ class EMManager
     }
     # TODO move into block? causes deadlock
     EventMachine.schedule bl
+  end
+
+  def add_periodic_timer(seconds, &bl)
+    @em_lock.synchronize{
+      @em_jobs += 1
+    }
+    # TODO move into block ?
+    EventMachine.add_periodic_timer(seconds, &bl)
   end
 
   # Return boolean indicating if event machine reactor is running
@@ -110,7 +119,7 @@ class EMManager
   def halt
     @em_lock.synchronize{
       EventMachine.stop_event_loop
-      @reactor_thread.join
+      #@reactor_thread.join
     }
   end
 end
