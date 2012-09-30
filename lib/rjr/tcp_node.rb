@@ -183,7 +183,11 @@ class TCPNode < RJR::Node
     }
   end
 
-  # Instructs node to send rpc request, and wait for / return response
+  # Instructs node to send rpc request, and wait for / return response.
+  #
+  # Do not invoke directly from em event loop or callback as will block the message
+  # subscription used to receive responses
+  #
   # @param [String] uri location of node to send request to, should be
   #   in format of jsonrpc://hostname:port
   # @param [String] rpc_method json-rpc method to invoke on destination

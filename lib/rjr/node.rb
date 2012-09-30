@@ -74,7 +74,9 @@ class Node
 
   # TODO em_run_aysnc
 
-  # Run a job via an event machine timer
+  # Run a job periodically via an event machine timer
+  # @param [Integer] seconds interval which to invoke block
+  # @param [Callable] bl callback to be periodically invoked by eventmachine
   def em_schedule(seconds, &bl)
     # same init as em_run
     ThreadPool2Manager.init @num_threads, :timeout => @timeout
@@ -82,7 +84,13 @@ class Node
     EMAdapter.add_periodic_timer seconds, &bl
   end
 
-  # Run an job async via an event machine timer
+  # Run an job async via an event machine timer.
+  #
+  # This schedules a thread to be run in the thread pool on
+  # every invocation of the event machine timer.
+  #
+  # @param [Integer] seconds interval which to invoke block
+  # @param [Callable] bl callback to be periodically invoked by eventmachine
   def em_schedule_async(seconds, &bl)
     # same init as em_schedule
     ThreadPool2Manager.init @num_threads, :timeout => @timeout

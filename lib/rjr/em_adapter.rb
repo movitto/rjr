@@ -72,6 +72,9 @@ class EMManager
     EventMachine.schedule bl
   end
 
+  # Schedule a block to be run periodically in event machine
+  # @param [Integer] seconds int interval which to invoke specified block
+  # @param [Callable] bl callback to be invoked by eventmachine
   def add_periodic_timer(seconds, &bl)
     @em_lock.synchronize{
       @em_jobs += 1

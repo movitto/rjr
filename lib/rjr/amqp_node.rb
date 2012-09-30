@@ -234,7 +234,11 @@ class  AMQPNode < RJR::Node
     end
   end
 
-  # Instructs node to send rpc request, and wait for and return response
+  # Instructs node to send rpc request, and wait for and return response.
+  #
+  # Do not invoke directly from em event loop or callback as will block the message
+  # subscription used to receive responses
+  #
   # @param [String] routing_key destination queue to send request to
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
