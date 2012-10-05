@@ -231,6 +231,7 @@ class Dispatcher
     method_names = Array(method_names) unless method_names.is_a?(Array)
     @@handlers  ||= {}
     method_names.each { |method_name|
+      # TODO support registering multiple handlers per method? (and in dispatch_request below)
       @@handlers[method_name] = Handler.new args.merge(:method  => method_name,
                                                        :handler => handler)
     }

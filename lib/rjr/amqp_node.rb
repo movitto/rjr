@@ -102,7 +102,7 @@ class  AMQPNode < RJR::Node
     begin
       res = Dispatcher.handle_response(msg.result)
     rescue Exception => e
-      err = e
+      err = e.to_s
     end
 
     @response_lock.synchronize{
@@ -264,7 +264,7 @@ class  AMQPNode < RJR::Node
     self.stop
 
     if result.size > 2
-      raise result[2]
+      raise Exception, result[2]
     end
     return result[1]
   end

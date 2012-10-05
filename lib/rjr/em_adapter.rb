@@ -6,7 +6,9 @@
 require 'singleton'
 
 # EventMachine wrapper / helper interface, ties reactor
-# lifecycle to an instance of this class
+# lifecycle to an instance of this class.
+#
+# TODO move to the RJR namespace
 class EMManager
 
   # Run reactor in its own interally managed thread
@@ -128,8 +130,7 @@ class EMManager
 end
 
 
-# Provides a singleton helper interface which to access
-# a shared EMManager
+# Provides an interface which to access a shared EMManager
 #
 # EMManager operations may be invoked on this class after
 # the 'init' method is called
@@ -137,8 +138,6 @@ end
 #     EMAdapter.init
 #     EMAdapter.start
 class EMAdapter
-  include Singleton
-
   # Initialize EM subsystem
   def self.init(args = {})
     if @em_manager.nil?

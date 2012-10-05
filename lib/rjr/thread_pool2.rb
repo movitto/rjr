@@ -16,6 +16,21 @@ class ThreadPool2Job
   def initialize(*params, &block)
     @params = params
     @handler = block
+    @being_executed = false
+  end
+
+  def to_s
+    "thread_pool2_job-#{@handler.source_location}-#{@params}"
+  end
+
+  def being_executed?
+    @being_executed
+  end
+
+  def exec
+    @being_executed = true
+    @handler.call @params
+    @being_executed = false
   end
 end
 
@@ -25,7 +40,9 @@ end
 # Supports optional timeout which allows the developer to kill and restart
 # threads if a job is taking too long to run.
 #
-# Second (and hopefully better) thread pool implementation
+# Second (and hopefully better) thread pool implementation.
+#
+# TODO move to the RJR namespace
 class ThreadPool2
   private
 
@@ -35,8 +52,12 @@ class ThreadPool2
       @worker_threads << Thread.new {
         while work = @work_queue.pop
           begin
-            @timeout_queue << [Time.now, Thread.current] unless @timeout.nil?
-            work.handler.call *work.params
+            #RJR::Logger.debug "launch thread pool job #{work}"
+            @timeout_queue << {:timestamp => Time.now,
+                               :thread    => Thread.current,
+                               :job       => work} unless @timeout.nil?
+            work.exec
+            #RJR::Logger.debug "finished thread pool job #{work}"
           rescue Exception => e
             puts "Thread raised Fatal Exception #{e}"
             puts "\n#{e.backtrace.join("\n")}"
@@ -65,10 +86,16 @@ class ThreadPool2
     elsif @timeout
       readd = []
       while @timeout_queue.size > 0 && to = @timeout_queue.pop
-        if (Time.now - to.first) > @timeout
-          relaunch_worker(to.last)
-        else
-          readd << to
+        # FIXME race condition - job could finish normal execution between
+        # 'being_executed?' call and checking of the timestamp or
+        # could not have started yet when this check is performed
+        if to[:job].being_executed?
+          if (Time.now - to[:timestamp]) > @timeout
+            RJR::Logger.debug "timeout detected on thread #{to[:thread]}"
+            relaunch_worker(to[:thread])
+          else
+            readd << to
+          end
         end
       end
       readd.each { @timeout_queue << to }
@@ -163,7 +190,7 @@ class ThreadPool2
   end
 end
 
-# Providers a singleton interface for a shared thread pool.
+# Providers an interface to access a shared thread pool.
 #
 # Thread pool operations may be invoked on this class after
 # the 'init' method is called
@@ -171,14 +198,17 @@ end
 #     ThreadPool2Manager.init
 #     ThreadPool2Manager << ThreadPool2Job(:foo) { "do something" }
 class ThreadPool2Manager
-  include Singleton
-
   # Initialize thread pool if it doesn't exist
   def self.init(num_threads, params = {})
     if @thread_pool.nil?
       @thread_pool = ThreadPool2.new(num_threads, params)
     end
     @thread_pool.start
+  end
+
+  # Return shared thread pool
+  def self.thread_pool
+    @thread_pool
   end
 
   # Delegates all methods invoked on calls to thread pool
