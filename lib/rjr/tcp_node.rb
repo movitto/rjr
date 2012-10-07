@@ -105,8 +105,9 @@ class TCPNodeEndpoint < EventMachine::Connection
     end
 
     @rjr_node.response_lock.synchronize {
-      @rjr_node.responses << [msg.msg_id, res]
-      @rjr_node.responses.last << err unless err.nil?
+      result = [msg.msg_id, res]
+      result << err if !err.nil?
+      @rjr_node.responses << result
       @rjr_node.response_cv.signal
     }
   end
@@ -144,6 +145,28 @@ class TCPNode < RJR::Node
   def init_node
   end
 
+  # Internal helper, block until response matching message id is received
+  def wait_for_result(message)
+    res = nil
+    while res.nil?
+      @response_lock.synchronize{
+        @response_cv.wait @response_lock
+        # FIXME throw err if more than 1 match found
+        res = @responses.select { |response| message.msg_id == response.first }.first
+        unless res.nil?
+          @responses.delete(res)
+        else
+          # we can't just go back to waiting for message here, need to give
+          # other nodes a chance to check it first
+          @response_cv.signal
+          @response_check_cv.wait @response_lock
+        end
+        @response_check_cv.signal
+      }
+    end
+    return res
+  end
+
   public
   # TCPNode initializer
   # @param [Hash] args the options to create the tcp node with
@@ -155,7 +178,6 @@ class TCPNode < RJR::Node
      @port      = args[:port]
 
      @response_lock = Mutex.new
-     @response_cv   = ConditionVariable.new
      @response_cv   = ConditionVariable.new
      @response_check_cv   = ConditionVariable.new
      @responses     = []
@@ -199,35 +221,21 @@ class TCPNode < RJR::Node
     message = RequestMessage.new :method => rpc_method,
                                  :args   => args,
                                  :headers => @message_headers
+    # honor keep_alive here, do not continuously reconnect
     em_run{
       init_node
       EventMachine::connect host, port, TCPNodeEndpoint, { :rjr_node     => self,
                                                            :init_message => message }
     }
 
-    # wait for matching response
-    res = nil
-    while res.nil?
-      @response_lock.synchronize {
-        @response_cv.wait response_lock
-        res = @responses.select { |response| message.msg_id == response.first }.first
-        unless res.nil?
-          @responses.delete(res)
-        else
-          @response_cv.signal
-          @response_check_cv.wait @response_lock
-        end
-        @response_check_cv.signal
-      }
-    end
+    # TODO optional timeout for response ?
+    result = wait_for_result(message)
+    self.stop
 
-    # FIXME invoke 'stop'
-
-    # raise error or return result
-    if res.size > 2
-      raise res[2]
+    if result.size > 2
+      raise Exception, result[2]
     end
-    return res[1]
+    return result[1]
   end
 end
 
