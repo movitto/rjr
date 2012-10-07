@@ -74,6 +74,18 @@ class EMManager
     EventMachine.schedule bl
   end
 
+  # Schedule a job to be run once after a specified interval in event machine
+  # @param [Integer] seconds int interval which to wait before invoking specified block
+  # @param [Callable] bl callback to be invoked by eventmachine
+  def add_timer(seconds, &bl)
+    EventMachine.add_timer(seconds) {
+      @em_lock.synchronize { @em_jobs += 1 }
+      bl.call
+      # TODO call stop instead?
+      @em_lock.synchronize { @em_jobs -= 1 }
+    }
+  end
+
   # Schedule a block to be run periodically in event machine
   # @param [Integer] seconds int interval which to invoke specified block
   # @param [Callable] bl callback to be invoked by eventmachine

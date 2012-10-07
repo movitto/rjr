@@ -46,8 +46,8 @@ class Node
   # @option args [Integer] :threads number of handler to threads to instantiate in local worker pool
   # @option args [Integer] :timeout timeout after which worker thread being run is killed
   def initialize(args = {})
-     RJR::Node.default_threads ||=  10
-     RJR::Node.default_timeout ||=  5
+     RJR::Node.default_threads ||=  20
+     RJR::Node.default_timeout ||=  30
 
      @node_id     = args[:node_id]
      @num_threads = args[:threads]  || RJR::Node.default_threads
@@ -72,12 +72,31 @@ class Node
     EMAdapter.schedule &bl
   end
 
-  # TODO em_run_aysnc
+  # TODO em_run_async
+
+  # TODO em_schedule
+
+  # Run an job async in event machine.
+  #
+  # This schedules a thread to be run once after a specified
+  # interval via eventmachine
+  #
+  # @param [Integer] seconds interval which to wait before invoking block
+  # @param [Callable] bl callback to be periodically invoked by eventmachine
+  def em_schedule_async(seconds, &bl)
+    # same init as em_run
+    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.add_timer(seconds) {
+      ThreadPool2Manager << ThreadPool2Job.new { bl.call }
+    }
+  end
 
   # Run a job periodically via an event machine timer
+  #
   # @param [Integer] seconds interval which to invoke block
   # @param [Callable] bl callback to be periodically invoked by eventmachine
-  def em_schedule(seconds, &bl)
+  def em_repeat(seconds, &bl)
     # same init as em_run
     ThreadPool2Manager.init @num_threads, :timeout => @timeout
     EMAdapter.init :keep_alive => @keep_alive
@@ -87,11 +106,11 @@ class Node
   # Run an job async via an event machine timer.
   #
   # This schedules a thread to be run in the thread pool on
-  # every invocation of the event machine timer.
+  # every invocation of a periodic event machine timer.
   #
   # @param [Integer] seconds interval which to invoke block
   # @param [Callable] bl callback to be periodically invoked by eventmachine
-  def em_schedule_async(seconds, &bl)
+  def em_repeat_async(seconds, &bl)
     # same init as em_schedule
     ThreadPool2Manager.init @num_threads, :timeout => @timeout
     EMAdapter.init :keep_alive => @keep_alive
