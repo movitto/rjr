@@ -12,6 +12,7 @@ require 'rjr/message'
 
 module RJR
 
+
 # AMQP node callback interface, used to invoke json-rpc methods on a
 # remote node which previously invoked a method on the local one.
 #

@@ -16,8 +16,27 @@ require 'rjr/node'
 require 'rjr/dispatcher'
 require 'rjr/message'
 require 'rjr/local_node'
-require 'rjr/amqp_node'
 require 'rjr/ws_node'
-require 'rjr/web_node'
 require 'rjr/tcp_node'
 require 'rjr/multi_node'
+
+begin
+  require 'amqp'
+  require 'rjr/amqp_node'
+rescue LoadError
+  require 'rjr/missing_node'
+  RJR::AMQPNode = RJR::MissingNode
+  # TODO output: "amqp gem could not be loaded, skipping amqp node definition"
+end
+
+begin
+  require 'curb'
+  require 'evma_httpserver'
+  require 'rjr/web_node'
+
+# TODO rather that fail, use alternative deps
+rescue LoadError
+  require 'rjr/missing_node'
+  RJR::WebNode = RJR::MissingNode
+  # TODO output: "curb/evma_httpserver gems could not be loaded, skipping web node definition"
+end

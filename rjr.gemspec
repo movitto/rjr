@@ -20,12 +20,9 @@ Gem::Specification.new do |s|
     s.add_dependency('eventmachine', '~> 0.12.10')
     s.add_dependency('json')
 
-    # FIXME right now we don't add any of these dependencies,
-    #       but rjr should check to determine which modules
-    #       are present of system before loading features
-    #s.add_dependency('amqp')
-    #s.add_dependency('eventmachine_httpserver')
-    #s.add_dependency('curb')
+    s.requirements = ['amqp gem is needed to use the amqp node',
+                      'eventmachine_httpserver gem is needed to use the web node',
+                      'curb gem is needed to use the web node']
 
     s.author = "Mohammed Morsi"
     s.email = "mo@morsi.org"
