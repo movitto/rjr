@@ -9,6 +9,10 @@ require 'singleton'
 class ThreadPool2Job
   attr_accessor :handler
   attr_accessor :params
+  attr_accessor :timestamp
+  attr_accessor :thread
+
+  attr_accessor :metadata_lock
 
   # ThreadPoolJob initializer
   # @param [Array] params arguments to pass to the job when it is invoked
@@ -28,9 +32,28 @@ class ThreadPool2Job
   end
 
   def exec
-    @being_executed = true
+    @metadata_lock.synchronize{
+      @thread = Thread.current
+      @timestamp = Time.now
+      @being_executed = true
+    }
+
     @handler.call @params
-    @being_executed = false
+
+    @metadata_lock.synchronize{
+      @being_executed = false
+    }
+  end
+
+  def handle_timeout!(timeout)
+    @metadata_lock.synchronize{
+      if @being_executed && (Time.now - @timestamp) > timeout
+        RJR::Logger.debug "timeout detected on thread #{@thread}"
+        @thread.kill
+        return true
+      end
+    }
+    return false
   end
 end
 
@@ -53,9 +76,8 @@ class ThreadPool2
         while work = @work_queue.pop
           begin
             #RJR::Logger.debug "launch thread pool job #{work}"
-            @timeout_queue << {:timestamp => Time.now,
-                               :thread    => Thread.current,
-                               :job       => work} unless @timeout.nil?
+            work.metadata_lock = @pool_lock
+            @running_queue << work
             work.exec
             #RJR::Logger.debug "finished thread pool job #{work}"
           rescue Exception => e
@@ -85,21 +107,14 @@ class ThreadPool2
 
     elsif @timeout
       readd = []
-      while @timeout_queue.size > 0 && to = @timeout_queue.pop
-        # FIXME race condition - job could finish normal execution between
-        # 'being_executed?' call and checking of the timestamp or
-        # could not have started yet when this check is performed
-        if to[:job].being_executed?
-          if (Time.now - to[:timestamp]) > @timeout
-            RJR::Logger.debug "timeout detected on thread #{to[:thread]}"
-            relaunch_worker(to[:thread])
-          else
-            readd << to
-          end
+      while @running_queue.size > 0 && to = @running_queue.pop
+        if @timeout && to.handle_timeout!(@timeout)
+          launch_worker
+        else
+          readd << to
         end
       end
-      readd.each { @timeout_queue << to }
-
+      readd.each { @running_queue << to }
     end
 
   end
@@ -126,7 +141,7 @@ class ThreadPool2
   # @option args [Integer] :timeout optional timeout to use to kill long running worker jobs
   def initialize(num_threads, args = {})
     @work_queue  = Queue.new
-    @timeout_queue  = Queue.new
+    @running_queue  = Queue.new
 
     @num_threads = num_threads
     @pool_lock = Mutex.new
