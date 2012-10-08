@@ -32,6 +32,9 @@ class ThreadPool2Job
   end
 
   def exec
+    # synchronized so that both timestamp is set and being_executed
+    # set to true before the possiblity of a timeout management
+    # check (see handle_timeout! below)
     @metadata_lock.synchronize{
       @thread = Thread.current
       @timestamp = Time.now
@@ -40,6 +43,11 @@ class ThreadPool2Job
 
     @handler.call @params
 
+    # synchronized so as to ensure that a timeout check does not
+    # occur until before (in which case thread is killed during
+    # the check as one atomic operation) or after (in which case
+    # job is marked as completed, and thread is not killed / goes
+    # onto pull anther job)
     @metadata_lock.synchronize{
       @being_executed = false
     }
