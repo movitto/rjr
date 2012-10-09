@@ -117,6 +117,7 @@ class  AMQPNode < RJR::Node
   # Initialize the amqp subsystem
   def init_node
      return unless @conn.nil? || !@conn.connected?
+     super
      @conn = AMQP.connect(:host => @broker)
      @conn.on_tcp_connection_failure { puts "OTCF #{@node_id}" }
 

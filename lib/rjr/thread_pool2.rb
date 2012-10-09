@@ -5,14 +5,21 @@
 
 require 'singleton'
 
-# Work item to be executed in a thread launched by {ThreadPool2}
+# Work item to be executed in a thread launched by {ThreadPool2}.
+#
+# The end user just need to initialize this class with the handle
+# to the job to be executed and the params to pass to it, before
+# handing it off to the thread pool that will take care of the rest.
 class ThreadPool2Job
   attr_accessor :handler
   attr_accessor :params
+
+  # used internally by the thread pool system, these shouldn't
+  # be set or used by the end user
   attr_accessor :timestamp
   attr_accessor :thread
-
-  attr_accessor :metadata_lock
+  attr_accessor :pool_lock
+  attr_reader   :being_executed
 
   # ThreadPoolJob initializer
   # @param [Array] params arguments to pass to the job when it is invoked
@@ -21,8 +28,10 @@ class ThreadPool2Job
     @params = params
     @handler = block
     @being_executed = false
+    @timestamp = nil
   end
 
+  # Return string representation of thread pool job
   def to_s
     "thread_pool2_job-#{@handler.source_location}-#{@params}"
   end
@@ -31,14 +40,19 @@ class ThreadPool2Job
     @being_executed
   end
 
+  def completed?
+    !@timestamp.nil? && !@being_executed
+  end
+
+  # Set job metadata and execute job with specified params
   def exec
     # synchronized so that both timestamp is set and being_executed
     # set to true before the possiblity of a timeout management
     # check (see handle_timeout! below)
-    @metadata_lock.synchronize{
+    @pool_lock.synchronize{
       @thread = Thread.current
-      @timestamp = Time.now
       @being_executed = true
+      @timestamp = Time.now
     }
 
     @handler.call @params
@@ -48,20 +62,23 @@ class ThreadPool2Job
     # the check as one atomic operation) or after (in which case
     # job is marked as completed, and thread is not killed / goes
     # onto pull anther job)
-    @metadata_lock.synchronize{
+    @pool_lock.synchronize{
       @being_executed = false
     }
   end
 
+  # Check timeout and kill thread if it exceeded.
   def handle_timeout!(timeout)
-    @metadata_lock.synchronize{
+    # Synchronized so that check and kill operation occur as an
+    # atomic operation, see exec above
+    @pool_lock.synchronize { 
       if @being_executed && (Time.now - @timestamp) > timeout
-        RJR::Logger.debug "timeout detected on thread #{@thread}"
+        RJR::Logger.debug "timeout detected on thread #{@thread} started at #{@timestamp}"
         @thread.kill
         return true
       end
+      return false
     }
-    return false
   end
 end
 
@@ -78,68 +95,65 @@ class ThreadPool2
   private
 
   # Internal helper, launch worker thread
+  #
+  # Should only be launched from within the pool_lock
   def launch_worker
-    @pool_lock.synchronize{
-      @worker_threads << Thread.new {
-        while work = @work_queue.pop
-          begin
-            #RJR::Logger.debug "launch thread pool job #{work}"
-            work.metadata_lock = @pool_lock
-            @running_queue << work
-            work.exec
-            #RJR::Logger.debug "finished thread pool job #{work}"
-          rescue Exception => e
-            puts "Thread raised Fatal Exception #{e}"
-            puts "\n#{e.backtrace.join("\n")}"
-          end
+    @worker_threads << Thread.new {
+      while work = @work_queue.pop
+        begin
+          #RJR::Logger.debug "launch thread pool job #{work}"
+          work.pool_lock = @pool_lock
+          @running_queue << work
+          work.exec
+          # TODO cleaner / more immediate way to pop item off running_queue
+          #RJR::Logger.debug "finished thread pool job #{work}"
+        rescue Exception => e
+          puts "Thread raised Fatal Exception #{e}"
+          puts "\n#{e.backtrace.join("\n")}"
         end
-      } unless @worker_threads.size == @num_threads
-    }
-  end
-
-  # Internal helper, kill specified worker
-  def stop_worker(old_worker)
-    @pool_lock.synchronize { old_worker.kill ; @worker_threads.delete(old_worker) }
-  end
-
-  # Internal helper, kill/restart specified worker
-  def relaunch_worker(old_worker)
-    stop_worker(old_worker)
-    launch_worker
+      end
+    } unless @worker_threads.size == @num_threads
   end
 
   # Internal helper, performs checks on workers
   def check_workers
     if @terminate
-      @worker_threads.each { |t| stop_worker(t) }
+      @pool_lock.synchronize { 
+        @worker_threads.each { |t| 
+          t.kill
+          @worker_threads.delete(t)
+        }
+      }
 
     elsif @timeout
       readd = []
-      while @running_queue.size > 0 && to = @running_queue.pop
-        if @timeout && to.handle_timeout!(@timeout)
-          launch_worker
-        else
-          readd << to
+      while @running_queue.size > 0 && work = @running_queue.pop
+        if @timeout && work.handle_timeout!(@timeout)
+          @pool_lock.synchronize { 
+            @worker_threads.delete(work.thread)
+            launch_worker
+          }
+        elsif !work.completed?
+          readd << work
         end
       end
-      readd.each { @running_queue << to }
+      readd.each { |work| @running_queue << work }
     end
-
   end
 
   # Internal helper, launch management thread
+  #
+  # Should only be launched from within the pool_lock
   def launch_manager
-    @pool_lock.synchronize {
-      @manager_thread = Thread.new {
-        until @terminate
-          # sleep needs to occur b4 check workers so
-          # workers are guaranteed to be terminated on @terminate
-          sleep @timeout
-          check_workers
-        end
-        @pool_lock.synchronize { @manager_thread = nil }
-      } unless @manager_thread
-    }
+    @manager_thread = Thread.new {
+      until @terminate
+        # sleep needs to occur b4 check workers so
+        # workers are guaranteed to be terminated on @terminate
+        sleep @timeout
+        check_workers
+      end
+      @pool_lock.synchronize { @manager_thread = nil }
+    } unless @manager_thread
   end
 
   public
@@ -163,9 +177,11 @@ class ThreadPool2
   # Start the thread pool
   def start
     # clear work and timeout queues?
-    @pool_lock.synchronize { @terminate = false }
-    launch_manager
-    0.upto(@num_threads) { |i| launch_worker }
+    @pool_lock.synchronize {
+      @terminate = false
+      launch_manager
+      0.upto(@num_threads) { |i| launch_worker }
+    }
   end
 
   # Ruby ObjectSpace finalizer to ensure that thread pool terminates all

@@ -32,9 +32,9 @@ class TCPNodeCallback
 
   # Implementation of {RJR::NodeCallback#invoke}
   def invoke(callback_method, *data)
-    msg = RequestMessage.new :method => callback_method, :args => data, :headers => @message_headers
+    msg = NotificationMessage.new :method => callback_method, :args => data, :headers => @message_headers
     # TODO surround w/ begin/rescue block incase of socket errors
-    @endpoint.send_data msg.to_s
+    @endpoint.safe_send msg.to_s
   end
 end
 
@@ -50,34 +50,60 @@ class TCPNodeEndpoint < EventMachine::Connection
 
     # these params should be set for clients
     @send_message    = args[:init_message]
+
+    # used to serialize requests to send data via a connection
+    @send_lock = Mutex.new
   end
 
   # {EventMachine::Connection#post_init} callback, sends first message if specified
   def post_init
     unless @send_message.nil?
-      send_data @send_message.to_s
+      safe_send @send_message.to_s
       @send_message = nil
     end
   end
 
   # {EventMachine::Connection#receive_data} callback, handle request / response messages
   def receive_data(data)
-    if RequestMessage.is_request_message?(data)
-      ThreadPool2Manager << ThreadPool2Job.new { handle_request(data) }
+    # a large json-rpc message may be split over multiple packets (invocations of receive_data)
+    # and multiple messages may be concatinated into one packet
+    @data ||= ""
+    @data += data
+    while extracted = MessageUtil.retrieve_json(@data)
+      msg, @data = *extracted
+      if RequestMessage.is_request_message?(msg)
+        ThreadPool2Manager << ThreadPool2Job.new { handle_request(msg, false) }
 
-    elsif ResponseMessage.is_response_message?(data)
-      handle_response(data)
+      elsif NotificationMessage.is_notification_message?(msg)
+        ThreadPool2Manager << ThreadPool2Job.new { handle_request(msg, true) }
 
+      elsif ResponseMessage.is_response_message?(msg)
+        handle_response(msg)
+
+      end
     end
+  end
+
+  # {EventMachine::Connection#unbind} callback, connection was closed
+  def unbind
+  end
+
+  # Helper to send data safely, this should be invoked instead of send_data
+  # in all cases
+  def safe_send(data)
+    @send_lock.synchronize{
+      send_data(data)
+    }
   end
 
 
   private
 
   # Internal helper, handle request message received
-  def handle_request(data)
+  def handle_request(data, notification=false)
     client_port, client_ip = Socket.unpack_sockaddr_in(get_peername)
-    msg    = RequestMessage.new(:message => data, :headers => @rjr_node.message_headers)
+    msg    = notification ? NotificationMessage.new(:message => data, :headers => @rjr_node.message_headers) :
+                            RequestMessage.new(:message => data, :headers => @rjr_node.message_headers)
     headers = @rjr_node.message_headers.merge(msg.headers)
     result = Dispatcher.dispatch_request(msg.jr_method,
                                          :method_args => msg.jr_args,
@@ -90,8 +116,10 @@ class TCPNodeEndpoint < EventMachine::Connection
                                          :rjr_callback =>
                                            TCPNodeCallback.new(:endpoint => self,
                                                                :headers => headers))
-    response = ResponseMessage.new(:id => msg.msg_id, :result => result, :headers => headers)
-    send_data(response.to_s)
+    unless notification
+      response = ResponseMessage.new(:id => msg.msg_id, :result => result, :headers => headers)
+      safe_send(response.to_s)
+    end
   end
 
   # Internal helper, handle response message received
@@ -142,7 +170,15 @@ class TCPNode < RJR::Node
 
   private
   # Initialize the tcp subsystem
-  def init_node
+  def init_node(args = {})
+    super()
+    # TODO only do this if keep_alive is true
+    if @connection.nil? && args.has_key?(:host) && args.has_key?(:port)
+      @connection = EventMachine::connect args[:host], args[:port],
+                                             TCPNodeEndpoint, args
+    elsif args.has_key?(:init_message)
+      @connection.safe_send args[:init_message]
+    end
   end
 
   # Internal helper, block until response matching message id is received
@@ -221,11 +257,9 @@ class TCPNode < RJR::Node
     message = RequestMessage.new :method => rpc_method,
                                  :args   => args,
                                  :headers => @message_headers
-    # honor keep_alive here, do not continuously reconnect
     em_run{
-      init_node
-      EventMachine::connect host, port, TCPNodeEndpoint, { :rjr_node     => self,
-                                                           :init_message => message }
+      init_node(:host => host, :port => port,
+                :rjr_node => self, :init_message => message)
     }
 
     # TODO optional timeout for response ?

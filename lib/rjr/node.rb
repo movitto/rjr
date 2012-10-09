@@ -47,7 +47,7 @@ class Node
   # @option args [Integer] :timeout timeout after which worker thread being run is killed
   def initialize(args = {})
      RJR::Node.default_threads ||=  20
-     RJR::Node.default_timeout ||=  30
+     RJR::Node.default_timeout ||=  10
 
      @node_id     = args[:node_id]
      @num_threads = args[:threads]  || RJR::Node.default_threads
@@ -56,6 +56,15 @@ class Node
 
      @message_headers = {}
      @message_headers.merge!(args[:headers]) if args.has_key?(:headers)
+  end
+
+  # Initialize the node, should be called from the event loop
+  # before any operation
+  def init_node
+    EM.error_handler { |e|
+      puts "EventMachine raised critical error #{e}"
+      # TODO dispatch to registered event handlers (unify events system)
+    }
   end
 
   # Run a job in event machine.
