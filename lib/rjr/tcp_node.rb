@@ -72,10 +72,10 @@ class TCPNodeEndpoint < EventMachine::Connection
     while extracted = MessageUtil.retrieve_json(@data)
       msg, @data = *extracted
       if RequestMessage.is_request_message?(msg)
-        ThreadPool2Manager << ThreadPool2Job.new { handle_request(msg, false) }
+        ThreadPool2Manager << ThreadPool2Job.new(msg) { |m| handle_request(m, false) }
 
       elsif NotificationMessage.is_notification_message?(msg)
-        ThreadPool2Manager << ThreadPool2Job.new { handle_request(msg, true) }
+        ThreadPool2Manager << ThreadPool2Job.new(msg) { |m| handle_request(m, true) }
 
       elsif ResponseMessage.is_response_message?(msg)
         handle_response(msg)
