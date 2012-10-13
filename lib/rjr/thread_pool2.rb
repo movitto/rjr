@@ -55,7 +55,7 @@ class ThreadPool2Job
       @timestamp = Time.now
     }
 
-    @handler.call @params
+    @handler.call *@params
 
     # synchronized so as to ensure that a timeout check does not
     # occur until before (in which case thread is killed during
@@ -108,6 +108,7 @@ class ThreadPool2
           # TODO cleaner / more immediate way to pop item off running_queue
           #RJR::Logger.debug "finished thread pool job #{work}"
         rescue Exception => e
+          # FIXME also send to rjr logger at a critical level
           puts "Thread raised Fatal Exception #{e}"
           puts "\n#{e.backtrace.join("\n")}"
         end
