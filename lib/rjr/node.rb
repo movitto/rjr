@@ -62,7 +62,7 @@ class Node
   # before any operation
   def init_node
     EM.error_handler { |e|
-      puts "EventMachine raised critical error #{e}"
+      puts "EventMachine raised critical error #{e} #{e.backtrace}"
       # TODO dispatch to registered event handlers (unify events system)
     }
   end
@@ -81,7 +81,15 @@ class Node
     EMAdapter.schedule &bl
   end
 
-  # TODO em_run_async
+  # Run a job async in event machine immediately
+  def em_run_async(&bl)
+    # same init as em_run
+    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.schedule {
+      ThreadPool2Manager << ThreadPool2Job.new { bl.call }
+    }
+  end
 
   # TODO em_schedule
 

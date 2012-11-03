@@ -138,10 +138,10 @@ function WSNode (host, port){
         success = !msg['error'];
         if(success && node.onsuccess){
           result = msg['result'];
-          node.onsuccess(result);
+          node.onsuccess(msg);
         }
         else if(!success && node.onfailed)
-          node.onfailed(msg['error']['code'], msg['error']['message']);
+          node.onfailed(msg);
       }else{
         if(msg['method'] && node.invoke_method){
           params = msg['params'];
@@ -150,6 +150,7 @@ function WSNode (host, port){
       }
     };
     node.socket.send($.toJSON(request));
+    return request;
   };
 };
 
@@ -187,15 +188,16 @@ function WebNode (uri){
               success = !data['error'];
               if(success && node.onsuccess){
                 result = data['result'];
-                node.onsuccess(result);
+                node.onsuccess(data);
               }
               else if(!success && node.onfailed)
-                node.onfailed(data['error']['code'], data['error']['message']);
+                node.onfailed(msg);
             },
             error: function(jqXHR, textStatus, errorThrown){
               if(node.onfailed)
-                node.onfailed(jqXHR.status, textStatus);
+                node.onfailed(null, {'status' : jqXHR.status, "msg" : textStatus});
             }});
 
+    return request;
   };
 };
