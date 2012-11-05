@@ -4,6 +4,7 @@
 # Licensed under the Apache License, Version 2.0
 
 require 'singleton'
+require 'eventmachine'
 
 # EventMachine wrapper / helper interface, ties reactor
 # lifecycle to an instance of this class.
@@ -126,7 +127,7 @@ class EMManager
       @em_jobs -= 1
       if !@keep_alive && @em_jobs == 0
         EventMachine.stop_event_loop
-        @reactor_thread.join
+        #@reactor_thread.join # trusting event machine here to finish up
       end
       old_em_jobs != 0 && @em_jobs == 0 # only return true if this operation stopped the reactor
     }
