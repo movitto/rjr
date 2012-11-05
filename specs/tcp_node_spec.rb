@@ -29,4 +29,5 @@ describe RJR::TCPNode do
   end
 
   # TODO ensure closed / error event handlers are invoked
+  # TODO ensure callbacks can be invoked over established connection w/ json-rpc notifications
 end
