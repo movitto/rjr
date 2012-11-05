@@ -122,8 +122,8 @@ class ThreadPool2
       @pool_lock.synchronize { 
         @worker_threads.each { |t| 
           t.kill
-          @worker_threads.delete(t)
         }
+        @worker_threads = []
       }
 
     elsif @timeout
@@ -150,6 +150,7 @@ class ThreadPool2
       until @terminate
         # sleep needs to occur b4 check workers so
         # workers are guaranteed to be terminated on @terminate
+        # !FIXME! this enforces a mandatory setting of @timeout which was never intended:
         sleep @timeout
         check_workers
       end
@@ -195,7 +196,7 @@ class ThreadPool2
   #
   # If at least one worker thread isn't terminated, the pool is still considered running
   def running?
-    @pool_lock.synchronize { @worker_threads.all? { |t| t.status } }
+    @pool_lock.synchronize { @worker_threads.size != 0 && @worker_threads.all? { |t| t.status } }
   end
 
   # Add work to the pool
