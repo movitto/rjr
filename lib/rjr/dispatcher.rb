@@ -237,6 +237,17 @@ class Dispatcher
     }
   end
 
+  # Clear registered method handlers
+  def self.clear!
+    @@handlers = {}
+  end
+
+  # Return boolean indicating if handler for the specifed method has been registered
+  def self.has_handler_for?(method_name)
+    @@handlers  ||= {}
+    !@@handlers.find { |k,v| k == method_name }.nil?
+  end
+
   # Helper used by RJR nodes to dispatch requests received via transports to
   # registered handlers.
   def self.dispatch_request(method_name, args = {})

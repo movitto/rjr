@@ -58,6 +58,14 @@ end
 
 end # module RJR
 
+class Object
+  def eigenclass
+    class << self
+      self
+    end
+  end
+end
+
 if RUBY_VERSION < "1.9"
 # We extend object in ruby 1.9 to define 'instance_exec'
 #
