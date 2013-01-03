@@ -24,7 +24,7 @@ RJR::Dispatcher.add_handler("failed_method") {
 
 RJR::Dispatcher.add_handler("callback_method") {
   puts "Invoked callback_method"
-  @rjr_callback.invoke_request 'client_callback', 'cb'
+  @rjr_callback.invoke 'client_callback', 'cb'
 }
 
 ws_node    = RJR::WSNode.new    :node_id => 'jrw_test', :host   => 'localhost', :port => 8080

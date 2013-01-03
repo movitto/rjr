@@ -113,7 +113,7 @@ test("create jr failed response message", function() {
 
 module("WSNode");
 
-asyncTest("invoke rpc request", 2, function() {
+asyncTest("invoke rpc request", 6, function() {
   var ws_node = new WSNode('localhost', 8080);
   ws_node.onopen = function(result){
     ok(true);
@@ -162,9 +162,9 @@ asyncTest("invoke failed rpc request", 3, function() {
   web_node.onsuccess = function(result){
     start(2); // continue the test runner
   }
-  web_node.onfailed = function(error, msg){
-    equal(-32000, error);
-    equal("epic fail", msg);
+  web_node.onfailed = function(result){
+    equal(-32000, result['error']['code']);
+    equal("epic fail", result['error']['message']);
     start(2); // continue the test runner
   }
   web_node.message_received = function(msg){

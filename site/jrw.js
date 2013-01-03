@@ -191,7 +191,7 @@ function WebNode (uri){
                 node.onsuccess(data);
               }
               else if(!success && node.onfailed)
-                node.onfailed(msg);
+                node.onfailed(data);
             },
             error: function(jqXHR, textStatus, errorThrown){
               if(node.onfailed)
