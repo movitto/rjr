@@ -6,6 +6,7 @@
 # rjr - Ruby Json Rpc
 module RJR ; end
 
+#require 'rubygems'
 require 'rjr/common'
 require 'rjr/errors'
 require 'rjr/thread_pool'

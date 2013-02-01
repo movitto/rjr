@@ -11,6 +11,7 @@
 # establish client connection w/ specified args and invoke block w/ 
 # newly created client, returning it after block terminates
 
+require 'socket'
 require 'curb'
 
 require 'evma_httpserver'
