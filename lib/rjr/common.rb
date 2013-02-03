@@ -22,7 +22,8 @@ class Logger
     def self._instantiate_logger
        unless defined? @@logger
          #STDOUT.sync = true
-         @@logger = ::Logger.new(STDOUT)
+         output = ENV['RJR_LOG'] || STDOUT
+         @@logger = ::Logger.new(output)
          @@logger.level = ::Logger::FATAL
          @@logger_mutex = Mutex.new
        end 
