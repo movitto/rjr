@@ -176,6 +176,7 @@ class ResponseMessage
       json.has_key?('result') || json.has_key?('error')
     rescue Exception => e
       # TODO log error
+      #puts e.to_s
       false
     end
   end
@@ -292,10 +293,15 @@ class MessageUtil
   #
   # XXX really don't like having to do this, but a quick solution
   # to the issue of multiple messages appearing in one tcp data packet.
+  #
+  # TODO efficiency can probably be optimized
+  #   in the case closing '}' hasn't arrived yet
   def self.retrieve_json(data) 
-    return nil unless data[0] == '{'
+    return nil if data.nil? || data.empty?
+    start  = 0
+    start += 1 until start == data.length || data[start] == '{'
     on = mi = 0 
-    0.upto(data.length - 1).each { |i|
+    start.upto(data.length - 1).each { |i|
       if data[i] == '{'
         on += 1
       elsif data[i] == '}'
@@ -309,7 +315,7 @@ class MessageUtil
     }
     
     return nil if mi == 0
-    return data[0..mi], data[(mi+1)..-1]
+    return data[start..mi], data[(mi+1)..-1]
   end
 
 end
