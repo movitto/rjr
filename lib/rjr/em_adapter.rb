@@ -82,8 +82,7 @@ class EMManager
     EventMachine.add_timer(seconds) {
       @em_lock.synchronize { @em_jobs += 1 }
       bl.call
-      # TODO call stop instead?
-      @em_lock.synchronize { @em_jobs -= 1 }
+      #@em_lock.synchronize { @em_jobs -= 1 }
     }
   end
 

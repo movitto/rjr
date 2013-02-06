@@ -53,6 +53,11 @@ describe EMManager do
     manager.stop.should == true
     manager.has_jobs?.should be_false
     manager.running?.should be_true
+
+    # XXX forcibly stop the reactor
+    manager.halt
+    manager.join
+    manager.running?.should be_false
   end
   
   it "should allow the user to schedule at job after a specified interval" do
