@@ -12,7 +12,6 @@ require 'rjr/message'
 
 module RJR
 
-
 # AMQP node callback interface, used to invoke json-rpc methods on a
 # remote node which previously invoked a method on the local one.
 #
@@ -67,7 +66,7 @@ class  AMQPNode < RJR::Node
   def handle_message(metadata, msg)
     if RequestMessage.is_request_message?(msg)
       reply_to = metadata.reply_to
-      ThreadPool2Manager << ThreadPool2Job.new { handle_request(reply_to, msg) }
+      @thread_pool << ThreadPoolJob.new { handle_request(reply_to, msg) }
 
     elsif ResponseMessage.is_response_message?(msg)
       handle_response(msg)
@@ -103,7 +102,7 @@ class  AMQPNode < RJR::Node
     begin
       res = Dispatcher.handle_response(msg.result)
     rescue Exception => e
-      err = e.to_s
+      err = e
     end
 
     @response_lock.synchronize{
@@ -117,7 +116,6 @@ class  AMQPNode < RJR::Node
   # Initialize the amqp subsystem
   def init_node
      return unless @conn.nil? || !@conn.connected?
-     super
      @conn = AMQP.connect(:host => @broker)
      @conn.on_tcp_connection_failure { puts "OTCF #{@node_id}" }
 
@@ -236,11 +234,7 @@ class  AMQPNode < RJR::Node
     end
   end
 
-  # Instructs node to send rpc request, and wait for and return response.
-  #
-  # Do not invoke directly from em event loop or callback as will block the message
-  # subscription used to receive responses
-  #
+  # Instructs node to send rpc request, and wait for and return response
   # @param [String] routing_key destination queue to send request to
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
@@ -263,10 +257,16 @@ class  AMQPNode < RJR::Node
 
     # TODO optional timeout for response ?
     result = wait_for_result(message)
-    self.stop
+
+    # need to disable the timeout if there is one, the result came within timeout
+    @@em_thread[:running] = false
+    @@em_thread[:first_cycle_passed] = false
+
+    #self.stop
+    #self.join unless self.em_running?
 
     if result.size > 2
-      raise Exception, result[2]
+      raise result[2]
     end
     return result[1]
   end
