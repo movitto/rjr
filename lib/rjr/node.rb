@@ -7,7 +7,8 @@
 # newly created client, returning it after block terminates
 
 require 'eventmachine'
-require 'rjr/thread_pool'
+require 'rjr/em_adapter'
+require 'rjr/thread_pool2'
 
 module RJR
 
@@ -38,11 +39,6 @@ class Node
   # requests and responses received and sent by node
   attr_accessor :message_headers
 
-  # Nodes use internal thread pools to handle requests and free
-  # up the eventmachine reactor to continue processing requests
-  # @see ThreadPool
-  attr_reader :thread_pool
-
   # RJR::Node initializer
   # @param [Hash] args options to set on request
   # @option args [String] :node_id unique id of the node *required*!!!
@@ -50,116 +46,113 @@ class Node
   # @option args [Integer] :threads number of handler to threads to instantiate in local worker pool
   # @option args [Integer] :timeout timeout after which worker thread being run is killed
   def initialize(args = {})
-     RJR::Node.default_threads ||=  10
-     RJR::Node.default_timeout ||=  5
+     RJR::Node.default_threads ||=  20
+     RJR::Node.default_timeout ||=  10
 
      @node_id     = args[:node_id]
      @num_threads = args[:threads]  || RJR::Node.default_threads
      @timeout     = args[:timeout]  || RJR::Node.default_timeout
-     @em_timeout = args[:em_timeout]
+     @keep_alive  = args[:keep_alive] || false
 
      @message_headers = {}
      @message_headers.merge!(args[:headers]) if args.has_key?(:headers)
-
-     ObjectSpace.define_finalizer(self, self.class.finalize(self))
   end
 
-  # Ruby ObjectSpace finalizer to ensure that node terminates all
-  # operations when object is destroyed
-  def self.finalize(node)
-    proc { node.halt ; node.join }
+  # Initialize the node, should be called from the event loop
+  # before any operation
+  def init_node
+    EM.error_handler { |e|
+      puts "EventMachine raised critical error #{e} #{e.backtrace}"
+      # TODO dispatch to registered event handlers (unify events system)
+    }
   end
 
   # Run a job in event machine.
-  #
-  # This will start the eventmachine reactor and thread pool if not already
-  # running, schedule the specified block to be run and immediately return.
-  #
-  # For use by subclasses to start listening and sending operations within
-  # the context of event machine.
-  #
-  # Keeps track of an internal counter of how many times this was invoked so
-  # a specific node can be shutdown / started up without affecting the
-  # eventmachine reactor (@see #stop)
+  # @param [Callable] bl callback to be invoked by eventmachine
   def em_run(&bl)
-    @@em_jobs ||= 0
-    @@em_jobs += 1
+    # Nodes use shared thread pool to handle requests and free
+    # up the eventmachine reactor to continue processing requests
+    # @see ThreadPool2, ThreadPool2Manager
+    ThreadPool2Manager.init @num_threads, :timeout => @timeout
 
-    @@em_thread  ||= nil
+    # Nodes make use of an EM helper interface to schedule operations
+    EMAdapter.init :keep_alive => @keep_alive
 
-    unless !@thread_pool.nil? && @thread_pool.running?
-      # threads pool to handle incoming requests
-      @thread_pool = ThreadPool.new(@num_threads, :timeout => @timeout)
-    end
-
-    if @@em_thread.nil?
-      @@em_thread  =
-        Thread.new(Thread.current){ |parent|
-          Thread.current[:parent] = parent
-          begin
-            EventMachine.run {
-              unless @em_timeout.nil?
-                EventMachine::add_periodic_timer(@em_timeout) do
-                  # invoke requesst timeout, if process if still running in two periodical timeouts, it will be stopped
-                  puts Thread.current[:running].inspect
-                  puts Thread.current[:first_cycle_passed].inspect
-                  if (Thread.current[:running])
-                    if Thread.current[:first_cycle_passed]
-                      puts "EM closing by timeout " + @em_timeout.to_s + "s"
-                      EventMachine.stop_event_loop
-                      raise("Invoke request em timeout")
-                    else
-                      Thread.current[:first_cycle_passed] = true
-                    end
-                  else
-                    Thread.current[:first_cycle_passed] = false
-                  end
-                end
-              end
-            }
-          rescue Exception => e
-            puts "Critical exception #{e}\n#{e.backtrace.join("\n")}"
-            Thread.current[:parent].raise e
-          ensure
-          end
-        }
-#sleep 0.5 until EventMachine.reactor_running? # XXX hacky way to do this
-    end
-
-    @@em_thread[:running] = true
-
-    EventMachine.schedule bl
+    EMAdapter.schedule &bl
   end
 
-  # Returns boolean indicating if this node is still running or not
-  def em_running?
-    @@em_jobs > 0 && EventMachine.reactor_running?
+  # Run a job async in event machine immediately
+  def em_run_async(&bl)
+    # same init as em_run
+    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.schedule {
+      ThreadPool2Manager << ThreadPool2Job.new { bl.call }
+    }
+  end
+
+  # TODO em_schedule
+
+  # Run an job async in event machine.
+  #
+  # This schedules a thread to be run once after a specified
+  # interval via eventmachine
+  #
+  # @param [Integer] seconds interval which to wait before invoking block
+  # @param [Callable] bl callback to be periodically invoked by eventmachine
+  def em_schedule_async(seconds, &bl)
+    # same init as em_run
+    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.add_timer(seconds) {
+      ThreadPool2Manager << ThreadPool2Job.new { bl.call }
+    }
+  end
+
+  # Run a job periodically via an event machine timer
+  #
+  # @param [Integer] seconds interval which to invoke block
+  # @param [Callable] bl callback to be periodically invoked by eventmachine
+  def em_repeat(seconds, &bl)
+    # same init as em_run
+    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.add_periodic_timer seconds, &bl
+  end
+
+  # Run an job async via an event machine timer.
+  #
+  # This schedules a thread to be run in the thread pool on
+  # every invocation of a periodic event machine timer.
+  #
+  # @param [Integer] seconds interval which to invoke block
+  # @param [Callable] bl callback to be periodically invoked by eventmachine
+  def em_repeat_async(seconds, &bl)
+    # same init as em_schedule
+    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.add_periodic_timer(seconds){
+      ThreadPool2Manager << ThreadPool2Job.new { bl.call }
+    }
   end
 
   # Block until the eventmachine reactor and thread pool have both completed running
   def join
-    @@em_thread.join if @@em_thread
-    @@em_thread = nil
-    @thread_pool.join if @thread_pool
-    @thread_pool = nil
+    ThreadPool2Manager.join
+    EMAdapter.join
   end
 
-  # Decrement the event machine job counter and if equal to zero,
-  # immediately terminate the node
+  # Terminate the node if no other jobs are running
   def stop
-    @@em_jobs -= 1
-    if @@em_jobs == 0
-      EventMachine.stop_event_loop
-      @thread_pool.stop
+    if EMAdapter.stop
+      ThreadPool2Manager.stop
     end
   end
 
-  # Immediately terminate the node, halting the eventmachine reactor and
-  # terminating the thread pool
+  # Immediately terminate the node
   def halt
-    @@em_jobs = 0
-    EventMachine.stop
-    @thread_pool.stop unless @thread_pool.nil?
+    EMAdapter.halt
+    ThreadPool2Manager.stop
   end
 
 end

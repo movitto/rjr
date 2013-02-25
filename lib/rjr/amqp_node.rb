@@ -239,7 +239,7 @@ class  AMQPNode < RJR::Node
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
   # @return [Object] the json result retrieved from destination converted to a ruby object
-  # @raise [Exception] if the destination raises an exception, it will be converted to json and re-raised here 
+  # @raise [Exception] if the destination raises an exception, it will be converted to json and re-raised here
   def invoke_request(routing_key, rpc_method, *args)
     message = RequestMessage.new :method => rpc_method,
                                  :args   => args,
@@ -257,11 +257,6 @@ class  AMQPNode < RJR::Node
 
     # TODO optional timeout for response ?
     result = wait_for_result(message)
-
-    # need to disable the timeout if there is one, the result came within timeout
-    @@em_thread[:running] = false
-    @@em_thread[:first_cycle_passed] = false
-
     #self.stop
     #self.join unless self.em_running?
 
