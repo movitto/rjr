@@ -14,9 +14,11 @@ module RJR
 class Request
   # name of the method which request is for
   attr_accessor :method
+  alias :rjr_method :method
 
   # array of arguments which to pass to the rpc method handler
   attr_accessor :method_args
+  alias :rjr_method_args :method_args
 
   # hash of keys/values corresponding to optional headers received as part of of the request
   attr_accessor :headers
@@ -47,7 +49,9 @@ class Request
   # @option args [Callable] :handler callable object registered to the specified method which to invoke request on with arguments
   def initialize(args = {})
     @method       = args[:method]
+    @rjr_method   = args[:method]
     @method_args  = args[:method_args]
+    @rjr_method_args = args[:method_args]
     @headers      = args[:headers]
     @client_ip    = args[:client_ip]
     @client_port  = args[:client_port]
