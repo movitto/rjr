@@ -106,6 +106,7 @@ function WSNode (host, port){
       if(node.onmessage)
         node.onmessage(msg);
     };
+    // TODO support reopening the socket on errors
     node.socket.onerror = function(e){
       if(node.onerror)
         node.onerror(e);

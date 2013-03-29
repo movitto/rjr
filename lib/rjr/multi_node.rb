@@ -34,6 +34,9 @@ module RJR
 #   # invoke requests as you normally would via any protocol
 #
 class MultiNode < RJR::Node
+  # Return the nodes
+  attr_reader :nodes
+
   # MultiNode initializer
   # @param [Hash] args the options to create the tcp node with
   # @option args [Array<RJR::Node>] :nodes array of nodes to use to listen to new requests on
