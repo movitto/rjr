@@ -88,9 +88,13 @@ function WSNode (host, port){
   var node = this;
   this.node_id = null;
   this.headers = {};
+  this.messages = [];
   this.open = function(){
     node.socket = new WebSocket("ws://" + host + ":" + port);
     node.socket.onopen = function (){
+      for(var m in node.messages)
+        node.socket.send(node.messages[m]);
+      node.messages = [];
       // XXX hack, give other handlers time to register
       setTimeout(function(){
         if(node.onopen)
@@ -150,7 +154,13 @@ function WSNode (host, port){
         }
       }
     };
-    node.socket.send($.toJSON(request));
+
+    var j = $.toJSON(request)
+    node.messages.push(j); // always first add to message queue to prevent race condition
+    if(node.socket.readyState == WebSocket.OPEN){
+      node.messages = [];  // XXX no longer need to store messages
+      node.socket.send(j);
+    }
     return request;
   };
 };

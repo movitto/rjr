@@ -1,14 +1,19 @@
 #!/usr/bin/ruby
 # launches a series of clients
 
-NUM_CLIENTS = 50
-NUM_MSGS    = 50 # per client
+ID_OFFSET   = ARGV.shift.to_i || 100
+
+NUM_CLIENTS = 5
+NUM_MSGS    = 20 # per client
 NODE_ID     = 'rjr_test_launcher-'
-ID_OFFSET   = 100
 MSG_IDS     = ['stress', 'stress_callback']
-TRANSPORTS  = {:amqp => 'rjr_test_server-queue'}
+TRANSPORTS  = {#:amqp =>     'rjr_test_server-queue',
+               #:tcp  => 'json-rpc://localhost:8181',
+               :ws   => 'json-rpc://localhost:8080',
+               #:www  =>     'http://localhost:8888'
+              }
 BROKER      = 'localhost' # only used for amqp
-MSG_INTERVAL= 1
+MSG_INTERVAL= 3
 
 CLIENT = File.join(File.dirname(__FILE__), 'client.rb')
 
@@ -23,7 +28,7 @@ threads = []
 
   threads <<
     Thread.new{
-      system("#{CLIENT} -m #{mode} -t #{transport} -i #{node_id} -b #{BROKER} -n #{NUM_MSGS} --message #{msg_id} --interval #{MSG_INTERVAL}")
+      system("#{CLIENT} -m #{mode} -t #{transport} -i #{node_id} -b #{BROKER} --dst #{dst} -n #{NUM_MSGS} --message #{msg_id} --interval #{MSG_INTERVAL}")
     }
 }
 

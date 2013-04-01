@@ -1,0 +1,222 @@
+<!-- TODO invoke requests similiar to client.rb (parameterized via form) -->
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" 
+                    "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <script src="http://localhost/rjr-stress/jquery-latest.js"></script>
+  <link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
+  <script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
+  <script type="text/javascript" src="http://localhost/rjr-stress/rjr/jrw.js"></script>
+  <script type="text/javascript" src="http://localhost/rjr-stress/rjr/json.js"></script>
+
+  <script>
+  $(document).ready(function(){
+    ////////////////////////////////////////////////////////
+
+    var config = { disconnect :                 false,
+                   num_msg    :                     1,
+                   mode       :                 'msg',
+                   node_id    : 'rjr_test_web_client',
+                   transports :         ['ws', 'www'],
+                   dst        :           'localhost',
+                   msg_id     :                'rand',
+                   interval   :                    0};
+
+    $('#node_id').attr('value',  config['node_id']);
+    $('#num_msg').attr('value',  config['num_msg']);
+    $('#mode').attr('value',     config['mode']);
+    $('#dst').attr('value',      config['dst']);
+    $('#msg_id').attr('value',   config['msg_id']);
+    $('#interval').attr('value', config['interval']);
+
+    $('#mode_' + config['mode']).attr('checked', true);;
+    for(var t in config['transports']){
+      $('#transport_' + config['transports'][t]).attr('checked', true);
+    }
+
+    ////////////////////////////////////////////////////////
+    
+    var output = function(text){
+      $('#results ul').append('<li>' + text + '</li>');
+    }
+
+    var run = function(){
+      config['node_id']    = $('#node_id').attr('value');
+      config['mode']       = $('input[name=mode]:checked').attr('value');
+      config['num_msg']    = $('#num_msg').attr('value');
+      config['disconnect'] = $('#disconnect').attr('value');
+      config['dst']        = $('#dst').attr('value');
+      config['msg_id']     = $('#msg_id').attr('value');
+      config['interval']   = $('#interval').attr('value');
+
+      config['transports'] = [];
+      $('input[name=transport]:checked').each(function(){
+        config['transports'].push($(this).attr('value'));
+      });
+
+      // TODO verify results
+      for(var i = 0; i < config['transports'].length; i++){
+        if(config['transports'][i] == 'ws'){
+          $ws_node = new WSNode(config['dst'], 8080);
+          $ws_node.node_id = config['node_id'];
+          $ws_node.onopen = function(result){
+            //$ws_node.invoke_request("callback_method");
+          };
+          $ws_node.onsuccess = function(result){
+            output('ws success: ' + result['result']);
+          };
+          $ws_node.onfailed = function(error, msg){
+            output('ws error: ' + error + " (" + msg + ")");
+          };
+          $ws_node.message_received = function(msg){
+          };
+          $ws_node.invoke_method = function(method, params){
+            output('ws method request: ' + method + " (" + params + ")");
+            // TODO call the actual method?
+          };
+          $ws_node.open();
+
+        }else if(config['transports'][i] == 'www'){
+          $web_node = new WebNode("http://"+config['dst']+"/rjr/");
+          $web_node.node_id = config['node_id'];
+          $web_node.onsuccess = function(result){
+            output('www success: ' + result['result']);
+          };
+          $web_node.onfailed = function(error, msg){
+            output('www failed: ' + error);
+          };
+          $web_node.message_received = function(msg){
+          };
+
+        }
+      }
+
+      ///////////////////////////////////////////
+
+      if(config['disconnect'] && config['disconnect'] != ""){
+        window.setTimeout(function(){ $ws_node.close(); }, parseInt(config['disconnect']) * 1000);
+      }
+
+      // TODO mode == rand
+      for(var i = 0; i < config['num_msg']; i++){
+        function process(){
+          // gen random msg from list
+          var mids = Object.keys($messages)
+          var rmsg = $messages[mids[Math.floor(mids.length * Math.random())]];
+
+          // grab handle to message, format params
+          var msg = (config['msg_id'] == 'rand' ? rmsg : $messages[config['msg_id']]);
+          var mp  = msg['params'].slice(0);
+          mp.unshift(msg['method']);
+
+          // convert params
+          for(var mpi in mp){
+            mp[mpi] = mp[mpi].replace("<CLIENT_ID>", config['node_id']);
+          }
+
+          // generate transport
+          var tsi = Math.floor(Math.random()*config['transports'].length);
+          var ts  = config['transports'][tsi];
+
+          // send message
+          if(ts == 'ws'){
+            $ws_node.invoke_request.apply($ws_node, mp);
+
+          }else if(ts == 'www'){
+            $web_node.invoke_request.apply($web_node, mp);
+
+          }
+        }
+
+        if(config['interval']){
+          window.setTimeout(process, parseInt(config['interval']) * i * 1000);
+
+        }else{
+          process();
+        }
+
+      }
+    }
+
+    $('#submit').click(run);
+
+    ////////////////////////////////////////////////////////
+
+    $methods = {
+
+      client_stress_callback : function(){
+        //output("client stress callback invoked");
+      }
+
+    };
+
+    ////////////////////////////////////////////////////////
+
+    $messages = {
+
+      $server_stress : { method    :  'stress',
+                         params    :  ["foobar"]},
+      $server_stress_callback : { method  :   'stress_callback',
+                                  params  :   ['foozbar']}
+
+    }
+
+    ////////////////////////////////////////////////////////
+    //$ws_node.open();
+    //$web_node.invoke_request("success_method", "haha");
+
+    ////////////////////////////////////////////////////////
+  });
+  </script>
+
+  <style>
+  </style>
+  
+</head>
+<body>
+  <h2>RJR Client:</h2>
+
+  <div style="float: left">
+    <h3>Parameters:</h3>
+    <div id="params">
+      <form>
+        Node ID:<br/>
+        <input type="text" id="node_id" value="" /><br/><br/>
+
+        Mode of operation:<br/>
+        <input type="radio" name="mode" id="mode_msg" value="msg">Messages</input><input type="radio" name="mode" id="mode_rand" value="rand" disabled="true">Random Data</input><br/><br/>
+
+        Transport(s):<br/>
+        <input type="checkbox" name="transport" id="transport_www" value="www">www</input><input type="checkbox" name="transport" id="transport_ws" value="ws">ws</input><br/><br/>
+
+        Destination Host:<br/>
+        (port 8080 used for ws connections and '/rjr' path used for www requests)<br/>
+        <input type="text" id="dst" value="" /><br/><br/>
+
+        Msg ID:<br/>
+        <input type="text" id="msg_id" value="rand" /><br/><br/>
+
+        Number of Messages:<br/>
+        <input type="text" id="num_msg" value="" /><br/><br/>
+
+        Msg Interval:<br/>
+        <input type="text" id="interval" value="" /><br/><br/>
+
+        Disconnect after:<br/>
+        <input type="text" id="disconnect" value="" /><br/><br/>
+
+        <input type="button" id="submit" value="Run" />
+      </form>
+    </div>
+  </div>
+
+  <div style="float: left; margin-left: 50px;">
+    <h3>Results:</h3>
+    <div id="results">
+      <ul>
+      </ul>
+    </div>
+  </div>
+
+</body>
+</html>

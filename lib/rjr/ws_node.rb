@@ -5,6 +5,8 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
+# TODO fix issues (as made evident by ruby client in test harness)
+
 require 'em-websocket'
 require 'rjr/web_socket'
 
