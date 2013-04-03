@@ -1,4 +1,4 @@
-# RJR Utility Methods
+# Low level RJR Utility Methods
 #
 # Assortment of helper methods and methods that don't fit elsewhere
 #
@@ -20,12 +20,12 @@ module RJR
 class Logger
   private
     def self._instantiate_logger
-       unless defined? @@logger
+       if @logger.nil?
          #STDOUT.sync = true
-         output = ENV['RJR_LOG'] || STDOUT
-         @@logger = ::Logger.new(output)
-         @@logger.level = ::Logger::FATAL
-         @@logger_mutex = Mutex.new
+         output = @log_to || ENV['RJR_LOG'] || STDOUT
+         @logger = ::Logger.new(output)
+         @logger.level = @log_level || ::Logger::FATAL
+         @logger_mutex = Mutex.new
        end 
     end 
 
@@ -33,27 +33,36 @@ class Logger
 
     def self.method_missing(method_id, *args)
        _instantiate_logger
-       @@logger_mutex.synchronize {
+       @logger_mutex.synchronize {
          if args.first.is_a?(Array)
            args.first.each{ |a|
-             @@logger.send(method_id, a)
+             @logger.send(method_id, a)
            }
          else
-           @@logger.send(method_id, args)
+           @logger.send(method_id, args)
          end
        }
     end 
 
     def self.logger
        _instantiate_logger
-       @@logger
+       @logger
+    end
+
+    # Set log destination
+    # @param dst destination which to log to (file name, STDOUT, etc)
+    def self.log_to(dst)
+      @log_to = dst
+      @logger = nil
+      _instantiate_logger
     end
 
     # Set log level.
     # @param level one of the standard rails log levels (default fatal)
     def self.log_level=(level)
       _instantiate_logger
-      @@logger.level = level
+      @log_level    = level
+      @logger.level = level
     end
 end
 

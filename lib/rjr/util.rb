@@ -1,55 +1,64 @@
-# Common methods for the rjr test harness
+# High level rjr utility mechanisms
+#
+# Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+# Licensed under the Apache License, Version 2.0
 
+module RJR
 
-# Module to encapsulate rjr method plugins.
+# Module to encapsulate plugins containing rjr methods to
+# be registered with the dispatcher
 #
 # Plugins should be instance variables defined in
-# the RJRMethods module, set to the lambda method handlers
+# the RJR::Methods module, set to the lambda method handlers
 #
-# module RJRMethods
+# module RJR::Methods
 #   # prefix = 'rjr_'
 #   @rjr_stress = lambda { |*args|
 #     # rjr method implementation
 #   }
 # end
-module RJRMethods
-  # Loads and defines rjr test methods from the specified methods_dir
-  def self.load(methods_dir, prefix = '')
-    Dir.glob(File.join(methods_dir, '*')).each { |md|
-      require md
+module Methods
+  # Loads and defines rjr test methods from the dirs in the specified path
+  def self.load(path, prefix = '')
+    path.split(':').each { |methods_dir|
+      Dir.glob(File.join(methods_dir, 'methods', '*')).each { |md|
+        require md
+      }
     }
 
-    RJRMethods.instance_variables.each { |iv|
+    RJR::Methods.instance_variables.each { |iv|
       if iv.to_s =~ /#{prefix}(.*)/
         #puts "Registering #{$1}"
-        RJR::Dispatcher.add_handler($1, &RJRMethods.instance_variable_get(iv))
+        RJR::Dispatcher.add_handler($1, &RJR::Methods.instance_variable_get(iv))
       end
     }
   end
 end
 
-# Module to encapsulate rjr message plugins
+# Module to encapsulate plugins containing preformatted rjr messages
 #
-# Plugins should reside in the specified messages_dir and should contain
-# attribute definitions in the RJRMessages module namespace idenfied with
+# Plugins should reside in the specified dirs and should contain
+# attribute definitions in the RJR::Messages module namespace idenfied with
 # 'rjr_<msg_id>', eg
 #
-# module RJRMessages
+# module RJR::Messages
 #   @rjr_stress = { :method => 'stress',
 #                   :params => ["<CLIENT_ID>"],
 #                   :result => lambda { |r| r == 'foobar' } }
 # end
 # 
-module RJRMessages
-  def self.load(messages_dir)
+module Messages
+  def self.load(path)
     @messages = {}
-    Dir.glob(File.join(messages_dir, '*')).each { |md|
-      require md
+    path.split(':').each { |messages_dir|
+      Dir.glob(File.join(messages_dir, 'messages', '*')).each { |md|
+        require md
+      }
     }
 
-    RJRMessages.instance_variables.each { |iv|
+    RJR::Messages.instance_variables.each { |iv|
       if iv.to_s =~ /rjr_(.*)/
-        @messages[$1] = RJRMessages.instance_variable_get(iv)
+        @messages[$1] = RJR::Messages.instance_variable_get(iv)
       end
     }
   end
@@ -63,8 +72,8 @@ module RJRMessages
   end
 end
 
-# Class to encapsule rjr node
-class RJRNode
+# Class to encapsulate any number of rjr nodes
+class EasyNode
   def initialize(node_args = {})
     nodes = node_args.keys.collect { |n|
               case n
@@ -104,3 +113,5 @@ class RJRNode
     self
   end
 end
+
+end # module RJR

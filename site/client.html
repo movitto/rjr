@@ -1,13 +1,12 @@
-<!-- TODO invoke requests similiar to client.rb (parameterized via form) -->
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" 
-                    "http://www.w3.org/TR/html4/loose.dtd">
+                      "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
   <script src="http://localhost/rjr-stress/jquery-latest.js"></script>
   <link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
   <script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
-  <script type="text/javascript" src="http://localhost/rjr-stress/rjr/jrw.js"></script>
-  <script type="text/javascript" src="http://localhost/rjr-stress/rjr/json.js"></script>
+  <script type="text/javascript" src="http://localhost/rjr-stress/jrw.js"></script>
+  <script type="text/javascript" src="http://localhost/rjr-stress/json.js"></script>
 
   <script>
   $(document).ready(function(){
@@ -154,10 +153,14 @@
 
     $messages = {
 
-      $server_stress : { method    :  'stress',
+      stress : { method    :  'stress',
                          params    :  ["foobar"]},
-      $server_stress_callback : { method  :   'stress_callback',
-                                  params  :   ['foozbar']}
+
+      stress_callback : { method  :   'stress_callback',
+                                  params  :   ['foozbar']},
+
+      messages: { method    :  'messages',
+                  params    :  []},
 
     }
 

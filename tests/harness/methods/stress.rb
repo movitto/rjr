@@ -1,4 +1,8 @@
-module RJRMethods
+module RJR::Methods
+  @server_messages = lambda {
+    $messages.string.split("\n")
+  }
+
   @server_stress = lambda { |p|
     RJR::Logger.info "invoked stress method #{p}"
     'foobar'

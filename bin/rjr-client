@@ -1,11 +1,12 @@
 #!/usr/bin/ruby
-# RJR test harness client
+# RJR client
+#
+# Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+# Licensed under the Apache License, Version 2.0
 
 require 'rubygems'
 require 'optparse'
 require 'rjr'
-
-require 'common'
 
 RJR::Logger.log_level = ::Logger::DEBUG
 
@@ -91,15 +92,14 @@ NODES = {config[:transport] => {:node_id    => config[:node_id],
                                 :broker     => config[:broker], # XXX only needed for amqp
                                 :keep_alive => true} }          # conditionally set keep alive?
 
-METHODS_DIR  = File.join(File.dirname(__FILE__), 'methods')
-
-MESSAGES_DIR = File.join(File.dirname(__FILE__), 'messages')
+cdir          = File.dirname(__FILE__)
+RJR_LOAD_PATH = ENV['RJR_LOAD_PATH'] || File.join(cdir, '..', 'tests', 'harness')
 
 ##########################################################
 
-node = RJRNode.new(NODES)
-RJRMethods.load(METHODS_DIR, 'client_')
-RJRMessages.load(MESSAGES_DIR)
+node = RJR::EasyNode.new(NODES)
+RJR::Methods.load(RJR_LOAD_PATH, 'client_')
+RJR::Messages.load(RJR_LOAD_PATH)
 
 if config[:disconnect]
   disconnect_thread = Thread.new {
@@ -115,7 +115,7 @@ end
   # TODO implement mode == :rand
 
   # grab message (or rand message)
-  msg = (config[:msg_id] == :rand ? RJRMessages.rand_msg : RJRMessages.get(config[:msg_id]))
+  msg = (config[:msg_id] == :rand ? RJR::Messages.rand_msg : RJR::Messages.get(config[:msg_id]))
 
   if msg.nil?
     puts "Invalid message id"

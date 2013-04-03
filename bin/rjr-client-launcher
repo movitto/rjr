@@ -1,5 +1,8 @@
 #!/usr/bin/ruby
-# launches a series of clients
+# Launches a series of clients
+#
+# Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+# Licensed under the Apache License, Version 2.0
 
 ID_OFFSET   = ARGV.shift.to_i || 100
 
@@ -15,7 +18,7 @@ TRANSPORTS  = {#:amqp =>     'rjr_test_server-queue',
 BROKER      = 'localhost' # only used for amqp
 MSG_INTERVAL= 3
 
-CLIENT = File.join(File.dirname(__FILE__), 'client.rb')
+CLIENT = File.join(File.dirname(__FILE__), 'rjr-client')
 
 threads = []
 

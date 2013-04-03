@@ -1,54 +1,67 @@
 #!/usr/bin/ruby
-# A rjr server executable
-# Executable to launch registered rjr methods 
+# RJR server
 #
-# Flags:
-#  -h --help
-#
-# Copyright (C) 2011-2012 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 require 'rubygems'
 require 'optparse'
 require 'rjr'
+require 'stringio'
 
-######################
+##########################################################
 
-RJR::Logger.log_level = ::Logger::DEBUG
+config = { :broker   => 'localhost',
+           :host     => 'localhost',
+           :tcp_port =>        8181,
+           :www_port =>        8888,
+           :ws_port  =>        8080 }
 
-def main()
-  # setup cmd line options
-  opts = OptionParser.new do |opts|
-    opts.on("-h", "--help", "Print help message") do
-       puts opts
-       exit
-    end
-  end
-
-  # parse cmd line
-  begin
-    opts.parse!(ARGV)
-  rescue OptionParser::InvalidOption
+optparse = OptionParser.new do |opts|
+  opts.on('-h', '--help', 'Display this help screen') do
     puts opts
     exit
   end
 
-  amqp_node = RJR::AMQPNode.new :node_id => 'rjr', :broker => 'localhost'
-  ws_node   = RJR::WSNode.new   :node_id => 'rjr', :host   => 'localhost', :port => 8080
-  www_node  = RJR::WebNode.new  :node_id => 'rjr', :host   => 'localhost', :port => 8888
+  opts.on('-b', '--broker broker', 'AMQP Broker') do |b|
+    config[:broker] = b
+  end
 
-  RJR::Dispatcher.add_handler('hello') { |msg|
-    #raise Exception.new("foobar")
-    puts "hello #{msg}"
-    sleep 20
-    "world"
-  }
+  opts.on('-h', '--host host', 'Host (or ip) which to listen on') do |h|
+    config[:host] = host
+  end
 
-  rjr_node = RJR::MultiNode.new :nodes => [amqp_node, ws_node, www_node]
+  opts.on('--tcp port', 'TCP Port to listen on') do |p|
+    config[:tcp_port] = p
+  end
 
-  rjr_node.listen
-  rjr_node.join
-  rjr_node.stop # TODO run in signal handler
+  opts.on('--www port', 'Port to listen on for www requests') do |p|
+    config[:www_port] = p
+  end
+
+  opts.on('--ws port', 'Websocket Port to listen on') do |p|
+    config[:ws_port] = p
+  end
+
 end
 
-main()
+optparse.parse!
+
+##########################################################
+
+NODES = {:amqp  =>  {:node_id => 'rjr_test_server', :broker => config[:broker]},
+         :ws    =>  {:node_id => 'rjr_test_server', :host   => config[:host], :port => config[:ws_port]},
+         :www   =>  {:node_id => 'rjr_test_server', :host   => config[:host], :port => config[:www_port]},
+         :tcp   =>  {:node_id => 'rjr_test_server', :host   => config[:host], :port => config[:tcp_port]}}
+
+cdir          = File.dirname(__FILE__)
+RJR_LOAD_PATH = ENV['RJR_LOAD_PATH'] || File.join(cdir, '..', 'tests', 'harness')
+
+##########################################################
+
+$messages = StringIO.new
+
+RJR::Logger.log_level = ::Logger::DEBUG
+RJR::Logger.log_to $messages
+RJR::Methods.load(RJR_LOAD_PATH, 'server_')
+RJR::EasyNode.new(NODES).stop_on("INT").listen.join

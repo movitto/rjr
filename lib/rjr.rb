@@ -41,3 +41,5 @@ rescue LoadError
   RJR::WebNode = RJR::MissingNode
   # TODO output: "curb/evma_httpserver gems could not be loaded, skipping web node definition"
 end
+
+require 'rjr/util'

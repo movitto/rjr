@@ -1,4 +1,4 @@
-module RJRMessages
+module RJR::Messages
   @rjr_stress = { :method => 'stress',
                   :params => ["<CLIENT_ID>"],
                   :result => lambda { |r| r == 'foobar' } }
