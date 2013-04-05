@@ -5,70 +5,48 @@
 
 module RJR
 
-# Module to encapsulate plugins containing rjr methods to
-# be registered with the dispatcher
-#
-# Plugins should be instance variables defined in
-# the RJR::Methods module, set to the lambda method handlers
-#
-# module RJR::Methods
-#   # prefix = 'rjr_'
-#   @rjr_stress = lambda { |*args|
-#     # rjr method implementation
-#   }
-# end
-module Methods
-  # Loads and defines rjr test methods from the dirs in the specified path
-  def self.load(path, prefix = '')
-    path.split(':').each { |methods_dir|
-      Dir.glob(File.join(methods_dir, 'methods', '*')).each { |md|
-        require md
+# Mixin providing utility methods to define rjr methods and messages
+module Definitions
+  # Define one or more rjr methods, parameters should be in the form
+  #   :id => Callable
+  #
+  # id may be a single id or an array of them
+  def rjr_method(args = {})
+    args.each { |k, v|
+      RJR::Dispatcher.add_handler(k.to_s, &v)
+    }
+    nil
+  end
+
+  # Define/retrieve rjr messages. When defining pass a hash
+  # of mesasge ids to options to use in the defintions, eg
+  #   :id  => { :foo => :bar }
+  #
+  # When retrieving simply specify the id
+  def rjr_message(args={})
+    if args.is_a?(Hash)
+      args.each { |k,v|
+        RJR::Definitions.message(k.to_s, v)
       }
-    }
-
-    RJR::Methods.instance_variables.each { |iv|
-      if iv.to_s =~ /#{prefix}(.*)/
-        #puts "Registering #{$1}"
-        RJR::Dispatcher.add_handler($1, &RJR::Methods.instance_variable_get(iv))
-      end
-    }
-  end
-end
-
-# Module to encapsulate plugins containing preformatted rjr messages
-#
-# Plugins should reside in the specified dirs and should contain
-# attribute definitions in the RJR::Messages module namespace idenfied with
-# 'rjr_<msg_id>', eg
-#
-# module RJR::Messages
-#   @rjr_stress = { :method => 'stress',
-#                   :params => ["<CLIENT_ID>"],
-#                   :result => lambda { |r| r == 'foobar' } }
-# end
-# 
-module Messages
-  def self.load(path)
-    @messages = {}
-    path.split(':').each { |messages_dir|
-      Dir.glob(File.join(messages_dir, 'messages', '*')).each { |md|
-        require md
-      }
-    }
-
-    RJR::Messages.instance_variables.each { |iv|
-      if iv.to_s =~ /rjr_(.*)/
-        @messages[$1] = RJR::Messages.instance_variable_get(iv)
-      end
-    }
+      nil
+    else
+      RJR::Definitions.message(args)
+    end
   end
 
-  def self.get(id)
-    @messages[id]
+  # Helper providing access to messages
+  def self.message(k, v=nil)
+    @rjr_messages ||= {}
+    @rjr_messages[k] = v unless v.nil?
+    @rjr_messages[k]
   end
 
-  def self.rand_msg
-    @messages[@messages.keys[rand(@messages.keys.size)]]
+  # Generate / return random message. Optionally specify the transport which
+  # the message must accept
+  def self.rand_msg(transport = nil)
+    messages = @rjr_messages.select { |mid,m| m[:transports].nil? || transport.nil? ||
+                                              m[:transports].include?(transport)    }
+    messages[messages.keys[rand(messages.keys.size)]]
   end
 end
 

@@ -93,13 +93,13 @@ NODES = {config[:transport] => {:node_id    => config[:node_id],
                                 :keep_alive => true} }          # conditionally set keep alive?
 
 cdir          = File.dirname(__FILE__)
-RJR_LOAD_PATH = ENV['RJR_LOAD_PATH'] || File.join(cdir, '..', 'tests', 'harness')
+client_path   = File.join(ENV['RJR_LOAD_PATH'] || File.join(cdir, '..', 'tests', 'harness'), "client")
+
+require_path client_path
 
 ##########################################################
 
 node = RJR::EasyNode.new(NODES)
-RJR::Methods.load(RJR_LOAD_PATH, 'client_')
-RJR::Messages.load(RJR_LOAD_PATH)
 
 if config[:disconnect]
   disconnect_thread = Thread.new {
@@ -115,7 +115,8 @@ end
   # TODO implement mode == :rand
 
   # grab message (or rand message)
-  msg = (config[:msg_id] == :rand ? RJR::Messages.rand_msg : RJR::Messages.get(config[:msg_id]))
+  msg = (config[:msg_id] == :rand ? RJR::Definitions.rand_msg(config[:transport]) :
+                                    RJR::Definitions.rjr_message(config[:msg_id]))
 
   if msg.nil?
     puts "Invalid message id"
@@ -123,7 +124,16 @@ end
   end
 
   # manipulate msg params
-  params = msg[:params].collect { |p| p.gsub('<CLIENT_ID>', config[:node_id]) } # TODO other substitutions
+  parmas = []
+  params = msg[:params].collect { |p|
+    if p.is_a?(String)
+      p.gsub('<CLIENT_ID>', config[:node_id]) # TODO other substitutions
+    elsif p.is_a?(Proc)
+      p.call
+    else
+      p
+    end
+  } if msg[:params]
 
   # invoke request
   res = node.invoke_request(config[:dst], msg[:method], *params)

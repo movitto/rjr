@@ -11,16 +11,21 @@ require 'stringio'
 
 ##########################################################
 
-config = { :broker   => 'localhost',
-           :host     => 'localhost',
-           :tcp_port =>        8181,
-           :www_port =>        8888,
-           :ws_port  =>        8080 }
+config = { :node_id  =>  'rjr_test_server',
+           :broker   =>        'localhost',
+           :host     =>        'localhost',
+           :tcp_port =>               8181,
+           :www_port =>               8888,
+           :ws_port  =>               8080 }
 
 optparse = OptionParser.new do |opts|
   opts.on('-h', '--help', 'Display this help screen') do
     puts opts
     exit
+  end
+
+  opts.on('-i', '--id ID', 'Node ID to assign to server') do |id|
+    config[:node_id] = id
   end
 
   opts.on('-b', '--broker broker', 'AMQP Broker') do |b|
@@ -49,13 +54,14 @@ optparse.parse!
 
 ##########################################################
 
-NODES = {:amqp  =>  {:node_id => 'rjr_test_server', :broker => config[:broker]},
-         :ws    =>  {:node_id => 'rjr_test_server', :host   => config[:host], :port => config[:ws_port]},
-         :www   =>  {:node_id => 'rjr_test_server', :host   => config[:host], :port => config[:www_port]},
-         :tcp   =>  {:node_id => 'rjr_test_server', :host   => config[:host], :port => config[:tcp_port]}}
+NODES = {:amqp  =>  {:node_id => config[:node_id], :broker => config[:broker]},
+         :ws    =>  {:node_id => config[:node_id], :host   => config[:host], :port => config[:ws_port]},
+         :www   =>  {:node_id => config[:node_id], :host   => config[:host], :port => config[:www_port]},
+         :tcp   =>  {:node_id => config[:node_id], :host   => config[:host], :port => config[:tcp_port]}}
 
 cdir          = File.dirname(__FILE__)
-RJR_LOAD_PATH = ENV['RJR_LOAD_PATH'] || File.join(cdir, '..', 'tests', 'harness')
+server_path   = File.join(ENV['RJR_LOAD_PATH'] || File.join(cdir, '..', 'tests', 'harness'), 'server')
+require_path  server_path
 
 ##########################################################
 
@@ -63,5 +69,4 @@ $messages = StringIO.new
 
 RJR::Logger.log_level = ::Logger::DEBUG
 RJR::Logger.log_to $messages
-RJR::Methods.load(RJR_LOAD_PATH, 'server_')
 RJR::EasyNode.new(NODES).stop_on("INT").listen.join
