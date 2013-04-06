@@ -9,6 +9,8 @@ require 'optparse'
 require 'rjr'
 require 'stringio'
 
+require 'rjr/inspect'
+
 ##########################################################
 
 config = { :node_id  =>  'rjr_test_server',

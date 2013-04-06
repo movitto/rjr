@@ -3,6 +3,8 @@
 # Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
+require 'rjr/dispatcher'
+
 module RJR
 
 # Mixin providing utility methods to define rjr methods and messages
@@ -39,6 +41,12 @@ module Definitions
     @rjr_messages ||= {}
     @rjr_messages[k] = v unless v.nil?
     @rjr_messages[k]
+  end
+
+  # Reset message registry
+  def self.reset
+    # TODO also invoke 'Dispatcher.init_handlers' ?
+    @rjr_messages = {}
   end
 
   # Generate / return random message. Optionally specify the transport which

@@ -7,6 +7,7 @@
 # Licensed under the Apache License, Version 2.0
 
 require 'rjr/common'
+require 'json'
 
 module RJR
 
@@ -48,17 +49,17 @@ class Request
   # @option args [Symbol] :rjr_node_type type of the rjr node which request was received on
   # @option args [Callable] :handler callable object registered to the specified method which to invoke request on with arguments
   def initialize(args = {})
-    @method       = args[:method]
-    @rjr_method   = args[:method]
-    @method_args  = args[:method_args]
-    @rjr_method_args = args[:method_args]
-    @headers      = args[:headers]
+    @method       = args[:method]  || args['method']
+    @rjr_method   = @method
+    @method_args  = args[:method_args] || args['method_args']
+    @rjr_method_args = @method_args
+    @headers      = args[:headers] || args['headers']
     @client_ip    = args[:client_ip]
     @client_port  = args[:client_port]
     @rjr_callback = args[:rjr_callback]
     @rjr_node      = args[:rjr_node]
-    @rjr_node_id   = args[:rjr_node_id]
-    @rjr_node_type = args[:rjr_node_type]
+    @rjr_node_id   = args[:rjr_node_id] || args['rjr_node_id']
+    @rjr_node_type = args[:rjr_node_type] || args['rjr_node_type']
     @handler       = args[:handler]
   end
 
@@ -104,17 +105,17 @@ class Result
     @error_message = nil
     @error_class = nil
 
-    if args.has_key?(:result)
+    if args.has_key?(:result) || args.has_key?('result')
       @success = true
       @failed  = false
-      @result  = args[:result]
+      @result  = args[:result] || args['result']
 
-    elsif args.has_key?(:error_code)
+    elsif args.has_key?(:error_code) || args.has_key?('error_code')
       @success = false
       @failed  = true
-      @error_code  = args[:error_code]
-      @error_msg   = args[:error_msg]
-      @error_class = args[:error_class]
+      @error_code  = args[:error_code] || args['error_code']
+      @error_msg   = args[:error_msg]  || args['error_msg']
+      @error_class = args[:error_class] || args['error_class']
 
     end
   end
@@ -181,20 +182,79 @@ class Handler
   def handle(args = {})
     return Result.method_not_found(args[:missing_name]) if @method_name.nil?
 
+    result = nil
     begin
       request = Request.new args.merge(:method          => @method_name,
                                        :handler         => @handler_proc)
       retval = request.handle
-      return Result.new(:result => retval)
+      result = Result.new(:result => retval)
 
     rescue Exception => e
       RJR::Logger.warn ["Exception Raised in #{method_name} handler #{e}"] + e.backtrace
-
-      return Result.new(:error_code => -32000,
-                        :error_msg  => e.to_s,
-                        :error_class => e.class)
+      result = Result.new(:error_code => -32000,
+                          :error_msg  => e.to_s,
+                          :error_class => e.class)
 
     end
+
+    DispatcherStat << DispatcherStat.new(request, result)
+    return result
+  end
+end
+
+# Tracks high level dispatcher states
+class DispatcherStat
+  # Request invoked
+  attr_reader :request
+
+  # Result returned
+  attr_reader :result
+
+  # Initialized the stat w/ the corresponding request/result
+  def initialize(request, result)
+    @request = request
+    @result  = result
+  end
+
+  # Global stats registry
+  def self.stats
+    @stats ||= []
+  end
+
+  # Reinit the stats registry
+  def self.reset
+    @stats = []
+  end
+
+  # Add stat to the global registry
+  def self.<<(s)
+    @stats ||= []
+    @stats << s
+    self
+  end
+
+  # Convert stat to json representation and return it
+  def to_json(*a)
+    {
+      'json_class' => self.class.name,
+      'data'       =>
+        {:request => {:method        => request.method,
+                      :method_args   => request.method_args,
+                      :headers       => request.headers,
+                      :rjr_node_type => request.rjr_node_type,
+                      :rjr_node_id   => request.rjr_node_id
+                      },
+         :result => {:result      => result.result,
+                     :error_code  => result.error_code,
+                     :error_msg   => result.error_msg,
+                     :error_class => result.error_class} }
+    }.to_json(*a)
+  end
+
+  # Create new stat from json representation
+  def self.json_create(o)
+    stat = new(Request.new(o['data']['request']), Result.new(o['data']['result']))
+    return stat
   end
 end
 
@@ -250,6 +310,11 @@ class Dispatcher
   def self.has_handler_for?(method_name)
     @@handlers  ||= {}
     !@@handlers.find { |k,v| k == method_name }.nil?
+  end
+
+  # Return the handler for the specified method
+  def self.handler_for(method_name)
+    @@handlers[method_name]
   end
 
   # Helper used by RJR nodes to dispatch requests received via transports to

@@ -176,6 +176,16 @@ class ThreadPool2
     ObjectSpace.define_finalizer(self, self.class.finalize(self))
   end
 
+  # Return internal thread pool state in string
+  def inspect
+    "wq#{@work_queue.size}/\
+rq#{@running_queue.size}/\
+nt#{@num_threads.size}/\
+wt#{@worker_threads.select { |wt| ['sleep', 'run'].include?(wt.status) }.size}ok-\
+#{@worker_threads.select { |wt| ['aborting', false, nil].include?(wt.status) }.size}nok/\
+to#{@timeout}"
+  end
+
   # Start the thread pool
   def start
     # clear work and timeout queues?

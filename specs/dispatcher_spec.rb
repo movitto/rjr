@@ -49,6 +49,10 @@ end
 
 
 describe RJR::Handler do
+  before(:each) do
+    RJR::DispatcherStat.reset
+  end
+
   it "should return method not found result if method name is not specified" do
     handler = RJR::Handler.new :method => nil
     result = handler.handle
@@ -63,6 +67,15 @@ describe RJR::Handler do
                                }
     handler.handle({:method_args => [] })
     invoked.should == true
+  end
+
+  it "should create dispatcher stat when invoking handler" do
+    handler = RJR::Handler.new :method => 'foobar',
+                               :handler => lambda { 42 }
+    handler.handle({:method_args => [] })
+    RJR::DispatcherStat.stats.size.should == 1
+    RJR::DispatcherStat.stats.first.request.method.should == 'foobar'
+    RJR::DispatcherStat.stats.first.result.result.should == 42
   end
 
   it "should return handler's return value in successful result" do
@@ -90,6 +103,59 @@ describe RJR::Handler do
   end
 end
 
+describe RJR::DispatcherStat do
+  before(:each) do
+    RJR::DispatcherStat.reset
+  end
+
+  it "should store request and result" do
+    req = RJR::Request.new
+    res = RJR::Result.new
+    stat = RJR::DispatcherStat.new req, res
+    (stat.request == req).should be_true
+    stat.result.should == res
+  end
+
+  it "should track global stats" do
+    req = RJR::Request.new
+    res = RJR::Result.new
+    stat = RJR::DispatcherStat.new req, res
+
+    RJR::DispatcherStat << stat
+    RJR::DispatcherStat.stats.should include(stat)
+  end
+
+  it "should be convertable to json" do
+    req = RJR::Request.new :method => 'foobar', :method_args => [:a, :b],
+                           :headers => { :foo => :bar }, :rjr_node_type => :local,
+                           :rjr_node_id => :loc1
+    res = RJR::Result.new :result => 42
+
+    stat = RJR::DispatcherStat.new req, res
+    j = stat.to_json()
+    j.should include('"json_class":"RJR::DispatcherStat"')
+    j.should include('"method":"foobar"')
+    j.should include('"method_args":["a","b"]')
+    j.should include('"headers":{"foo":"bar"}')
+    j.should include('"rjr_node_type":"local"')
+    j.should include('"rjr_node_id":"loc1"')
+    j.should include('"result":42')
+  end
+
+  it "should be convertable from json" do
+    j = '{"json_class":"RJR::DispatcherStat","data":{"request":{"method":"foobar","method_args":["a","b"],"headers":{"foo":"bar"},"rjr_node_type":"local","rjr_node_id":"loc1"},"result":{"result":42,"error_code":null,"error_msg":null,"error_class":null}}}'
+    s = JSON.parse(j)
+
+    s.class.should == RJR::DispatcherStat
+    s.request.method.should == 'foobar'
+    s.request.method_args.should == ['a', 'b']
+    s.request.headers.should == { 'foo' => 'bar' }
+    s.request.rjr_node_type.should == 'local'
+    s.request.rjr_node_id.should == 'loc1'
+    s.result.result.should == 42
+  end
+end
+
 describe RJR::Dispatcher do
   it "should dispatch request to registered handler" do
     invoked_foobar = false
@@ -109,6 +175,21 @@ describe RJR::Dispatcher do
     res.result.should == "retval"
     invoked_foobar.should == true
     invoked_barfoo.should == false
+  end
+
+  it "should allow user to determine registered handlers" do
+    foobar = lambda {}
+    barfoo = lambda {}
+    RJR::Dispatcher.add_handler('foobar', &foobar)
+    RJR::Dispatcher.add_handler('barfoo', &barfoo)
+
+    RJR::Dispatcher.has_handler_for?('foobar').should be_true
+    RJR::Dispatcher.has_handler_for?('barfoo').should be_true
+    RJR::Dispatcher.has_handler_for?('money').should be_false
+
+    RJR::Dispatcher.handler_for('foobar').handler_proc.should == foobar
+    RJR::Dispatcher.handler_for('barfoo').handler_proc.should == barfoo
+    RJR::Dispatcher.handler_for('money').should be_nil
   end
 
   it "should allow a single handler to be subscribed to multiple methods" do
