@@ -6,6 +6,7 @@
 # Licensed under the Apache License, Version 2.0
 
 # TODO fix issues (as made evident by ruby client in test harness)
+# TODO notifications
 
 require 'em-websocket'
 require 'rjr/web_socket'

@@ -11,6 +11,8 @@
 # establish client connection w/ specified args and invoke block w/ 
 # newly created client, returning it after block terminates
 
+# TODO notifications
+
 require 'socket'
 require 'curb'
 
@@ -124,7 +126,7 @@ class WebNode < RJR::Node
 
   public
 
-  # TCPNode initializer
+  # WebNode initializer
   # @param [Hash] args the options to create the tcp node with
   # @option args [String] :host the hostname/ip which to listen on
   # @option args [Integer] :port the port which to listen on

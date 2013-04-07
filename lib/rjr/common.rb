@@ -61,6 +61,20 @@ class Logger
     # @param level one of the standard rails log levels (default fatal)
     def self.log_level=(level)
       _instantiate_logger
+      if level.is_a?(String)
+        level = case level
+                when 'debug' then
+                  ::Logger::DEBUG
+                when 'info' then
+                  ::Logger::INFO
+                when 'warn' then
+                  ::Logger::WARN
+                when 'error' then
+                  ::Logger::ERROR
+                when 'fatal' then
+                  ::Logger::FATAL
+                end
+      end
       @log_level    = level
       @logger.level = level
     end

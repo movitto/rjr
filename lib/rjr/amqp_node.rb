@@ -32,7 +32,7 @@ class AMQPNodeCallback
 
   # Implementation of {RJR::NodeCallback#invoke}
   def invoke(callback_method, *data)
-    msg = RequestMessage.new :method => callback_method, :args => data, :headers => @message_headers
+    msg = NotificationMessage.new :method => callback_method, :args => data, :headers => @message_headers
     @node.publish msg.to_s, :routing_key => @destination, :mandatory => true
   end
 end
@@ -67,7 +67,11 @@ class  AMQPNode < RJR::Node
   def handle_message(metadata, msg)
     if RequestMessage.is_request_message?(msg)
       reply_to = metadata.reply_to
-      ThreadPool2Manager << ThreadPool2Job.new { handle_request(reply_to, msg) }
+      ThreadPool2Manager << ThreadPool2Job.new { handle_request(reply_to, msg, false) }
+
+    elsif NotificationMessage.is_notification_message?(msg)
+      reply_to = metadata.reply_to
+      ThreadPool2Manager << ThreadPool2Job.new { handle_request(reply_to, msg, true) }
 
     elsif ResponseMessage.is_response_message?(msg)
       handle_response(msg)
@@ -76,8 +80,9 @@ class  AMQPNode < RJR::Node
   end
 
   # Internal helper, handle request message pulled off queue
-  def handle_request(reply_to, message)
-    msg    = RequestMessage.new(:message => message, :headers => @message_headers)
+  def handle_request(reply_to, message, notification=false)
+    msg    = notification ? NotificationMessage.new(:message => message, :headers => @message_headers) :
+                            RequestMessage.new(:message => message, :headers => @message_headers)
     headers = @message_headers.merge(msg.headers) # append request message headers
     result = Dispatcher.dispatch_request(msg.jr_method,
                                          :method_args => msg.jr_args,
@@ -92,8 +97,10 @@ class  AMQPNode < RJR::Node
                                                                 :exchange => @exchange,
                                                                 :destination => reply_to,
                                                                 :headers => headers))
-    response = ResponseMessage.new(:id => msg.msg_id, :result => result, :headers => headers)
-    publish response.to_s, :routing_key => reply_to
+    unless notification
+      response = ResponseMessage.new(:id => msg.msg_id, :result => result, :headers => headers)
+      publish response.to_s, :routing_key => reply_to
+    end
   end
 
   # Internal helper, handle response message pulled off queue
@@ -145,18 +152,15 @@ class  AMQPNode < RJR::Node
     res = nil
     while res.nil?
       @response_lock.synchronize{
-        @response_cv.wait @response_lock
         # FIXME throw err if more than 1 match found
         res = @responses.select { |response| message.msg_id == response.first }.first
-        unless res.nil?
+        if !res.nil?
           @responses.delete(res)
+
         else
-          # we can't just go back to waiting for message here, need to give
-          # other nodes a chance to check it first
           @response_cv.signal
-          @response_check_cv.wait @response_lock
+          @response_cv.wait @response_lock
         end
-        @response_check_cv.signal
       }
     end
     return res
@@ -196,7 +200,6 @@ class  AMQPNode < RJR::Node
      @connection_event_handlers = {:closed => [], :error => []}
      @response_lock = Mutex.new
      @response_cv   = ConditionVariable.new
-     @response_check_cv   = ConditionVariable.new
      @responses     = []
      @amqp_lock     = Mutex.new
   end
@@ -269,6 +272,44 @@ class  AMQPNode < RJR::Node
       raise Exception, result[2]
     end
     return result[1]
+  end
+
+  # Instructs node to send rpc request, and immediately return / ignoring response
+  #
+  # FIXME uncomment & also add method to collect response at a later time
+  #
+  # @param [String] routing_key destination queue to send request to
+  # @param [String] rpc_method json-rpc method to invoke on destination
+  # @param [Array] args array of arguments to convert to json and invoke remote method wtih
+  # @return [String] id of message sent to remote node
+  #def async_request(routing_key, rpc_method, *args)
+  #  message = RequestMessage.new :method => rpc_method,
+  #                               :args   => args,
+  #                               :headers => @message_headers
+  #  em_run do
+  #    init_node
+
+  #    publish message.to_s, :routing_key => routing_key, :reply_to => @queue_name
+  #  end
+
+  #  message.msg_id
+  #end
+
+  # Instructs node to send rpc notification (immadiately returns / no response is generated)
+  #
+  # @param [String] routing_key destination queue to send request to
+  # @param [String] rpc_method json-rpc method to invoke on destination
+  # @param [Array] args array of arguments to convert to json and invoke remote method wtih
+  def send_notification(routing_key, rpc_method, *args)
+    message = NotificationMessage.new :method => rpc_method,
+                                      :args   => args,
+                                      :headers => @message_headers
+    em_run do
+      init_node
+
+      publish message.to_s, :routing_key => routing_key, :reply_to => @queue_name
+    end
+    nil
   end
 
 end

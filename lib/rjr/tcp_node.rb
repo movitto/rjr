@@ -187,18 +187,16 @@ class TCPNode < RJR::Node
     res = nil
     while res.nil?
       @response_lock.synchronize{
-        @response_cv.wait @response_lock
         # FIXME throw err if more than 1 match found
         res = @responses.select { |response| message.msg_id == response.first }.first
-        unless res.nil?
+        if !res.nil?
           @responses.delete(res)
+
         else
-          # we can't just go back to waiting for message here, need to give
-          # other nodes a chance to check it first
           @response_cv.signal
-          @response_check_cv.wait @response_lock
+          @response_cv.wait @response_lock
+
         end
-        @response_check_cv.signal
       }
     end
     return res
@@ -216,7 +214,6 @@ class TCPNode < RJR::Node
 
      @response_lock = Mutex.new
      @response_cv   = ConditionVariable.new
-     @response_check_cv   = ConditionVariable.new
      @responses     = []
 
      @connection_event_handlers = {:closed => [], :error => []}
@@ -271,6 +268,26 @@ class TCPNode < RJR::Node
       raise Exception, result[2]
     end
     return result[1]
+  end
+
+  # Instructs node to send rpc notification (immadiately returns / no response is generated)
+  #
+  # @param [String] uri location of node to send notification to, should be
+  #   in format of jsonrpc://hostname:port
+  # @param [String] rpc_method json-rpc method to invoke on destination
+  # @param [Array] args array of arguments to convert to json and invoke remote method wtih
+  def send_notification(uri, rpc_method, *args)
+    uri = URI.parse(uri)
+    host,port = uri.host, uri.port
+
+    message = NotificationMessage.new :method => rpc_method,
+                                      :args   => args,
+                                      :headers => @message_headers
+    em_run{
+      init_node(:host => host, :port => port,
+                :rjr_node => self, :init_message => message)
+    }
+    nil
   end
 end
 
