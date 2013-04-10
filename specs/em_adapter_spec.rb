@@ -50,7 +50,7 @@ describe EMManager do
     manager.schedule { "foo" }
     manager.has_jobs?.should be_true
 
-    manager.stop.should == true
+    manager.stop.should == false
     manager.has_jobs?.should be_false
     manager.running?.should be_true
 

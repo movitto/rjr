@@ -29,7 +29,7 @@ describe RJR::MultiNode do
 
     multi.listen
 
-    amqp_client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost'
+    amqp_client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost', :keep_alive => true # see comment about keepalive in amqp_node_spec
     res = amqp_client.invoke_request 'amqp-queue', 'foolbar', 'myparam1'
     res.should == 'retval1'
 

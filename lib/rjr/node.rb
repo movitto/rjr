@@ -39,12 +39,23 @@ class Node
   # requests and responses received and sent by node
   attr_accessor :message_headers
 
+  # boolean indicating if connection / event machine should be
+  # kept alive inbetween requests
+  attr_accessor :keep_alive
+
   # RJR::Node initializer
+  #
+  # *Note* set keep_alive to true if you intended to use
+  # the node from parallel threads (and manually halt
+  # the node when appropriate in your application)
+  #
   # @param [Hash] args options to set on request
   # @option args [String] :node_id unique id of the node *required*!!!
   # @option args [Hash<String,String>] :headers optional headers to set on all json-rpc messages
   # @option args [Integer] :threads number of handler to threads to instantiate in local worker pool
   # @option args [Integer] :timeout timeout after which worker thread being run is killed
+  # @option args [boolean] :keep_alive boolean indicating if connections / event machine should be
+  #                        kept alive inbetween requests
   def initialize(args = {})
      RJR::Node.default_threads ||=  20
      RJR::Node.default_timeout ||=  10

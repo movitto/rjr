@@ -3,8 +3,10 @@ require 'rjr/dispatcher'
 
 describe RJR::AMQPNode do
   it "should invoke and satisfy amqp requests" do
+    # XXX since server/client use same em reactor set keep alive true so
+    # client doesn't block after receiving request
     server = RJR::AMQPNode.new :node_id => 'amqp', :broker => 'localhost'
-    client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost'
+    client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost', :keep_alive => true
 
     foozbar_invoked = false
     RJR::Dispatcher.init_handlers

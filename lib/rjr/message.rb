@@ -82,7 +82,7 @@ class RequestMessage
   # @return [true,false] indicating if message is request message
   def self.is_request_message?(message)
     begin
-       # TODO log error
+       # FIXME log error
        parsed = JSON.parse(message)
        parsed.has_key?('method') && parsed.has_key?('id')
     rescue Exception => e
@@ -175,7 +175,7 @@ class ResponseMessage
       json = JSON.parse(message)
       json.has_key?('result') || json.has_key?('error')
     rescue Exception => e
-      # TODO log error
+      # FIXME log error
       #puts e.to_s
       false
     end
@@ -265,7 +265,7 @@ class NotificationMessage
   # @return [true,false] indicating if message is a notification message
   def self.is_notification_message?(message)
     begin
-       # TODO log error
+       # FIXME log error
        parsed = JSON.parse(message)
        parsed.has_key?('method') && !parsed.has_key?('id')
     rescue Exception => e

@@ -77,7 +77,7 @@ class EasyNode
   end
 
   def invoke_request(dst, method, *params)
-    # TODO allow selection of node?
+    # TODO allow selection of node, eg automatically deduce which node type to use from 'dst'
     @multi_node.nodes.first.invoke_request(dst, method, *params)
   end
 

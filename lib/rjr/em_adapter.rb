@@ -128,7 +128,7 @@ class EMManager
         EventMachine.stop_event_loop
         #@reactor_thread.join # trusting event machine here to finish up
       end
-      old_em_jobs != 0 && @em_jobs == 0 # only return true if this operation stopped the reactor
+      !@keep_alive && old_em_jobs != 0 && @em_jobs == 0 # only return true if this operation stopped the reactor
     }
   end
 

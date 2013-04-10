@@ -5,6 +5,8 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
+# TODO update w/ fixes from amqp node
+
 require 'uri'
 require 'socket'
 require 'eventmachine'

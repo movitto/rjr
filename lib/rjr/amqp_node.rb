@@ -33,7 +33,7 @@ class AMQPNodeCallback
   # Implementation of {RJR::NodeCallback#invoke}
   def invoke(callback_method, *data)
     msg = NotificationMessage.new :method => callback_method, :args => data, :headers => @message_headers
-    @node.publish msg.to_s, :routing_key => @destination, :mandatory => true
+    @node.publish(msg.to_s, :routing_key => @destination, :mandatory => true) { }
   end
 end
 
@@ -99,7 +99,7 @@ class  AMQPNode < RJR::Node
                                                                 :headers => headers))
     unless notification
       response = ResponseMessage.new(:id => msg.msg_id, :result => result, :headers => headers)
-      publish response.to_s, :routing_key => reply_to
+      publish(response.to_s, :routing_key => reply_to) { }
     end
   end
 
@@ -122,11 +122,19 @@ class  AMQPNode < RJR::Node
   end
 
   # Initialize the amqp subsystem
-  def init_node
-     return unless @conn.nil? || !@conn.connected?
+  def init_node(&on_init)
+     if !@conn.nil? && @conn.connected?
+       on_init.call
+       return
+     end
+
      super
-     @conn = AMQP.connect(:host => @broker)
+     @conn = AMQP.connect(:host => @broker) do |*args|
+       on_init.call
+     end
      @conn.on_tcp_connection_failure { puts "OTCF #{@node_id}" }
+
+     # TODO move the rest into connect callback ?
 
      ### connect to qpid broker
      @channel = AMQP::Channel.new(@conn)
@@ -207,10 +215,12 @@ class  AMQPNode < RJR::Node
   # Publish a message using the amqp exchange (*do* *not* *use*).
   #
   # XXX hack should be private, declared publically so as to be able to be used by {RJR::AMQPNodeCallback}
-  def publish(*args)
+  def publish(*args, &on_publish)
     @amqp_lock.synchronize {
       #raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
-      @exchange.publish *args
+      @exchange.publish *args do |*cargs|
+        on_publish.call
+      end
     }
     nil
   end
@@ -230,11 +240,11 @@ class  AMQPNode < RJR::Node
   # Implementation of {RJR::Node#listen}
   def listen
     em_run do
-      init_node
-
-      # start receiving messages
-      subscribe { |metadata, msg|
-        handle_message(metadata, msg)
+      init_node {
+        # start receiving messages
+        subscribe { |metadata, msg|
+          handle_message(metadata, msg)
+        }
       }
     end
   end
@@ -254,19 +264,20 @@ class  AMQPNode < RJR::Node
                                  :args   => args,
                                  :headers => @message_headers
     em_run do
-      init_node
+      init_node {
+        # begin listening for result
+        subscribe { |metadata, msg|
+          handle_message(metadata, msg)
+        }
 
-      # begin listening for result
-      subscribe { |metadata, msg|
-        handle_message(metadata, msg)
+        publish(message.to_s, :routing_key => routing_key, :reply_to => @queue_name) { }
       }
-
-      publish message.to_s, :routing_key => routing_key, :reply_to => @queue_name
     end
 
     # TODO optional timeout for response ?
     result = wait_for_result(message)
     self.stop
+    self.join unless @keep_alive # XXX (see comment in send_notification)
 
     if result.size > 2
       raise Exception, result[2]
@@ -305,10 +316,13 @@ class  AMQPNode < RJR::Node
                                       :args   => args,
                                       :headers => @message_headers
     em_run do
-      init_node
-
-      publish message.to_s, :routing_key => routing_key, :reply_to => @queue_name
+      init_node {
+        publish(message.to_s, :routing_key => routing_key, :reply_to => @queue_name){
+          self.stop
+        }
+      }
     end
+    self.join unless @keep_alive # XXX (unless keep_alive, em will be stopped after every notification, wait for it to cleanup)
     nil
   end
 

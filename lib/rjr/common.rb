@@ -78,6 +78,11 @@ class Logger
       @log_level    = level
       @logger.level = level
     end
+
+    # Return true if log level is set to debug, else false
+    def debug?
+      @log_level == ::Logger::DEBUG
+    end
 end
 
 end # module RJR

@@ -202,7 +202,7 @@ to#{@timeout}"
     proc { thread_pool.stop ; thread_pool.join }
   end
 
-  # Return boolean indicated if thread pool is running.
+  # Return boolean indicating if thread pool is running.
   #
   # If at least one worker thread isn't terminated, the pool is still considered running
   def running?
@@ -236,8 +236,9 @@ to#{@timeout}"
   # Block until all worker threads have finished executing
   def join
     #@pool_lock.synchronize { @worker_threads.each { |t| t.join unless @terminate } }
-    # TODO protect w/ pool_lock? (causes deadlock)
-    @manager_thread.join if @manager_thread
+    th = nil
+    @pool_lock.synchronize { th = @manager_thread if @manager_thread }
+    th.join if th
   end
 end
 
