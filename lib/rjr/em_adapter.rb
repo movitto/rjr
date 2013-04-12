@@ -15,85 +15,48 @@ class EMManager
   # Run reactor in its own interally managed thread
   attr_accessor :reactor_thread
 
-  # Number of jobs being run in the reactor
-  attr_accessor :em_jobs
-
   # EMManager initializer
   def initialize
     @em_lock = Mutex.new
-    @em_jobs = 0
-
-    @keep_alive = false
-
-     ObjectSpace.define_finalizer(self, self.class.finalize(self))
-  end
-
-  # Ruby ObjectSpace finalizer to ensure that EM is terminated
-  def self.finalize(em_manager)
-    proc { em_manager.halt ; em_manager.join }
-  end
-
-  # Update local em settings
-  # @param [Hash] args options to set on em manager
-  # @option args [Boolean] :keep_alive set to true to indicate event machine
-  #   should be kept alive until 'halt' is called, set to false to indicate
-  #   event machine should be terminated when there are no more pending operations
-  def update(args = {})
-    if args[:keep_alive]
-      @keep_alive = true
-
-    elsif args[:keep_alive] == false
-      @keep_alive = false
-
-    end
   end
 
   # Start the eventmachine reactor thread if not running
   def start
     @em_lock.synchronize{
+      # TODO on event of the process ending this thread will be
+      # shutdown before a local finalizer can be run,
+      # would be good to gracefully shut this down / wait for completion
       @reactor_thread  = Thread.new {
         begin
           EventMachine.run
         rescue Exception => e
+          # TODO option to autorestart the reactor on errors ?
           puts "Critical exception #{e}\n#{e.backtrace.join("\n")}"
         ensure
           @reactor_thread = nil
         end
        } unless @reactor_thread
      }
-     sleep 0.1 until EventMachine.reactor_running? # XXX hack but needed
+     sleep 0.01 until EventMachine.reactor_running? # XXX hack but needed
    end
-
 
   # Schedule a new job to be run in event machine
   # @param [Callable] bl callback to be invoked by eventmachine
   def schedule(&bl)
-    @em_lock.synchronize{
-      @em_jobs += 1
-    }
-    # TODO move into block? causes deadlock
-    EventMachine.schedule bl
+    EventMachine.schedule &bl
   end
 
   # Schedule a job to be run once after a specified interval in event machine
   # @param [Integer] seconds int interval which to wait before invoking specified block
   # @param [Callable] bl callback to be invoked by eventmachine
   def add_timer(seconds, &bl)
-    EventMachine.add_timer(seconds) {
-      @em_lock.synchronize { @em_jobs += 1 }
-      bl.call
-      #@em_lock.synchronize { @em_jobs -= 1 }
-    }
+    EventMachine.add_timer(seconds, &bl)
   end
 
   # Schedule a block to be run periodically in event machine
   # @param [Integer] seconds int interval which to invoke specified block
   # @param [Callable] bl callback to be invoked by eventmachine
   def add_periodic_timer(seconds, &bl)
-    @em_lock.synchronize{
-      @em_jobs += 1
-    }
-    # TODO move into block ?
     EventMachine.add_periodic_timer(seconds, &bl)
   end
 
@@ -104,39 +67,19 @@ class EMManager
     }
   end
 
-  # Return boolean indicating if event machine has jobs to run
-  def has_jobs?
-    @em_lock.synchronize{
-      @em_jobs > 0
-    }
-  end
-
   # Block until reactor thread is terminated
   def join
+    th = nil
     @em_lock.synchronize{
-      @reactor_thread.join unless @reactor_thread.nil?
+      th = @reactor_thread
     }
-  end
-
-  # Gracefully stop event machine if no jobs are running.
-  # Set @keep_alive to true to ignore calls to stop
-  def stop
-    @em_lock.synchronize{
-      old_em_jobs = @em_jobs
-      @em_jobs -= 1
-      if !@keep_alive && @em_jobs == 0
-        EventMachine.stop_event_loop
-        #@reactor_thread.join # trusting event machine here to finish up
-      end
-      !@keep_alive && old_em_jobs != 0 && @em_jobs == 0 # only return true if this operation stopped the reactor
-    }
+    th.join unless th.nil?
   end
 
   # Terminate the event machine reactor under all conditions
   def halt
     @em_lock.synchronize{
       EventMachine.stop_event_loop
-      #@reactor_thread.join
     }
   end
 end
@@ -151,12 +94,11 @@ end
 #     EMAdapter.start
 class EMAdapter
   # Initialize EM subsystem
-  def self.init(args = {})
+  def self.init
     if @em_manager.nil?
       @em_manager = EMManager.new
     end
 
-    @em_manager.update args
     @em_manager.start
   end
 

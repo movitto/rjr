@@ -39,23 +39,13 @@ class Node
   # requests and responses received and sent by node
   attr_accessor :message_headers
 
-  # boolean indicating if connection / event machine should be
-  # kept alive inbetween requests
-  attr_accessor :keep_alive
-
   # RJR::Node initializer
-  #
-  # *Note* set keep_alive to true if you intended to use
-  # the node from parallel threads (and manually halt
-  # the node when appropriate in your application)
   #
   # @param [Hash] args options to set on request
   # @option args [String] :node_id unique id of the node *required*!!!
   # @option args [Hash<String,String>] :headers optional headers to set on all json-rpc messages
   # @option args [Integer] :threads number of handler to threads to instantiate in local worker pool
   # @option args [Integer] :timeout timeout after which worker thread being run is killed
-  # @option args [boolean] :keep_alive boolean indicating if connections / event machine should be
-  #                        kept alive inbetween requests
   def initialize(args = {})
      RJR::Node.default_threads ||=  20
      RJR::Node.default_timeout ||=  10
@@ -63,7 +53,7 @@ class Node
      @node_id     = args[:node_id]
      @num_threads = args[:threads]  || RJR::Node.default_threads
      @timeout     = args[:timeout]  || RJR::Node.default_timeout
-     @keep_alive  = args[:keep_alive] || false
+     EMAdapter.init
 
      @message_headers = {}
      @message_headers.merge!(args[:headers]) if args.has_key?(:headers)
@@ -87,7 +77,7 @@ class Node
     ThreadPool2Manager.init @num_threads, :timeout => @timeout
 
     # Nodes make use of an EM helper interface to schedule operations
-    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.init
 
     EMAdapter.schedule &bl
   end
@@ -96,7 +86,7 @@ class Node
   def em_run_async(&bl)
     # same init as em_run
     ThreadPool2Manager.init @num_threads, :timeout => @timeout
-    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.init
     EMAdapter.schedule {
       ThreadPool2Manager << ThreadPool2Job.new { bl.call }
     }
@@ -114,7 +104,7 @@ class Node
   def em_schedule_async(seconds, &bl)
     # same init as em_run
     ThreadPool2Manager.init @num_threads, :timeout => @timeout
-    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.init
     EMAdapter.add_timer(seconds) {
       ThreadPool2Manager << ThreadPool2Job.new { bl.call }
     }
@@ -127,7 +117,7 @@ class Node
   def em_repeat(seconds, &bl)
     # same init as em_run
     ThreadPool2Manager.init @num_threads, :timeout => @timeout
-    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.init
     EMAdapter.add_periodic_timer seconds, &bl
   end
 
@@ -141,7 +131,7 @@ class Node
   def em_repeat_async(seconds, &bl)
     # same init as em_schedule
     ThreadPool2Manager.init @num_threads, :timeout => @timeout
-    EMAdapter.init :keep_alive => @keep_alive
+    EMAdapter.init
     EMAdapter.add_periodic_timer(seconds){
       ThreadPool2Manager << ThreadPool2Job.new { bl.call }
     }
@@ -151,13 +141,6 @@ class Node
   def join
     ThreadPool2Manager.join
     EMAdapter.join
-  end
-
-  # Terminate the node if no other jobs are running
-  def stop
-    if EMAdapter.stop
-      ThreadPool2Manager.stop
-    end
   end
 
   # Immediately terminate the node

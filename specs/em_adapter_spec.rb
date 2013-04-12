@@ -35,10 +35,11 @@ describe EMManager do
     sleep 0.5
     block_ran.should == true
 
-    manager.stop.should == true
-    manager.join
+    manager.job_finished
     manager.has_jobs?.should be_false
     manager.instance_variable_get(:@em_jobs).should == 0
+    manager.halt
+    manager.join
     manager.running?.should be_false
   end
 
@@ -46,15 +47,14 @@ describe EMManager do
     manager = EMManager.new
     manager.start
     manager.running?.should be_true
-    manager.update :keep_alive => true
     manager.schedule { "foo" }
     manager.has_jobs?.should be_true
 
-    manager.stop.should == false
+    manager.job_finished
     manager.has_jobs?.should be_false
     manager.running?.should be_true
 
-    # XXX forcibly stop the reactor
+    # forcibly stop the reactor
     manager.halt
     manager.join
     manager.running?.should be_false
@@ -70,7 +70,7 @@ describe EMManager do
     block_called.should == false
     sleep 1
     block_called.should == true
-    manager.stop
+    manager.halt
     manager.join
   end
 
@@ -84,10 +84,10 @@ describe EMManager do
     times_block_called.should == 0
     sleep 0.6
     times_block_called.should == 1
-    sleep 1
+    sleep 1.2
     times_block_called.should == 2
 
-    manager.stop
+    manager.halt
     manager.join
   end
 end

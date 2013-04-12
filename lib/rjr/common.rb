@@ -14,6 +14,8 @@ module RJR
 # Encapsulates the standard ruby logger in a thread safe manner. Dispatches
 # class methods to an internally tracked logger to provide global access.
 #
+# TODO handle logging errors (log size too big, logrotate, etc)
+#
 # @example
 #   RJR::Logger.info 'my message'
 #   RJR::Logger.warn 'my warning'
@@ -80,7 +82,7 @@ class Logger
     end
 
     # Return true if log level is set to debug, else false
-    def debug?
+    def self.debug?
       @log_level == ::Logger::DEBUG
     end
 end

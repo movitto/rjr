@@ -5,8 +5,6 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-# TODO update w/ fixes from amqp node
-
 require 'uri'
 require 'socket'
 require 'eventmachine'
@@ -45,14 +43,19 @@ end
 # Helper class intialized by eventmachine encapsulating a socket connection
 class TCPNodeEndpoint < EventMachine::Connection
 
+  attr_reader :active
+  attr_reader :host
+  attr_reader :port
+
   # TCPNodeEndpoint intializer
   #
-  # specify the TCPNode establishing the connection and an optional first message to send
+  # specify the TCPNode establishing the connection
   def initialize(args = {})
     @rjr_node        = args[:rjr_node]
+    @host = args[:host]
+    @port = args[:port]
 
-    # these params should be set for clients
-    @send_message    = args[:init_message]
+    @active = false
 
     # used to serialize requests to send data via a connection
     @send_lock = Mutex.new
@@ -60,10 +63,8 @@ class TCPNodeEndpoint < EventMachine::Connection
 
   # {EventMachine::Connection#post_init} callback, sends first message if specified
   def post_init
-    unless @send_message.nil?
-      safe_send @send_message.to_s
-      @send_message = nil
-    end
+    #self.set_sock_opt(Socket::SOL_SOCKET, Socket::SO_LINGER, [1, 50].pack("ii"))
+    @active = true
   end
 
   # {EventMachine::Connection#receive_data} callback, handle request / response messages
@@ -104,7 +105,13 @@ class TCPNodeEndpoint < EventMachine::Connection
 
   # Internal helper, handle request message received
   def handle_request(data, notification=false)
-    client_port, client_ip = Socket.unpack_sockaddr_in(get_peername)
+    # XXX hack to handle client disconnection (should grap port/ip immediately on connection and use that)
+    client_port,client_ip = nil,nil
+    begin
+      client_port, client_ip = Socket.unpack_sockaddr_in(get_peername)
+    rescue Exception=>e
+    end
+
     msg    = notification ? NotificationMessage.new(:message => data, :headers => @rjr_node.message_headers) :
                             RequestMessage.new(:message => data, :headers => @rjr_node.message_headers)
     headers = @rjr_node.message_headers.merge(msg.headers)
@@ -167,21 +174,30 @@ end
 class TCPNode < RJR::Node
   RJR_NODE_TYPE = :tcp
 
+  attr_accessor :connections
+
   attr_accessor :response_lock
   attr_accessor :response_cv
   attr_accessor :responses
 
   private
   # Initialize the tcp subsystem
-  def init_node(args = {})
-    super()
-    # TODO only do this if keep_alive is true
-    if @connection.nil? && args.has_key?(:host) && args.has_key?(:port)
-      @connection = EventMachine::connect args[:host], args[:port],
-                                             TCPNodeEndpoint, args
-    elsif args.has_key?(:init_message)
-      @connection.safe_send args[:init_message]
-    end
+  def init_node(args={}, &on_init)
+    host,port = args[:host], args[:port]
+    connection = nil
+    @connections_lock.synchronize {
+      connection = @connections.find { |c|
+                     port == c.port && host == c.host
+                   }
+      if connection.nil?
+        connection =
+          EventMachine::connect host, port,
+                      TCPNodeEndpoint, args
+        @connections << connection
+      end
+    }
+    sleep 0.1 until connection.active # XXX hack but needed
+    on_init.call(connection)
   end
 
   # Internal helper, block until response matching message id is received
@@ -214,6 +230,9 @@ class TCPNode < RJR::Node
      @host      = args[:host]
      @port      = args[:port]
 
+     @connections = []
+     @connections_lock = Mutex.new
+
      @response_lock = Mutex.new
      @response_cv   = ConditionVariable.new
      @responses     = []
@@ -236,7 +255,6 @@ class TCPNode < RJR::Node
   # Implementation of {RJR::Node#listen}
   def listen
     em_run {
-      init_node
       EventMachine::start_server @host, @port, TCPNodeEndpoint, { :rjr_node => self }
     }
   end
@@ -259,12 +277,13 @@ class TCPNode < RJR::Node
                                  :headers => @message_headers
     em_run{
       init_node(:host => host, :port => port,
-                :rjr_node => self, :init_message => message)
+                :rjr_node => self) { |c|
+        c.safe_send message.to_s
+      }
     }
 
     # TODO optional timeout for response ?
     result = wait_for_result(message)
-    self.stop
 
     if result.size > 2
       raise Exception, result[2]
@@ -279,16 +298,29 @@ class TCPNode < RJR::Node
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
   def send_notification(uri, rpc_method, *args)
+    # will block until message is published
+    published_l = Mutex.new
+    published_c = ConditionVariable.new
+
     uri = URI.parse(uri)
     host,port = uri.host, uri.port
 
+    conn    = nil
     message = NotificationMessage.new :method => rpc_method,
                                       :args   => args,
                                       :headers => @message_headers
     em_run{
       init_node(:host => host, :port => port,
-                :rjr_node => self, :init_message => message)
+                :rjr_node => self) { |c|
+        conn = c
+        c.safe_send message.to_s
+        # XXX big bug w/ tcp node, this should be invoked only when
+        # we are sure event machine sent message
+        published_l.synchronize { published_c.signal }
+      }
     }
+    published_l.synchronize { published_c.wait published_l }
+    #sleep 0.01 until conn.get_outbound_data_size == 0
     nil
   end
 end

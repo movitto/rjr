@@ -12,7 +12,6 @@ require 'rjr/message'
 
 module RJR
 
-
 # AMQP node callback interface, used to invoke json-rpc methods on a
 # remote node which previously invoked a method on the local one.
 #
@@ -274,10 +273,8 @@ class  AMQPNode < RJR::Node
       }
     end
 
-    # TODO optional timeout for response ?
+    # TODO optional timeout for response
     result = wait_for_result(message)
-    self.stop
-    self.join unless @keep_alive # XXX (see comment in send_notification)
 
     if result.size > 2
       raise Exception, result[2]
@@ -285,26 +282,9 @@ class  AMQPNode < RJR::Node
     return result[1]
   end
 
-  # Instructs node to send rpc request, and immediately return / ignoring response
-  #
-  # FIXME uncomment & also add method to collect response at a later time
-  #
-  # @param [String] routing_key destination queue to send request to
-  # @param [String] rpc_method json-rpc method to invoke on destination
-  # @param [Array] args array of arguments to convert to json and invoke remote method wtih
-  # @return [String] id of message sent to remote node
-  #def async_request(routing_key, rpc_method, *args)
-  #  message = RequestMessage.new :method => rpc_method,
-  #                               :args   => args,
-  #                               :headers => @message_headers
-  #  em_run do
-  #    init_node
-
-  #    publish message.to_s, :routing_key => routing_key, :reply_to => @queue_name
-  #  end
-
-  #  message.msg_id
-  #end
+  # FIXME add method to instruct node to send rpc request, and immediately
+  #        return / ignoring response & also add method to collect response
+  #        at a later time
 
   # Instructs node to send rpc notification (immadiately returns / no response is generated)
   #
@@ -312,17 +292,21 @@ class  AMQPNode < RJR::Node
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
   def send_notification(routing_key, rpc_method, *args)
+    # will block until message is published
+    published_l = Mutex.new
+    published_c = ConditionVariable.new
+
     message = NotificationMessage.new :method => rpc_method,
                                       :args   => args,
                                       :headers => @message_headers
     em_run do
       init_node {
         publish(message.to_s, :routing_key => routing_key, :reply_to => @queue_name){
-          self.stop
+          published_l.synchronize { published_c.signal }
         }
       }
     end
-    self.join unless @keep_alive # XXX (unless keep_alive, em will be stopped after every notification, wait for it to cleanup)
+    published_l.synchronize { published_c.wait published_l }
     nil
   end
 
