@@ -8,16 +8,9 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-# establish client connection w/ specified args and invoke block w/ 
-# newly created client, returning it after block terminates
-
-# TODO notifications
-
 require 'socket'
-require 'curb'
-
 require 'evma_httpserver'
-#require 'em-http-request'
+require 'em-http-request'
 
 require 'rjr/node'
 require 'rjr/message'
@@ -31,6 +24,7 @@ class WebNodeCallback
   end
 
   def invoke(callback_method, *data)
+    # TODO throw error?
   end
 end
 
@@ -62,9 +56,12 @@ class WebRequestHandler < EventMachine::Connection
   def handle_request(message)
     msg    = nil
     result = nil
+    notification = NotificationMessage.is_notification_message?(msg)
+
     begin
       client_port, client_ip = Socket.unpack_sockaddr_in(get_peername)
-      msg    = RequestMessage.new(:message => message, :headers => @web_node.message_headers)
+      msg    = notification ? NotificationMessage.new(:message => message, :headers => @web_node.message_headers) :
+                              RequestMessage.new(:message => message, :headers => @web_node.message_headers)
       headers = @web_node.message_headers.merge(msg.headers)
       result = Dispatcher.dispatch_request(msg.jr_method,
                                            :method_args => msg.jr_args,
@@ -82,12 +79,14 @@ class WebRequestHandler < EventMachine::Connection
     msg_id = msg.nil? ? nil : msg.msg_id
     response = ResponseMessage.new(:id => msg_id, :result => result, :headers => headers)
 
-    resp = EventMachine::DelegatedHttpResponse.new(self)
-    #resp.status  = response.result.success ? 200 : 500
-    resp.status = 200
-    resp.content = response.to_s
-    resp.content_type "application/json"
-    resp.send_response
+    unless notification
+      resp = EventMachine::DelegatedHttpResponse.new(self)
+      #resp.status  = response.result.success ? 200 : 500
+      resp.status = 200
+      resp.content = response.to_s
+      resp.content_type "application/json"
+      resp.send_response
+    end
   end
 end
 
@@ -120,8 +119,43 @@ end
 #
 class WebNode < RJR::Node
   private
-  # Initialize the web subsystem
-  def init_node
+
+  # Internal helper, handle response message received
+  def handle_response(http)
+    msg    = ResponseMessage.new(:message => http.response, :headers => @message_headers)
+    res = err = nil
+    begin
+      res = Dispatcher.handle_response(msg.result)
+    rescue Exception => e
+      err = e
+    end
+
+    @response_lock.synchronize {
+      result = [msg.msg_id, res]
+      result << err if !err.nil?
+      @responses << result
+      @response_cv.signal
+    }
+  end
+
+  # Internal helper, block until response matching message id is received
+  def wait_for_result(message)
+    res = nil
+    while res.nil?
+      @response_lock.synchronize{
+        # FIXME throw err if more than 1 match found
+        res = @responses.select { |response| message.msg_id == response.first }.first
+        if !res.nil?
+          @responses.delete(res)
+
+        else
+          @response_cv.signal
+          @response_cv.wait @response_lock
+
+        end
+      }
+    end
+    return res
   end
 
   public
@@ -134,6 +168,10 @@ class WebNode < RJR::Node
      super(args)
      @host      = args[:host]
      @port      = args[:port]
+
+     @response_lock = Mutex.new
+     @response_cv   = ConditionVariable.new
+     @responses     = []
   end
 
   # Register connection event handler,
@@ -151,7 +189,6 @@ class WebNode < RJR::Node
   # Implementation of {RJR::Node#listen}
   def listen
     em_run do
-      init_node
       EventMachine::start_server(@host, @port, WebRequestHandler, self)
     end
   end
@@ -162,14 +199,50 @@ class WebNode < RJR::Node
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
   def invoke_request(uri, rpc_method, *args)
-    init_node
     message = RequestMessage.new :method => rpc_method,
                                  :args   => args,
                                  :headers => @message_headers
-    res = Curl::Easy.http_post uri, message.to_s
-    msg    = ResponseMessage.new(:message => res.body_str, :headers => @message_headers)
-    headers = @message_headers.merge(msg.headers)
-    return Dispatcher.handle_response(msg.result)
+    cb = lambda { |http|
+      handle_response(http)
+    }
+
+    em_run do
+      http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
+      http.errback  &cb
+      http.callback &cb
+    end
+
+    # will block until response message is received
+    # TODO optional timeout for response ?
+    result = wait_for_result(message)
+    if result.size > 2
+      raise Exception, result[2]
+    end
+    return result[1]
+  end
+
+  # Instructs node to send rpc notification (immadiately returns / no response is generated)
+  #
+  # @param [String] uri location of node to send request to, should be
+  #   in format of http://hostname:port
+  # @param [String] rpc_method json-rpc method to invoke on destination
+  # @param [Array] args array of arguments to convert to json and invoke remote method wtih
+  def send_notification(uri, rpc_method, *args)
+    # will block until message is published
+    published_l = Mutex.new
+    published_c = ConditionVariable.new
+
+    message = NotificationMessage.new :method => rpc_method,
+                                      :args   => args,
+                                      :headers => @message_headers
+    cb = lambda { |arg| published_l.synchronize { published_c.signal }}
+    em_run do
+      http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
+      http.errback  &cb
+      http.callback &cb
+    end
+    published_l.synchronize { published_c.wait published_l }
+    nil
   end
 end
 

@@ -31,8 +31,8 @@ rescue LoadError
 end
 
 begin
-  require 'curb'
   require 'evma_httpserver'
+  require 'em-http-request'
   require 'rjr/web_node'
 
 # TODO rather that fail, use alternative deps

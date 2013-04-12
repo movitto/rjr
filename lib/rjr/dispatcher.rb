@@ -67,6 +67,7 @@ class Request
   # method parameters in the local scope
   def handle
     RJR::Logger.info "Dispatching '#{@method}' request with parameters (#{@method_args.join(',')}) on #{@rjr_node_type}-node(#{@rjr_node_id})"
+    # TODO compare arity of method to number of args ?
     retval = instance_exec(*@method_args, &@handler)
     RJR::Logger.info "#{@method} request with parameters (#{@method_args.join(',')}) returning #{retval}"
     return retval
