@@ -30,14 +30,9 @@ describe EMManager do
     manager.schedule {
       block_ran = true
     }
-    manager.has_jobs?.should be_true
-    manager.instance_variable_get(:@em_jobs).should == 1
     sleep 0.5
     block_ran.should == true
 
-    manager.job_finished
-    manager.has_jobs?.should be_false
-    manager.instance_variable_get(:@em_jobs).should == 0
     manager.halt
     manager.join
     manager.running?.should be_false
@@ -48,10 +43,7 @@ describe EMManager do
     manager.start
     manager.running?.should be_true
     manager.schedule { "foo" }
-    manager.has_jobs?.should be_true
 
-    manager.job_finished
-    manager.has_jobs?.should be_false
     manager.running?.should be_true
 
     # forcibly stop the reactor

@@ -46,8 +46,7 @@ class WebRequestHandler < EventMachine::Connection
   def process_http_request
     # TODO support http protocols other than POST
     msg = @http_post_content.nil? ? '' : @http_post_content
-    #@thread_pool << ThreadPoolJob.new { handle_request(msg) }
-    handle_request(msg)
+    ThreadPool2Manager << ThreadPool2Job.new(msg) { |m| handle_request(m) }
   end
 
   private
@@ -203,6 +202,7 @@ class WebNode < RJR::Node
                                  :args   => args,
                                  :headers => @message_headers
     cb = lambda { |http|
+      # TODO handle errors
       handle_response(http)
     }
 

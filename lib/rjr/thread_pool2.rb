@@ -154,6 +154,7 @@ class ThreadPool2
         sleep @timeout
         check_workers
       end
+      check_workers
       @pool_lock.synchronize { @manager_thread = nil }
     } unless @manager_thread
   end

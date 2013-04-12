@@ -13,7 +13,7 @@ describe RJR::WSNode do
       #@client_port.should == 9678
       @rjr_node.should == server
       @rjr_node_id.should == 'ws'
-      @rjr_node_type.should == :websockets
+      @rjr_node_type.should == :ws
       param.should == 'myparam'
       foobar_invoked = true
       'retval'

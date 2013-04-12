@@ -20,6 +20,7 @@ describe RJR::WebNode do
     }
 
     server.listen
+    sleep 1
 
     res = client.invoke_request 'http://localhost:9678', 'foobar', 'myparam'
     res.should == 'retval'

@@ -43,7 +43,6 @@ end
 # Helper class intialized by eventmachine encapsulating a socket connection
 class TCPNodeEndpoint < EventMachine::Connection
 
-  attr_reader :active
   attr_reader :host
   attr_reader :port
 
@@ -51,20 +50,12 @@ class TCPNodeEndpoint < EventMachine::Connection
   #
   # specify the TCPNode establishing the connection
   def initialize(args = {})
-    @rjr_node        = args[:rjr_node]
+    @rjr_node = args[:rjr_node]
     @host = args[:host]
     @port = args[:port]
 
-    @active = false
-
     # used to serialize requests to send data via a connection
     @send_lock = Mutex.new
-  end
-
-  # {EventMachine::Connection#post_init} callback, sends first message if specified
-  def post_init
-    #self.set_sock_opt(Socket::SOL_SOCKET, Socket::SO_LINGER, [1, 50].pack("ii"))
-    @active = true
   end
 
   # {EventMachine::Connection#receive_data} callback, handle request / response messages
@@ -181,7 +172,7 @@ class TCPNode < RJR::Node
   attr_accessor :responses
 
   private
-  # Initialize the tcp subsystem
+  # Internal helper, initialize new connection
   def init_node(args={}, &on_init)
     host,port = args[:host], args[:port]
     connection = nil
@@ -196,7 +187,6 @@ class TCPNode < RJR::Node
         @connections << connection
       end
     }
-    sleep 0.1 until connection.active # XXX hack but needed
     on_init.call(connection)
   end
 
