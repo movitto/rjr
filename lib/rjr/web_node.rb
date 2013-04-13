@@ -8,12 +8,27 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-require 'socket'
+skip_module = false
+begin
 require 'evma_httpserver'
 require 'em-http-request'
+# TODO also support fallback clients ? (curb / net/http / etc)
+rescue LoadError
+  skip_module = true
+end
+
+if skip_module
+# TODO output: "curb/evma_httpserver gems could not be loaded, skipping web node definition"
+require 'rjr/missing_node'
+RJR::WebNode = RJR::MissingNode
+
+else
+require 'socket'
 
 require 'rjr/node'
 require 'rjr/message'
+require 'rjr/dispatcher'
+require 'rjr/thread_pool2'
 
 module RJR
 
@@ -247,3 +262,4 @@ class WebNode < RJR::Node
 end
 
 end # module RJR
+end

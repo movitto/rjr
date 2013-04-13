@@ -7,6 +7,7 @@
 
 require 'rjr/node'
 require 'rjr/message'
+require 'rjr/dispatcher'
 
 module RJR
 

@@ -6,10 +6,12 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
+require 'rjr/node'
+
 module RJR
 class MissingNode < RJR::Node
   def method_missing(method_id, *args, &bl)
-    raise "rjr node #{node_id} is missing a dependendy - cannot invoke #{method_id}"
+    raise "rjr node #{node_id} is missing a dependency - cannot invoke #{method_id}"
   end
 end
 end

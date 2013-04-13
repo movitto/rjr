@@ -11,6 +11,9 @@ require 'eventmachine'
 
 require 'rjr/node'
 require 'rjr/message'
+require 'rjr/message'
+require 'rjr/dispatcher'
+require 'rjr/thread_pool2'
 
 module RJR
 

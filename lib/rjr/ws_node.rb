@@ -11,6 +11,8 @@ require 'em-websocket-client'
 
 require 'rjr/node'
 require 'rjr/message'
+require 'rjr/dispatcher'
+require 'rjr/thread_pool2'
 
 module RJR
 

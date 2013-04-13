@@ -5,10 +5,23 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
+skip_module = false
+begin
 require 'amqp'
-require 'thread'
+rescue LoadError
+  skip_module = true
+end
+
+if skip_module
+# TODO output: "amqp gem could not be loaded, skipping amqp node definition"
+require 'rjr/missing_node'
+RJR::AMQPNode = RJR::MissingNode
+
+else
 require 'rjr/node'
 require 'rjr/message'
+require 'rjr/dispatcher'
+require 'rjr/thread_pool2'
 
 module RJR
 
@@ -310,5 +323,6 @@ class  AMQPNode < RJR::Node
     nil
   end
 
+end
 end
 end
