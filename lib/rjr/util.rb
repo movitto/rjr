@@ -52,6 +52,7 @@ module Definitions
   # Generate / return random message. Optionally specify the transport which
   # the message must accept
   def self.rand_msg(transport = nil)
+    @rjr_messages ||= {}
     messages = @rjr_messages.select { |mid,m| m[:transports].nil? || transport.nil? ||
                                               m[:transports].include?(transport)    }
     messages[messages.keys[rand(messages.keys.size)]]

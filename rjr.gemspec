@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 GEM_NAME    = 'rjr'
-PKG_VERSION = '0.10.0'
+PKG_VERSION = '0.11.7'
 
 PKG_FILES =
   Dir.glob('{lib,specs}/**/*.rb') + ['LICENSE', 'Rakefile', 'README.md']
@@ -11,7 +11,7 @@ Gem::Specification.new do |s|
     s.name    = GEM_NAME
     s.version = PKG_VERSION
     s.files   = PKG_FILES
-    s.executables   = ['rjr-server']
+    s.executables   = ['rjr-server', 'rjr-client', 'rjr-client-launcher']
     s.require_paths = ['lib']
 
     s.required_ruby_version = '>= 1.8.1'
@@ -21,12 +21,12 @@ Gem::Specification.new do |s|
     s.add_dependency('json')
 
     s.requirements = ['amqp gem is needed to use the amqp node',
-                      'eventmachine_httpserver gem is needed to use the web node',
-                      'curb gem is needed to use the web node']
+                      'eventmachine_httpserver and em-http-request gems are needed to use the web node',
+                      'em-websocket and em-websocket-client gems are needed to use the web socket node']
 
     s.author = "Mohammed Morsi"
     s.email = "mo@morsi.org"
-    s.date = %q{2012-08-30}
+    s.date = %q{2013-04-12}
     s.description = %q{Ruby Json Rpc library}
     s.summary = %q{JSON RPC server and client library over amqp, websockets, http, etc}
     s.homepage = %q{http://github.com/movitto/rjr}

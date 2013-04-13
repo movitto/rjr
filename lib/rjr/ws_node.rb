@@ -5,10 +5,21 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-require 'socket'
+skip_module = false
+begin
 require 'em-websocket'
 require 'em-websocket-client'
+rescue LoadError
+  skip_module = true
+end
 
+if skip_module
+# TODO output: "ws dependencies could not be loaded, skipping ws node definition"
+require 'rjr/missing_node'
+RJR::WSNode = RJR::MissingNode
+
+else
+require 'socket'
 require 'rjr/node'
 require 'rjr/message'
 require 'rjr/dispatcher'
@@ -273,3 +284,4 @@ class WSNode < RJR::Node
 end
 
 end # module RJR
+end

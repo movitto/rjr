@@ -11,8 +11,8 @@ NUM_MSGS    = 20 # per client
 NODE_ID     = 'rjr_test_launcher-'
 MSG_IDS     = ['stress', 'stress_callback']
 TRANSPORTS  = {#:amqp =>     'rjr_test_server-queue',
-               #:tcp  => 'json-rpc://localhost:8181',
-               :ws   => 'json-rpc://localhost:8080',
+               #:tcp  => 'jsonrpc://localhost:8181',
+               :ws   => 'jsonrpc://localhost:8080',
                #:www  =>     'http://localhost:8888'
               }
 BROKER      = 'localhost' # only used for amqp
