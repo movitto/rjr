@@ -67,7 +67,7 @@ optparse = OptionParser.new do |opts|
   end
 
   opts.on('--message ID', 'Message to send to server (rand to select random)') do |mid|
-    config[:msg_id] = mid
+    config[:msg_id] = mid.intern
   end
 
   opts.on('--interval seconds', 'Number of seconds after which to wait between requests (or rand)') do |s|

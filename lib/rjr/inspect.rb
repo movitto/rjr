@@ -52,9 +52,8 @@ rjr_method \
       {
         # event machine
         :event_machine => { :running => EMAdapter.running?,
-                            :has_jobs => EMAdapter.has_jobs?,
                             :thread_status => EMAdapter.reactor_thread.status,
-                            :jobs => EMAdapter.em_jobs },
+                            :connections => EventMachine.connection_count },
 
         # thread pool
         :thread_pool => { :running => ThreadPool2Manager.thread_pool.running?,

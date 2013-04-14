@@ -32,7 +32,7 @@ module Definitions
       }
       nil
     else
-      RJR::Definitions.message(args)
+      RJR::Definitions.message(args.to_s)
     end
   end
 
