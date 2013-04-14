@@ -298,6 +298,7 @@ class TCPNode < RJR::Node
     uri = URI.parse(uri)
     host,port = uri.host, uri.port
 
+    invoked = false
     conn    = nil
     message = NotificationMessage.new :method => rpc_method,
                                       :args   => args,
@@ -309,10 +310,10 @@ class TCPNode < RJR::Node
         c.safe_send message.to_s
         # XXX big bug w/ tcp node, this should be invoked only when
         # we are sure event machine sent message
-        published_l.synchronize { published_c.signal }
+        published_l.synchronize { invoked = true ; published_c.signal }
       }
     }
-    published_l.synchronize { published_c.wait published_l }
+    published_l.synchronize { published_c.wait published_l unless invoked }
     #sleep 0.01 until conn.get_outbound_data_size == 0
     nil
   end

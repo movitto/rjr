@@ -309,17 +309,18 @@ class  AMQPNode < RJR::Node
     published_l = Mutex.new
     published_c = ConditionVariable.new
 
+    invoked = false
     message = NotificationMessage.new :method => rpc_method,
                                       :args   => args,
                                       :headers => @message_headers
     em_run do
       init_node {
         publish(message.to_s, :routing_key => routing_key, :reply_to => @queue_name){
-          published_l.synchronize { published_c.signal }
+          published_l.synchronize { invoked = true ; published_c.signal }
         }
       }
     end
-    published_l.synchronize { published_c.wait published_l }
+    published_l.synchronize { published_c.wait published_l unless invoked }
     nil
   end
 

@@ -265,6 +265,7 @@ class WSNode < RJR::Node
     published_l = Mutex.new
     published_c = ConditionVariable.new
 
+    invoked = false
     message = NotificationMessage.new :method => rpc_method,
                                       :args   => args,
                                       :headers => @message_headers
@@ -275,10 +276,10 @@ class WSNode < RJR::Node
         # XXX same bug w/ tcp node, due to nature of event machine
         # we aren't guaranteed that message is actually written to socket
         # here, process must be kept alive until data is sent or will be lost
-        published_l.synchronize { published_c.signal }
+        published_l.synchronize { invoked = true ; published_c.signal }
       end
     }
-    published_l.synchronize { published_c.wait published_l }
+    published_l.synchronize { published_c.wait published_l unless invoked }
     nil
   end
 end

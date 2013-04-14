@@ -247,16 +247,17 @@ class WebNode < RJR::Node
     published_l = Mutex.new
     published_c = ConditionVariable.new
 
+    invoked = false
     message = NotificationMessage.new :method => rpc_method,
                                       :args   => args,
                                       :headers => @message_headers
-    cb = lambda { |arg| published_l.synchronize { published_c.signal }}
+    cb = lambda { |arg| published_l.synchronize { invoked = true ; published_c.signal }}
     em_run do
       http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
       http.errback  &cb
       http.callback &cb
     end
-    published_l.synchronize { published_c.wait published_l }
+    published_l.synchronize { published_c.wait published_l unless invoked }
     nil
   end
 end
