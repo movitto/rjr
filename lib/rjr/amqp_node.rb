@@ -21,6 +21,7 @@ else
 require 'rjr/node'
 require 'rjr/message'
 require 'rjr/dispatcher'
+require 'rjr/errors'
 require 'rjr/thread_pool2'
 
 module RJR

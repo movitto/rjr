@@ -213,6 +213,7 @@ to#{@timeout}"
   # Add work to the pool
   # @param [ThreadPool2Job] work job to execute in first available thread
   def <<(work)
+    # TODO option to increase worker threads if work queue gets saturated
     @work_queue.push work
   end
 

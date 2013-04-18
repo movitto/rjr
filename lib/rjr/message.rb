@@ -176,7 +176,7 @@ class ResponseMessage
       json.has_key?('result') || json.has_key?('error')
     rescue Exception => e
       # FIXME log error
-      #puts e.to_s
+      puts e.to_s
       false
     end
   end

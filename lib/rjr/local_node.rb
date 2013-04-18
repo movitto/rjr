@@ -8,6 +8,7 @@
 require 'rjr/node'
 require 'rjr/message'
 require 'rjr/dispatcher'
+require 'rjr/errors'
 
 module RJR
 
@@ -22,11 +23,12 @@ class LocalNodeCallback
 
   # Implementation of {RJR::NodeCallback#invoke}
   def invoke(callback_method, *data)
-    @node.em_run {
-      # TODO any exceptions from handler will propagate here, surround w/ begin/rescue block
-      # TODO support local_node 'disconnections'
-      @node.local_dispatch(callback_method, *data)
-    }
+    # TODO any exceptions from handler will propagate here, surround w/ begin/rescue block
+    # TODO support local_node 'disconnections' via RJR::ConnectionError & triggering mechanism
+    ThreadPool2Manager <<
+      ThreadPool2Job.new(callback_method, data) { |m|
+        @node.local_dispatch(callback_method, *data)
+      }
   end
 end
 
@@ -113,50 +115,33 @@ class LocalNode < RJR::Node
   end
 
   # Instructs node to send rpc request, and wait for and return response
+  #
+  # If strictly confirming to other nodes, use event machine to launch
+  # a thread pool job to dispatch request and block on result.
+  # Optimized for performance reasons but recognize the semantics of using
+  # the local node will be somewhat different.
+  #
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
   # @return [Object] the json result retrieved from destination converted to a ruby object
   # @raise [Exception] if the destination raises an exception, it will be converted to json and re-raised here 
   def invoke_request(rpc_method, *args)
-    # will block until message is published
-    published_l = Mutex.new
-    published_c = ConditionVariable.new
-
-    response  = nil
-
-    em_run {
-      res = local_dispatch(rpc_method, *args) 
-
-      # TODO run in thread?
-      published_l.synchronize {
-        response = res
-        published_c.signal
-      }
-    }
-
-    published_l.synchronize { published_c.wait published_l if response.nil? }
-
-    return Dispatcher.handle_response(response.result)
+    res = local_dispatch(rpc_method, *args) 
+    return Dispatcher.handle_response(res.result)
   end
 
   # Instructs node to send rpc notification (immediately returns / no response is generated)
   #
+  # Same performance comment as invoke_request above
+  #
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
   def send_notification(rpc_method, *args)
-    # will block until message is published
-    published_l = Mutex.new
-    published_c = ConditionVariable.new
-
-    invoked = false
-
-    em_run {
-      # TODO run in thread?
+    # TODO run in thread & immediately return?
+    begin
       local_dispatch(rpc_method, *args)
-      published_l.synchronize { invoked = true ; published_c.signal }
-    }
-
-    published_l.synchronize { published_c.wait published_l unless invoked }
+    rescue
+    end
     nil
   end
 

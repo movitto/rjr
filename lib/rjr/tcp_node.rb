@@ -13,6 +13,7 @@ require 'rjr/node'
 require 'rjr/message'
 require 'rjr/message'
 require 'rjr/dispatcher'
+require 'rjr/errors'
 require 'rjr/thread_pool2'
 
 module RJR
@@ -37,7 +38,7 @@ class TCPNodeCallback
   # Implementation of {RJR::NodeCallback#invoke}
   def invoke(callback_method, *data)
     msg = NotificationMessage.new :method => callback_method, :args => data, :headers => @message_headers
-    # TODO surround w/ begin/rescue block incase of socket errors
+    # TODO surround w/ begin/rescue block incase of socket errors / raise RJR::ConnectionError
     @endpoint.safe_send msg.to_s
   end
 end
