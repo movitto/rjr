@@ -1,7 +1,8 @@
-/* Json-Rpc over Websockets
+/* Json-Rpc over HTTP and Websockets
  */
 
-// helpers to generate 'uuid'
+///////////////////////////////////////////////////////
+// Helpers to generate a uuid
 function S4() {
   return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
 }
@@ -9,31 +10,110 @@ function guid() {
   return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4()+S4());
 }
 
-// encapsulates a json-rpc message
-function JRMessage(msg){
-  this.json = msg;
-  this.parsed = $.evalJSON(msg);
+///////////////////////////////////////////////////////
+// JRMessage
 
-  this.id     = this.parsed['id'];
-  this.method = this.parsed['method'];
-  if(this.parsed['params']){
-    this.params = this.parsed['params'];
-    for(p=0;p<this.params.length;++p){
-      if(JRObject.is_jrobject(this.params[p]))
-        this.params[p] = JRObject.from_json(this.params[p]);
-      else if(JRObject.is_jrobject_array(this.params[p]))
-        this.params[p] = JRObject.from_json_array(this.params[p]);
-    }
+// Encapsulates a json-rpc message
+function JRMessage(){
+  this.id = null;
+  this.rpc_method = null;
+  this.args = null;
+
+  this.data = null;
+  this.json = null;
+
+  this.error = null;
+  this.result = null;
+
+  this.onresponse = null;
+  this.onsuccess = null;
+  this.onfailed  = null;
+  this.success   = null;
+
+  this.to_json = function(){
+    this.json = $.toJSON(this.data);
+    return this.json;
   }
-  this.error  = this.parsed['error'];
-  this.result = this.parsed['result'];
-  if(this.result && JRObject.is_jrobject(this.result))
-    this.result = JRObject.from_json(this.result);
-  else if(JRObject.is_jrobject_array(this.result))
-    this.result = JRObject.from_json_array(this.result);
+
+  this.handle_response = function(res){
+    res.success = (res.error == undefined);
+    if(this.onresponse)
+      this.onresponse(res);
+  }
 }
 
-// encapsulates an object w/ type
+// Create new request message to send
+JRMessage.new_request = function(rpc_method, args){
+  var msg = new JRMessage();
+  msg.id = guid();
+  msg.rpc_method = rpc_method;
+  msg.args = args;
+  msg.data = {jsonrpc:  '2.0',
+              method: msg.rpc_method,
+              params: msg.args,
+              id: msg.id};
+  return msg;
+}
+
+// Helper to generate request from common args.
+//
+// rpc method, parameter list, and optional response callback
+// will be extracted from the 'args' param in that order.
+//
+// node_id and headers will be set on request message before it
+// is returned
+JRMessage.pretty_request = function(args, node_id, headers){
+  // create request message
+  var rpc_method = args[0];
+  var params = [];
+  var cb = null;
+  for(a = 1; a < args.length; a++){
+      if(a == args.length - 1 && typeof args[a] === 'function')
+        cb = args[a];
+      else
+        params.push(args[a]);
+  }
+  var req = JRMessage.new_request(rpc_method, params);
+  if(node_id) req.data['node_id'] = node_id;
+  for(var header in headers)
+    req.data[header] = headers[header];
+
+  // register callback if last argument is a function
+  if(cb) req.onresponse = cb;
+
+  return req;
+}
+
+// Parse message received in json string
+JRMessage.from_msg = function(dat){
+  var msg = new JRMessage();
+  msg.json = dat;
+  msg.data = $.evalJSON(dat);
+
+  msg.id     = msg.data['id'];
+  msg.rpc_method = msg.data['method'];
+  if(msg.data['params']){
+    msg.params = msg.data['params'];
+    for(p=0;p<msg.params.length;++p){
+      if(JRObject.is_jrobject(msg.params[p]))
+        msg.params[p] = JRObject.from_json(msg.params[p]);
+      else if(JRObject.is_jrobject_array(msg.params[p]))
+        msg.params[p] = JRObject.from_json_array(msg.params[p]);
+    }
+  }
+  msg.error  = msg.data['error'];
+  msg.result = msg.data['result'];
+  if(msg.result && JRObject.is_jrobject(msg.result))
+    msg.result = JRObject.from_json(msg.result);
+  else if(JRObject.is_jrobject_array(msg.result))
+    msg.result = JRObject.from_json_array(msg.result);
+  return msg;
+}
+
+///////////////////////////////////////////////////////
+// JRObject
+
+// Encapsulates an object w/ type
 //  - adaptor for the ruby 'json' library
 function JRObject (type, value, ignore_properties){
   this.type  = type;
@@ -49,17 +129,18 @@ function JRObject (type, value, ignore_properties){
   };
 };
 
+// Return boolean indicating if json contains encapsulated JRObject
 JRObject.is_jrobject = function(json){
   return json && json['json_class'] && json['data'];
 };
 
+// Return boolean indicating if json contains array of encapsulated JRObjects
 JRObject.is_jrobject_array = function(json){
   return json && typeof(json) == "object" && json.length > 0 && JRObject.is_jrobject(json[0]);
 };
 
+// Convert json to JRObject
 JRObject.from_json = function(json){
-  // TODO lookup class corresponding in global registry and instantiate
-  //var cl  = JRObject.class_registry[json['json_class']];
   var obj = json['data'];
   obj.json_class = json['json_class'];
   for(var p in obj){
@@ -72,6 +153,7 @@ JRObject.from_json = function(json){
   return obj;
 };
 
+// Convert json to array of JRObjects
 JRObject.from_json_array = function(json){
   var objs = [];
   for(var i in json)
@@ -80,135 +162,123 @@ JRObject.from_json_array = function(json){
   return objs;
 };
 
-// global / shared class registry
-//JRObject.class_registry = {};
+///////////////////////////////////////////////////////
+// WSNode
 
-// main json-rpc websocket interface
+// Main json-rpc client websocket interface
 function WSNode (host, port){
-  var node = this;
-  this.node_id = null;
-  this.headers = {};
+  var node      = this;
+  this.opened   = false;
+  this.node_id  = null;
+  this.headers  = {};
   this.messages = [];
+
+  // Open socket connection
   this.open = function(){
     node.socket = new WebSocket("ws://" + host + ":" + port);
-    node.socket.onopen = function (){
-      for(var m in node.messages)
-        node.socket.send(node.messages[m]);
-      node.messages = [];
-      // XXX hack, give other handlers time to register
-      setTimeout(function(){
-        if(node.onopen)
-          node.onopen();
-      }, 250);
-    };
+
     node.socket.onclose   = function (){
       if(node.onclose)
         node.onclose();
     };
-    node.socket.onmessage = function (e){
-      msg = new JRMessage(e.data);
-      if(node.onmessage)
-        node.onmessage(msg);
+
+    node.socket.onmessage = function (evnt){
+      var msg = JRMessage.from_msg(evnt.data);
+      if(node.message_received)
+        node.message_received(msg);
+
+      // match response w/ outstanding request
+      if(msg.id){
+        var req = node.messages[msg.id];
+        delete node.messages[msg.id];
+        req.handle_response(msg)
+
+      // client rpc only supports notification messages from server
+      }else{
+        node.invoke_method(msg.rpc_method, msg.params)
+
+      }
     };
-    // TODO support reopening the socket on errors
+
     node.socket.onerror = function(e){
       if(node.onerror)
         node.onerror(e);
     }
-  };
-  this.close = function(){
-    node.socket.close();
-  };
-  this.invoke_request = function(){
-    id = guid();
-    rpc_method = arguments[0];
-    args = [];
-    for(a = 1; a < arguments.length; a++){
-        args.push(arguments[a]);
-    }
-    request = {jsonrpc:  '2.0',
-               method: rpc_method,
-               params: args,
-               id: id};
-    if(node.node_id){
-      request['node_id'] = node.node_id;
-    }
-    for(var header in node.headers){
-      request[header] = node.headers[header];
-    }
-    node.onmessage = function(msg){
-      if(node.message_received)
-        node.message_received(msg);
-      if(msg['id'] == id){
-        success = !msg['error'];
-        if(success && node.onsuccess){
-          result = msg['result'];
-          node.onsuccess(msg);
-        }
-        else if(!success && node.onfailed)
-          node.onfailed(msg);
-      }else{
-        if(msg['method'] && node.invoke_method){
-          params = msg['params'];
-          node.invoke_method(msg['method'], params);
-        }
-      }
-    };
 
-    var j = $.toJSON(request)
-    node.messages.push(j); // always first add to message queue to prevent race condition
-    if(node.socket.readyState == WebSocket.OPEN){
-      node.messages = [];  // XXX no longer need to store messages
-      node.socket.send(j);
-    }
-    return request;
+    node.socket.onopen = function (){
+      // send queued messages
+      for(var m in node.messages)
+        node.socket.send(node.messages[m].to_json());
+
+      node.opened = true;
+
+      // invoke client callback
+      if(node.onopen)
+        node.onopen();
+    };
+  };
+
+  // Close socket connection
+  this.close = function(){
+    this.socket.close();
+  };
+
+  // Invoke request on socket, may be invoked before or after socket is opened.
+  //
+  // Pass in the rpc method, arguments to invoke method with, and optional callback
+  // to be invoked upon received response.
+  this.invoke_request = function(){
+    var req = JRMessage.pretty_request(arguments, this.node_id, this.headers);
+
+    // store requests for later retrieval
+    this.messages[req.id] = req;
+
+    if(node.opened)
+      this.socket.send(req.to_json());
+
+    return req;
   };
 };
 
-// main json-rpc www interface
+///////////////////////////////////////////////////////
+// WebNode
+
+// Main json-rpc www interface
 function WebNode (uri){
-  var node = this;
-  this.node_id = null;
-  this.headers = {};
+  var node      = this;
+  this.node_id  = null;
+  this.headers  = {};
+
+  // Invoke request via http
+  //
+  // Pass in the rpc method, arguments to invoke method with, and optional callback
+  // to be invoked upon received response.
   this.invoke_request = function(){
-    id = guid();
-    rpc_method = arguments[0];
-    args = [];
-    for(a = 1; a < arguments.length; a++){
-        args.push(arguments[a]);
-    }
-    request = {jsonrpc:  '2.0',
-               method: rpc_method,
-               params: args,
-               id: id};
-    if(node.node_id){
-      request['node_id'] = node.node_id;
-    }
-    for(var header in node.headers){
-      request[header] = node.headers[header];
-    }
+    var req = JRMessage.pretty_request(arguments, this.node_id, this.headers);
 
     $.ajax({type: 'POST',
             url: uri,
-            data: $.toJSON(request),
+            data: req.to_json(),
             dataType: 'text', // using text so we can parse json ourselves
+
             success: function(data){
-              data = new JRMessage(data);
+              var msg = JRMessage.from_msg(data);
               if(node.message_received)
-                node.message_received(data);
-              success = !data['error'];
-              if(success && node.onsuccess){
-                result = data['result'];
-                node.onsuccess(data);
-              }
-              else if(!success && node.onfailed)
-                node.onfailed(data);
+                node.message_received(msg);
+
+              req.handle_response(msg)
             },
+
             error: function(jqXHR, textStatus, errorThrown){
-              if(node.onfailed)
-                node.onfailed(null, {'status' : jqXHR.status, "msg" : textStatus});
+              var err = {'status' : jqXHR.status,
+                         'msg' : textStatus,
+                         'error' : errorThrown}
+              if(node.onerror)
+                node.onerror(err);
+
+              req.handle_response(err)
             }});
 
-    return request;
+    return req;
   };
 };

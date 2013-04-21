@@ -7,15 +7,21 @@ rjr_method \
         $messages.string.split("\n")
     },
 
+  :failed =>
+    lambda { |p|
+      RJR::Logger.info "invoked failed method #{p}"
+     raise ArgumentError, "err #{p}"
+    },
+
   :stress =>
     lambda { |p|
       RJR::Logger.info "invoked stress method #{p}"
-     'foobar'
+     "foobar #{p}"
     },
 
   :stress_callback =>
     lambda { |p|
       RJR::Logger.info "invoked stress_callback method #{p}"
       @rjr_callback.invoke 'client_callback', p
-      'barfoo'
+      "barfoo #{p}"
     } 

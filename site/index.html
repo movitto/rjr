@@ -4,23 +4,43 @@
     <script type="text/javascript" src="json.js"></script>
     <script type="text/javascript" src="jrw.js"></script>
     <script type="text/javascript">
-      var node = new WSNode('127.0.0.1', '8080');
-      node.onopen = function(){
-        //node.invoke_request('create_location', new JRObject("Motel::Location", { x : 20, y : -30, z : 15 }));
-        node.invoke_request('hello');
+      var ws_node = new WSNode('127.0.0.1', '8080');
+      ws_node.onopen = function(){
+        //console.log("open");
+        ws_node.invoke_request('failed', 2, function(res){
+          if(res.success){
+            console.log("res2s");
+            console.log(res.result);
+          }else{
+            console.log("res2f");
+            console.log(res.error);
+          }
+        });
+        ws_node.invoke_request('stress_callback', 3);
       };
-      node.invoke_method = function(params){
+      ws_node.message_received = function(msg){
+        //console.log("msg")
+        //console.log(msg);
+      };
+      ws_node.invoke_method = function(params){
         console.log("PPPP");
         console.log(params);
       }
-      node.onsuccess = function(result){
-        console.log("SSSS");
-        console.log(result);
-      }
-      node.onfailed = function(error_code, error_msg){
-        console.log("EEE " + error_code + " " + error_msg);
-      }
-      node.open();
+      ws_node.open();
+      ws_node.invoke_request('stress', 1, function(res){
+        console.log("res1s");
+        console.log(res.result);
+      })
+
+      var www_node = new WebNode('http://localhost/rjr');
+      www_node.invoke_request('stress', 'http1', function(res){
+         console.log("hres1s");
+         console.log(res.result);
+      })
+      www_node.invoke_request('failed', 'http2', function(res){
+         console.log("hres2f");
+         console.log(res.error);
+      })
     </script>
   </head>
 </html>
