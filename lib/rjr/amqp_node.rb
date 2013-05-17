@@ -22,7 +22,7 @@ require 'rjr/node'
 require 'rjr/message'
 require 'rjr/dispatcher'
 require 'rjr/errors'
-require 'rjr/thread_pool2'
+require 'rjr/thread_pool'
 
 module RJR
 
@@ -80,11 +80,11 @@ class  AMQPNode < RJR::Node
   def handle_message(metadata, msg)
     if RequestMessage.is_request_message?(msg)
       reply_to = metadata.reply_to
-      ThreadPool2Manager << ThreadPool2Job.new { handle_request(reply_to, msg, false) }
+      ThreadPoolManager << ThreadPoolJob.new { handle_request(reply_to, msg, false) }
 
     elsif NotificationMessage.is_notification_message?(msg)
       reply_to = metadata.reply_to
-      ThreadPool2Manager << ThreadPool2Job.new { handle_request(reply_to, msg, true) }
+      ThreadPoolManager << ThreadPoolJob.new { handle_request(reply_to, msg, true) }
 
     elsif ResponseMessage.is_response_message?(msg)
       handle_response(msg)

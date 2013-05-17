@@ -1,11 +1,11 @@
 require 'rjr/dispatcher'
-require 'rjr/thread_pool2'
+require 'rjr/thread_pool'
 
 # TODO ? test ThreadPoolJob being_executed?, completed?, exec, handle_timeout!
 
-describe ThreadPool2 do
+describe ThreadPool do
   it "should start and stop successfully" do
-    tp = ThreadPool2.new 10, :timeout => 10
+    tp = ThreadPool.new 10, :timeout => 10
     tp.running?.should be_false
 
     tp.start
@@ -22,13 +22,13 @@ describe ThreadPool2 do
   end
 
   it "should accept and run work" do
-    tp = ThreadPool2.new 10, :timeout => 10
+    tp = ThreadPool.new 10, :timeout => 10
     tp.start
 
     tp.instance_variable_get(:@work_queue).size.should == 0
     jobs_executed = []
-    tp << ThreadPool2Job.new { jobs_executed << 1 }
-    tp << ThreadPool2Job.new { jobs_executed << 2 }
+    tp << ThreadPoolJob.new { jobs_executed << 1 }
+    tp << ThreadPoolJob.new { jobs_executed << 2 }
     tp.instance_variable_get(:@work_queue).size.should == 2
 
     sleep 0.5

@@ -28,7 +28,7 @@ require 'socket'
 require 'rjr/node'
 require 'rjr/message'
 require 'rjr/dispatcher'
-require 'rjr/thread_pool2'
+require 'rjr/thread_pool'
 
 module RJR
 
@@ -61,7 +61,7 @@ class WebRequestHandler < EventMachine::Connection
   def process_http_request
     # TODO support http protocols other than POST
     msg = @http_post_content.nil? ? '' : @http_post_content
-    ThreadPool2Manager << ThreadPool2Job.new(msg) { |m| handle_request(m) }
+    ThreadPoolManager << ThreadPoolJob.new(msg) { |m| handle_request(m) }
   end
 
   private

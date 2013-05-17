@@ -5,12 +5,12 @@
 
 require 'singleton'
 
-# Work item to be executed in a thread launched by {ThreadPool2}.
+# Work item to be executed in a thread launched by {ThreadPool}.
 #
 # The end user just need to initialize this class with the handle
 # to the job to be executed and the params to pass to it, before
 # handing it off to the thread pool that will take care of the rest.
-class ThreadPool2Job
+class ThreadPoolJob
   attr_accessor :handler
   attr_accessor :params
 
@@ -33,7 +33,7 @@ class ThreadPool2Job
 
   # Return string representation of thread pool job
   def to_s
-    "thread_pool2_job-#{@handler.source_location}-#{@params}"
+    "thread_pool_job-#{@handler.source_location}-#{@params}"
   end
 
   def being_executed?
@@ -91,7 +91,7 @@ end
 # Second (and hopefully better) thread pool implementation.
 #
 # TODO move to the RJR namespace
-class ThreadPool2
+class ThreadPool
   private
 
   # Internal helper, launch worker thread
@@ -211,7 +211,7 @@ to#{@timeout}"
   end
 
   # Add work to the pool
-  # @param [ThreadPool2Job] work job to execute in first available thread
+  # @param [ThreadPoolJob] work job to execute in first available thread
   def <<(work)
     # TODO option to increase worker threads if work queue gets saturated
     @work_queue.push work
@@ -249,13 +249,13 @@ end
 # Thread pool operations may be invoked on this class after
 # the 'init' method is called
 #
-#     ThreadPool2Manager.init
-#     ThreadPool2Manager << ThreadPool2Job(:foo) { "do something" }
-class ThreadPool2Manager
+#     ThreadPoolManager.init
+#     ThreadPoolManager << ThreadPoolJob(:foo) { "do something" }
+class ThreadPoolManager
   # Initialize thread pool if it doesn't exist
   def self.init(num_threads, params = {})
     if @thread_pool.nil?
-      @thread_pool = ThreadPool2.new(num_threads, params)
+      @thread_pool = ThreadPool.new(num_threads, params)
     end
     @thread_pool.start
   end

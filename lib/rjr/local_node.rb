@@ -25,8 +25,8 @@ class LocalNodeCallback
   def invoke(callback_method, *data)
     # TODO any exceptions from handler will propagate here, surround w/ begin/rescue block
     # TODO support local_node 'disconnections' via RJR::ConnectionError & triggering mechanism
-    ThreadPool2Manager <<
-      ThreadPool2Job.new(callback_method, data) { |m|
+    ThreadPoolManager <<
+      ThreadPoolJob.new(callback_method, data) { |m|
         @node.local_dispatch(callback_method, *data)
       }
   end

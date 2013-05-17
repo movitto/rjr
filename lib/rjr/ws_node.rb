@@ -24,7 +24,7 @@ require 'rjr/node'
 require 'rjr/message'
 require 'rjr/dispatcher'
 require 'rjr/errors'
-require 'rjr/thread_pool2'
+require 'rjr/thread_pool'
 
 module RJR
 
@@ -105,10 +105,10 @@ class WSNode < RJR::Node
   def handle_msg(endpoint, msg)
     # TODO use messageutil incase of large messages?
     if RequestMessage.is_request_message?(msg)
-      ThreadPool2Manager << ThreadPool2Job.new { handle_request(endpoint, msg, false) }
+      ThreadPoolManager << ThreadPoolJob.new { handle_request(endpoint, msg, false) }
 
     elsif NotificationMessage.is_notification_message?(msg)
-      ThreadPool2Manager << ThreadPool2Job.new { handle_request(endpoint, msg, true) }
+      ThreadPoolManager << ThreadPoolJob.new { handle_request(endpoint, msg, true) }
 
     elsif ResponseMessage.is_response_message?(msg)
       handle_response(msg)

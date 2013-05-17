@@ -8,7 +8,7 @@
 
 require 'eventmachine'
 require 'rjr/em_adapter'
-require 'rjr/thread_pool2'
+require 'rjr/thread_pool'
 
 module RJR
 
@@ -73,8 +73,8 @@ class Node
   def em_run(&bl)
     # Nodes use shared thread pool to handle requests and free
     # up the eventmachine reactor to continue processing requests
-    # @see ThreadPool2, ThreadPool2Manager
-    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    # @see ThreadPool, ThreadPoolManager
+    ThreadPoolManager.init @num_threads, :timeout => @timeout
 
     # Nodes make use of an EM helper interface to schedule operations
     EMAdapter.init
@@ -85,10 +85,10 @@ class Node
   # Run a job async in event machine immediately
   def em_run_async(&bl)
     # same init as em_run
-    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    ThreadPoolManager.init @num_threads, :timeout => @timeout
     EMAdapter.init
     EMAdapter.schedule {
-      ThreadPool2Manager << ThreadPool2Job.new { bl.call }
+      ThreadPoolManager << ThreadPoolJob.new { bl.call }
     }
   end
 
@@ -103,10 +103,10 @@ class Node
   # @param [Callable] bl callback to be periodically invoked by eventmachine
   def em_schedule_async(seconds, &bl)
     # same init as em_run
-    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    ThreadPoolManager.init @num_threads, :timeout => @timeout
     EMAdapter.init
     EMAdapter.add_timer(seconds) {
-      ThreadPool2Manager << ThreadPool2Job.new { bl.call }
+      ThreadPoolManager << ThreadPoolJob.new { bl.call }
     }
   end
 
@@ -116,7 +116,7 @@ class Node
   # @param [Callable] bl callback to be periodically invoked by eventmachine
   def em_repeat(seconds, &bl)
     # same init as em_run
-    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    ThreadPoolManager.init @num_threads, :timeout => @timeout
     EMAdapter.init
     EMAdapter.add_periodic_timer seconds, &bl
   end
@@ -130,23 +130,23 @@ class Node
   # @param [Callable] bl callback to be periodically invoked by eventmachine
   def em_repeat_async(seconds, &bl)
     # same init as em_schedule
-    ThreadPool2Manager.init @num_threads, :timeout => @timeout
+    ThreadPoolManager.init @num_threads, :timeout => @timeout
     EMAdapter.init
     EMAdapter.add_periodic_timer(seconds){
-      ThreadPool2Manager << ThreadPool2Job.new { bl.call }
+      ThreadPoolManager << ThreadPoolJob.new { bl.call }
     }
   end
 
   # Block until the eventmachine reactor and thread pool have both completed running
   def join
-    ThreadPool2Manager.join
+    ThreadPoolManager.join
     EMAdapter.join
   end
 
   # Immediately terminate the node
   def halt
     EMAdapter.halt
-    ThreadPool2Manager.stop
+    ThreadPoolManager.stop
   end
 
 end

@@ -15,7 +15,7 @@ describe RJR::Node do
     node = RJR::Node.new :node_id => 'foobar',
                          :headers => {:h => 123}
     node.em_run {
-      ThreadPool2Manager.running?.should be_true
+      ThreadPoolManager.running?.should be_true
       EMAdapter.running?.should be_true
       block1_called = true
       node.em_run {
@@ -36,7 +36,7 @@ describe RJR::Node do
   #                       :headers => {:h => 123}
   #  node.em_run {}
   #  EMAdapter.running?.should be_true
-  #  ThreadPool2Manager.running?.should be_true
+  #  ThreadPoolManager.running?.should be_true
   #  node.stop
   #  node.join
   #end
@@ -46,11 +46,11 @@ describe RJR::Node do
                          :headers => {:h => 123}
     node.em_run {}
     EMAdapter.running?.should be_true
-    ThreadPool2Manager.running?.should be_true
+    ThreadPoolManager.running?.should be_true
     node.halt
     node.join
     EMAdapter.running?.should be_false
-    ThreadPool2Manager.running?.should be_false
+    ThreadPoolManager.running?.should be_false
   end
 
   it "should run a block directly via eventmachine" do
@@ -82,7 +82,7 @@ describe RJR::Node do
       node.halt
     }
     reactor_thread = EMAdapter.instance_variable_get(:@em_manager).instance_variable_get(:@reactor_thread)
-    worker_threads = ThreadPool2Manager.thread_pool.instance_variable_get(:@worker_threads)
+    worker_threads = ThreadPoolManager.thread_pool.instance_variable_get(:@worker_threads)
     node.join
     block1_called.should be_true
     block1_thread.should_not == reactor_thread   
@@ -101,7 +101,7 @@ describe RJR::Node do
       node.halt
     }
     reactor_thread = EMAdapter.instance_variable_get(:@em_manager).instance_variable_get(:@reactor_thread)
-    worker_threads = ThreadPool2Manager.thread_pool.instance_variable_get(:@worker_threads)
+    worker_threads = ThreadPoolManager.thread_pool.instance_variable_get(:@worker_threads)
 
     sleep 0.5
     block1_called.should be_false
@@ -147,7 +147,7 @@ describe RJR::Node do
       block1_threads << Thread.current
     }
     reactor_thread = EMAdapter.instance_variable_get(:@em_manager).instance_variable_get(:@reactor_thread)
-    worker_threads = ThreadPool2Manager.thread_pool.instance_variable_get(:@worker_threads)
+    worker_threads = ThreadPoolManager.thread_pool.instance_variable_get(:@worker_threads)
 
     sleep 0.5
     block1_threads.size.should == 0

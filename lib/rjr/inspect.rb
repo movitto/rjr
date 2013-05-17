@@ -56,8 +56,8 @@ rjr_method \
                             :connections => EventMachine.connection_count },
 
         # thread pool
-        :thread_pool => { :running => ThreadPool2Manager.thread_pool.running?,
-                          :inspect => ThreadPool2Manager.thread_pool.inspect },
+        :thread_pool => { :running => ThreadPoolManager.thread_pool.running?,
+                          :inspect => ThreadPoolManager.thread_pool.inspect },
       }
     }
 

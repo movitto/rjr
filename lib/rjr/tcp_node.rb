@@ -14,7 +14,7 @@ require 'rjr/message'
 require 'rjr/message'
 require 'rjr/dispatcher'
 require 'rjr/errors'
-require 'rjr/thread_pool2'
+require 'rjr/thread_pool'
 
 module RJR
 
@@ -71,10 +71,10 @@ class TCPNodeEndpoint < EventMachine::Connection
     while extracted = MessageUtil.retrieve_json(@data)
       msg, @data = *extracted
       if RequestMessage.is_request_message?(msg)
-        ThreadPool2Manager << ThreadPool2Job.new(msg) { |m| handle_request(m, false) }
+        ThreadPoolManager << ThreadPoolJob.new(msg) { |m| handle_request(m, false) }
 
       elsif NotificationMessage.is_notification_message?(msg)
-        ThreadPool2Manager << ThreadPool2Job.new(msg) { |m| handle_request(m, true) }
+        ThreadPoolManager << ThreadPoolJob.new(msg) { |m| handle_request(m, true) }
 
       elsif ResponseMessage.is_response_message?(msg)
         handle_response(msg)
