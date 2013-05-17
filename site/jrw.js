@@ -193,7 +193,11 @@ function WSNode (host, port){
         delete node.messages[msg.id];
         req.handle_response(msg)
 
-      // client rpc only supports notification messages from server
+        // if err msg, run node.onerror
+        if(msg.error)
+          if(node.onerror)
+            node.onerror(msg)
+
       }else{
         node.invoke_method(msg.rpc_method, msg.params)
 
@@ -267,12 +271,17 @@ function WebNode (uri){
                 node.message_received(msg);
 
               req.handle_response(msg)
+
+              // if err msg, run node.onerror
+              if(msg.error)
+                if(node.onerror)
+                  node.onerror(msg);
             },
 
             error: function(jqXHR, textStatus, errorThrown){
-              var err = {'status' : jqXHR.status,
-                         'msg' : textStatus,
-                         'error' : errorThrown}
+              var err = { 'error' : {'code' : jqXHR.status,
+                                     'message' : textStatus,
+                                     'class' : errorThrown } };
               if(node.onerror)
                 node.onerror(err);
 
