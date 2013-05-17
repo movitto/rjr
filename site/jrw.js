@@ -55,7 +55,7 @@ JRMessage.new_request = function(rpc_method, args){
   return msg;
 }
 
-// Helper to generate request from common args.
+// Internal helper to generate request from common args.
 //
 // rpc method, parameter list, and optional response callback
 // will be extracted from the 'args' param in that order.
@@ -171,7 +171,7 @@ function WSNode (host, port){
   this.opened   = false;
   this.node_id  = null;
   this.headers  = {};
-  this.messages = [];
+  this.messages = {};
 
   // Open socket connection
   this.open = function(){
