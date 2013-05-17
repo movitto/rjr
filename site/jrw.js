@@ -199,7 +199,9 @@ function WSNode (host, port){
             node.onerror(msg)
 
       }else{
-        node.invoke_method(msg.rpc_method, msg.params)
+        // relying on clients to handle notifications via message_received
+        // TODO add notification (and request?) handler support here
+        //node.invoke_method(msg.rpc_method, msg.params)
 
       }
     };
