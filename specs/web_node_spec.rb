@@ -1,4 +1,4 @@
-require 'rjr/web_node'
+require 'rjr/nodes/web_node'
 require 'rjr/dispatcher'
 
 describe RJR::WebNode do

@@ -1,4 +1,4 @@
-require 'rjr/ws_node'
+require 'rjr/nodes/ws_node'
 require 'rjr/dispatcher'
 
 describe RJR::WSNode do

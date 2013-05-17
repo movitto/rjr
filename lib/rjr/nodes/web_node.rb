@@ -19,7 +19,7 @@ end
 
 if skip_module
 # TODO output: "curb/evma_httpserver gems could not be loaded, skipping web node definition"
-require 'rjr/missing_node'
+require 'rjr/nodes/missing_node'
 RJR::WebNode = RJR::MissingNode
 
 else

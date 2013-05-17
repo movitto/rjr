@@ -6,11 +6,11 @@
 # rjr - Ruby Json Rpc
 module RJR ; end
 
-require 'rjr/amqp_node'
-require 'rjr/tcp_node'
-require 'rjr/web_node'
-require 'rjr/ws_node'
-require 'rjr/local_node'
-require 'rjr/multi_node'
+require 'rjr/nodes/amqp_node'
+require 'rjr/nodes/tcp_node'
+require 'rjr/nodes/web_node'
+require 'rjr/nodes/ws_node'
+require 'rjr/nodes/local_node'
+require 'rjr/nodes/multi_node'
 
 require 'rjr/util'

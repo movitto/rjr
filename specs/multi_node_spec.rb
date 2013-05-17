@@ -1,6 +1,6 @@
-require 'rjr/multi_node'
-require 'rjr/amqp_node'
-require 'rjr/web_node'
+require 'rjr/nodes/multi_node'
+require 'rjr/nodes/amqp_node'
+require 'rjr/nodes/web_node'
 require 'rjr/dispatcher'
 
 describe RJR::MultiNode do

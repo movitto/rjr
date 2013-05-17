@@ -1,4 +1,4 @@
-require 'rjr/local_node'
+require 'rjr/nodes/local_node'
 require 'rjr/dispatcher'
 
 describe RJR::LocalNode do

@@ -14,7 +14,7 @@ end
 
 if skip_module
 # TODO output: "amqp gem could not be loaded, skipping amqp node definition"
-require 'rjr/missing_node'
+require 'rjr/nodes/missing_node'
 RJR::AMQPNode = RJR::MissingNode
 
 else

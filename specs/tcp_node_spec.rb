@@ -1,4 +1,4 @@
-require 'rjr/tcp_node'
+require 'rjr/nodes/tcp_node'
 require 'rjr/dispatcher'
 
 describe RJR::TCPNode do

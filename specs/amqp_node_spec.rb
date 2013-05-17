@@ -1,4 +1,4 @@
-require 'rjr/amqp_node'
+require 'rjr/nodes/amqp_node'
 require 'rjr/dispatcher'
 
 describe RJR::AMQPNode do
