@@ -1,4 +1,4 @@
-# RJR MultiNode Endpoint
+# RJR Multi Node
 #
 # Implements the RJR::Node interface to satisty JSON-RPC requests over multiple protocols
 #
@@ -10,6 +10,7 @@ require 'rjr/node'
 require 'rjr/message'
 
 module RJR
+module Nodes
 
 # Multiple node definition, allows a developer to easily multiplex transport
 # mechanisms to serve JSON-RPC requests over.
@@ -33,7 +34,7 @@ module RJR
 #
 #   # invoke requests as you normally would via any protocol
 #
-class MultiNode < RJR::Node
+class Multi < RJR::Node
   # Return the nodes
   attr_reader :nodes
 
@@ -42,12 +43,16 @@ class MultiNode < RJR::Node
   # @option args [Array<RJR::Node>] :nodes array of nodes to use to listen to new requests on
   def initialize(args = {})
     super(args)
-    @nodes = args[:nodes]
+    @nodes = []
+    args[:nodes].each { |n|
+      self << n
+    } if args[:nodes]
   end
 
   # Add node to multinode
   # @param [RJR::Node] node the node to add
   def <<(node)
+    node.dispatcher = @dispatcher
     @nodes << node
   end
 
@@ -62,4 +67,5 @@ class MultiNode < RJR::Node
   end
 end
 
-end
+end # module NODES
+end # module RJR

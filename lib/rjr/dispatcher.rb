@@ -11,87 +11,24 @@ require 'json'
 
 module RJR
 
-# JSON-RPC request representation
-class Request
-  # name of the method which request is for
-  attr_accessor :method
-  alias :rjr_method :method
-
-  # array of arguments which to pass to the rpc method handler
-  attr_accessor :method_args
-  alias :rjr_method_args :method_args
-
-  # hash of keys/values corresponding to optional headers received as part of of the request
-  attr_accessor :headers
-
-  # callback through which additional requests may be invoked
-  attr_accessor :rjr_callback
-
-  # type of the rjr node which request was received on
-  attr_accessor :rjr_node_type
-
-  # id of the rjr node which request was received on
-  attr_accessor :rjr_node_id
-
-  # callable object registered to the specified method which to invoke request on with arguments
-  attr_accessor :handler
-
-  # RJR request intializer
-  # @param [Hash] args options to set on request
-  # @option args [String] :method name of the method which request is for
-  # @option args [Array]  :method_args array of arguments which to pass to the rpc method handler
-  # @option args [Hash]   :headers hash of keys/values corresponding to optional headers received as part of of the request
-  # @option args [String] :client_ip ip address of client which invoked the request (if applicable)
-  # @option args [String] :client_port port of client which invoked the request (if applicable)
-  # @option args [RJR::Callback] :rjr_callback callback through which additional requests may be invoked
-  # @option args [RJR::Node] :rjr_node rjr node which request was received on
-  # @option args [String] :rjr_node_id id of the rjr node which request was received on
-  # @option args [Symbol] :rjr_node_type type of the rjr node which request was received on
-  # @option args [Callable] :handler callable object registered to the specified method which to invoke request on with arguments
-  def initialize(args = {})
-    @method       = args[:method]  || args['method']
-    @rjr_method   = @method
-    @method_args  = args[:method_args] || args['method_args']
-    @rjr_method_args = @method_args
-    @headers      = args[:headers] || args['headers']
-    @client_ip    = args[:client_ip]
-    @client_port  = args[:client_port]
-    @rjr_callback = args[:rjr_callback]
-    @rjr_node      = args[:rjr_node]
-    @rjr_node_id   = args[:rjr_node_id] || args['rjr_node_id']
-    @rjr_node_type = args[:rjr_node_type] || args['rjr_node_type']
-    @handler       = args[:handler]
-  end
-
-  # Actually invoke the request by calling the registered handler with the specified
-  # method parameters in the local scope
-  def handle
-    RJR::Logger.info "Dispatching '#{@method}' request with parameters (#{@method_args.join(',')}) on #{@rjr_node_type}-node(#{@rjr_node_id})"
-    # TODO compare arity of method to number of args ?
-    retval = instance_exec(*@method_args, &@handler)
-    RJR::Logger.info "#{@method} request with parameters (#{@method_args.join(',')}) returning #{retval}"
-    return retval
-  end
-end
-
 # JSON-RPC result representation
 class Result
-  # boolean indicating if request was successfully invoked
+  # Boolean indicating if request was successfully invoked
   attr_accessor :success
 
-  # boolean indicating if request was not successfully invoked
+  # Boolean indicating if request failed in some manner
   attr_accessor :failed
 
-  # return value of the json-rpc call if successful
+  # Return value of the json-rpc call if successful
   attr_accessor :result
 
-  # code corresponding to json-rpc error if problem occured during request invocation
+  # Code corresponding to json-rpc error if problem occured during request invocation
   attr_accessor :error_code
 
-  # message corresponding to json-rpc error if problem occured during request invocation
+  # Message corresponding to json-rpc error if problem occured during request invocation
   attr_accessor :error_msg
 
-  # class of error raised (if any) during request invocation (this is extra metadata beyond standard json-rpc)
+  # Class of error raised (if any) during request invocation (this is extra metadata beyond standard json-rpc)
   attr_accessor :error_class
 
   # RJR result intializer
@@ -101,34 +38,23 @@ class Result
   # @option args [String] :error_msg message corresponding to json-rpc error if problem occured during request invocation
   # @option args [Class] :error_class class of error raised (if any) during request invocation (this is extra metadata beyond standard json-rpc)
   def initialize(args = {})
-    @result        = nil
-    @error_code    = nil
-    @error_message = nil
-    @error_class = nil
+    @result        = args[:result]      || args['result']
+    @error_code    = args[:error_code]  || args['error_code']
+    @error_msg     = args[:error_msg]   || args['error_msg']
+    @error_class   = args[:error_class] || args['error_class']
 
-    if args.has_key?(:result) || args.has_key?('result')
-      @success = true
-      @failed  = false
-      @result  = args[:result] || args['result']
-
-    elsif args.has_key?(:error_code) || args.has_key?('error_code')
-      @success = false
-      @failed  = true
-      @error_code  = args[:error_code] || args['error_code']
-      @error_msg   = args[:error_msg]  || args['error_msg']
-      @error_class = args[:error_class] || args['error_class']
-
-    end
+    @success       =  @error_code.nil?
+    @failed        = !@error_code.nil?
   end
 
   # Compare Result against other result, returning true if both correspond
   # to equivalent json-rpc results else false
   def ==(other)
-    @success == other.success &&
-    @failed  == other.failed  &&
-    @result  == other.result  &&
-    @error_code == other.error_code &&
-    @error_msg  == other.error_msg  &&
+    @success     == other.success    &&
+    @failed      == other.failed     &&
+    @result      == other.result     &&
+    @error_code  == other.error_code &&
+    @error_msg   == other.error_msg  &&
     @error_class == other.error_class
   end
 
@@ -150,113 +76,82 @@ class Result
      return Result.new(:error_code => -32602,
                        :error_msg => "Method '#{name}' not found")
   end
-
 end
 
-# Association between json-rpc method name and registered handler to
-# be invoked on new requests.
+# JSON-RPC request representation.
 #
-# When invoked, creates new {RJR::Request} object with specified request
-# params and uses it to invoke handler in its context. Formats and returns
-# return of operation
-class Handler
-  attr_accessor :method_name
-  attr_accessor :handler_proc
+# Registered request handlers will be invoked in the context of
+# instances of this class, meaning all member variables will be available
+# for use in the handler.
+class Request
+  # Result of the request operation, set by dispatcher
+  attr_accessor :result
 
-  # RJR::Handler intializer
-  # @param [Hash] args options to set on handler
-  # @option args [String] :method name of json-rpc method to which handler is bound
-  # @option args [Callable] :handle callable object which to bind to method name
+  # RJR Request initializer
+  # @param [Hash] args options to set on request
+  # @option args [String] :rjr_method name of the method which request is for
+  # @option args [Array]  :rjr_method_args array of arguments which to pass to the rpc method handler
+  # @option args [Hash]   :rjr_headers hash of keys/values corresponding to optional headers received as part of of the request
+  # @option args [String] :rjr_client_ip ip address of client which invoked the request (if applicable)
+  # @option args [String] :rjr_client_port port of client which invoked the request (if applicable)
+  # @option args [RJR::Callback] :rjr_callback callback through which requests/notifications can be sent to remote node
+  # @option args [RJR::Node] :rjr_node rjr node which request was received on
+  # @option args [String] :rjr_node_id id of the rjr node which request was received on
+  # @option args [Symbol] :rjr_node_type type of the rjr node which request was received on
+  # @option args [Callable] :rjr_handler callable object registered to the specified method which to invoke request on with arguments
   def initialize(args = {})
-    @method_name          = args[:method]
-    @handler_proc         = args[:handler]
+    @rjr_method      = args[:rjr_method]      || args['rjr_method']
+    @rjr_method_args = args[:rjr_method_args] || args['rjr_method_args']
+    @rjr_headers     = args[:rjr_headers]     || args['rjr_headers']
+
+    @rjr_client_ip   = args[:rjr_client_ip]
+    @rjr_client_port = args[:rjr_client_port]
+
+    @rjr_callback    = args[:rjr_callback]
+    @rjr_node        = args[:rjr_node]
+    @rjr_node_id     = args[:rjr_node_id]     || args['rjr_node_id']
+    @rjr_node_type   = args[:rjr_node_type]   || args['rjr_node_type']
+
+    @rjr_handler     = args[:rjr_handler]
+
+    @result = nil
   end
 
-  # Handle new json-rpc request to registered method.
-  #
-  # Creates new {RJR::Request} with the local method name and handler and the
-  # arguments received as part of the request. Uses it to invoke handler and
-  # creates and returns new {RJR::Result} encapsulating the return value if
-  # successful or error code/message/class if not.
-  #
-  # If invalid method_name is specified returns a json-rpc 'Method not found'
-  def handle(args = {})
-    return Result.method_not_found(args[:missing_name]) if @method_name.nil?
-
-    result = nil
-    begin
-      request = Request.new args.merge(:method          => @method_name,
-                                       :handler         => @handler_proc)
-      retval = request.handle
-      result = Result.new(:result => retval)
-
-    rescue Exception => e
-      RJR::Logger.warn ["Exception Raised in #{method_name} handler #{e}"] + e.backtrace
-      result = Result.new(:error_code => -32000,
-                          :error_msg  => e.to_s,
-                          :error_class => e.class)
-
-    end
-
-    DispatcherStat << DispatcherStat.new(request, result)
-    return result
-  end
-end
-
-# Tracks high level dispatcher states
-class DispatcherStat
-  # Request invoked
-  attr_reader :request
-
-  # Result returned
-  attr_reader :result
-
-  # Initialized the stat w/ the corresponding request/result
-  def initialize(request, result)
-    @request = request
-    @result  = result
+  # Invoke the request by calling the registered handler with the registered
+  # method parameters in the local scope
+  def handle
+    RJR::Logger.info "Dispatching '#{@rjr_method}' request with parameters (#{@rjr_method_args.join(',')}) on #{@rjr_node_type}-node(#{@rjr_node_id})"
+    retval = instance_exec(*@rjr_method_args, &@rjr_handler)
+    RJR::Logger.info "#{@rjr_method} request with parameters (#{@rjr_method_args.join(',')}) returning #{retval}"
+    return retval
   end
 
-  # Global stats registry
-  def self.stats
-    @stats ||= []
-  end
-
-  # Reinit the stats registry
-  def self.reset
-    @stats = []
-  end
-
-  # Add stat to the global registry
-  def self.<<(s)
-    @stats ||= []
-    @stats << s
-    self
-  end
-
-  # Convert stat to json representation and return it
+  # Convert request to json representation and return it
   def to_json(*a)
     {
       'json_class' => self.class.name,
       'data'       =>
-        {:request => {:method        => request.method,
-                      :method_args   => request.method_args,
-                      :headers       => request.headers,
-                      :rjr_node_type => request.rjr_node_type,
-                      :rjr_node_id   => request.rjr_node_id
-                      },
-         :result => {:result      => result.result,
-                     :error_code  => result.error_code,
-                     :error_msg   => result.error_msg,
-                     :error_class => result.error_class} }
+        {:request => { :rjr_method      => request.rjr_method,
+                       :rjr_method_args => request.rjr_method_args,
+                       :rjr_headers     => request.rjr_headers,
+                       :rjr_node_type   => request.rjr_node_type,
+                       :rjr_node_id     => request.rjr_node_id },
+
+         :result  => { :result          => result.result,
+                       :error_code      => result.error_code,
+                       :error_msg       => result.error_msg,
+                       :error_class     => result.error_class } }
     }.to_json(*a)
   end
 
-  # Create new stat from json representation
+  # Create new request from json representation
   def self.json_create(o)
-    stat = new(Request.new(o['data']['request']), Result.new(o['data']['result']))
-    return stat
+    result  = Result.new(o['data']['result'])
+    request = Request.new(o['data']['request'])
+    request.result = result
+    return request
   end
+
 end
 
 # Primary RJR JSON-RPC method dispatcher interface.
@@ -264,77 +159,67 @@ end
 # Provides class methods which to register global handlers to json-rpc methods and
 # to handle requests and responses.
 class Dispatcher
-  # Clear all registered json-rpc handlers
-  def self.init_handlers
-    @@handlers = {}
+  # Registered json-rpc request signatures and corresponding handlers
+  attr_reader :handlers
+
+  # Requests which have been dispatched
+  def requests ; @requests_lock.synchronize { Array.new(@requests) } ; end
+
+  # RJR::Dispatcher intializer
+  def initialize
+    @handlers = Hash.new()
+
+    @requests_lock = Mutex.new
+    @requests = []
   end
 
-  # Register a handler for the specified method(s)
+  # Register json-rpc handler with dispatcher
   #
-  # *WARNING* Do not invoke 'return' in registered handlers as these are blocks and *not* lambdas
-  # (see {http://stackoverflow.com/questions/626/when-to-use-lambda-when-to-use-proc-new Ruby Lambdas vs Procs})
-  #
-  # If specifying a single method name pass in a string, else pass in an array of strings.
-  # The block argument will be used as the method handler and will be invoked when
-  # json-rpc requests are received corresponding to the method name(s)
-  # @param [String,Array<String>] method_names one or more string method names
-  # @param [Hash] args options to initialize handler with, current unused
-  # @param [Callable] handler block to invoke when json-rpc requests to method are received
-  #
-  # @example
-  #   RJR::Dispatcher.add_handler("hello_world") {
-  #     "hello world"
-  #   }
-  #
-  #   RJR::Dispatcher.add_handler(["echo", "ECHO"]) { |val|
-  #     val
-  #   }
-  #
-  # # TODO define yard macros to construct documentation for a rjr based api
-  #        from calls to add_handler
-  def self.add_handler(method_names, args = {}, &handler)
-    method_names = Array(method_names) unless method_names.is_a?(Array)
-    @@handlers  ||= {}
-    method_names.each { |method_name|
-      # TODO support registering multiple handlers per method? (and in dispatch_request below)
-      @@handlers[method_name] = Handler.new args.merge(:method  => method_name,
-                                                       :handler => handler)
-    }
+  # @param [String] signature request signature to match
+  # @param [Callable] callable callable object which to bind to signature
+  # @param [Callable] &bl block parameter will be set to callback if specified
+  def handle(signature, callback = nil, &bl)
+    @handlers[signature] = callback unless callback.nil?
+    @handlers[signature] = bl       unless bl.nil?
+    self
   end
 
-  # Clear registered method handlers
-  def self.clear!
-    @@handlers = {}
-  end
+  # Dispatch received request. (used internally by nodes)
+  def dispatch(args = {})
+     # currently we just match method name against signature
+     # TODO if signature if a regex, match against method name
+     #      or if callable, invoke it w/ request checking boolean return value for match
+     # TODO not using concurrent access portection, assumes all handlers are registered
+     #      before first dispatch occurs
+     handler = @handlers[args[:rjr_method]]
 
-  # Return boolean indicating if handler for the specifed method has been registered
-  def self.has_handler_for?(method_name)
-    @@handlers  ||= {}
-    !@@handlers.find { |k,v| k == method_name }.nil?
-  end
+     return Result.method_not_found(args[:rjr_method]) if handler.nil?
 
-  # Return the handler for the specified method
-  def self.handler_for(method_name)
-    @@handlers[method_name]
-  end
+     # TODO compare arity of handler to number of method_args passed in
+     request = Request.new args.merge(:rjr_handler  => handler)
 
-  # Helper used by RJR nodes to dispatch requests received via transports to
-  # registered handlers.
-  def self.dispatch_request(method_name, args = {})
-     @@handlers  ||= {}
-     handler  = @@handlers[method_name]
+     begin
+       retval  = request.handle
+       request.result  = Result.new(:result => retval)
 
-     if handler.nil?
-       @@generic_handler ||= Handler.new :method => nil
-       return @@generic_handler.handle(args.merge(:missing_name => method_name))
+     rescue Exception => e
+       RJR::Logger.warn ["Exception Raised in #{args[:rjr_method]} handler #{e}"] +
+                         e.backtrace
+       request.result =
+         Result.new(:error_code => -32000,
+                    :error_msg  => e.to_s,
+                    :error_class => e.class)
+
      end
 
-     return handler.handle args
+     @requests_lock.synchronize { @requests << request }
+     return request.result
   end
 
-  # Helper used by RJR nodes to handle responses received from rjr requests
-  #   (returns return-value of method handler or raises error)
-  def self.handle_response(result)
+  # Handle responses received from rjr requests. (used internally by nodes)
+  #
+  # Returns return-value of method handler or raises error
+  def handle_response(result)
      unless result.success
        #if result.error_class
        #  TODO needs to be constantized first (see TODO in lib/rjr/message)
@@ -345,7 +230,6 @@ class Dispatcher
      end
      return result.result
   end
-
 end
 
 end # module RJR

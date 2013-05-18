@@ -3,12 +3,10 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-# establish client connection w/ specified args and invoke block w/ 
-# newly created client, returning it after block terminates
-
 require 'eventmachine'
 require 'rjr/em_adapter'
 require 'rjr/thread_pool'
+require 'rjr/common'
 
 module RJR
 
@@ -20,17 +18,10 @@ module RJR
 # implementing the 'listen' operation to listen for new requests and 'invoke_request'
 # to issue them.
 class Node
-  class << self
-    # @!group Config options
 
-    # Default number of threads to instantiate in local worker pool
-    attr_accessor :default_threads
+  # Subclasses should define RJR_NODE_TYPE and send_message
 
-    # Default timeout after which worker threads are killed
-    attr_accessor :default_timeout
-
-    # @!endgroup
-  end
+  ###################################################################
 
   # Unique string identifier of the node
   attr_reader :node_id
@@ -39,115 +30,191 @@ class Node
   # requests and responses received and sent by node
   attr_accessor :message_headers
 
+  # Dispatcher to use to satisfy requests
+  attr_accessor :dispatcher
+
   # RJR::Node initializer
   #
   # @param [Hash] args options to set on request
-  # @option args [String] :node_id unique id of the node *required*!!!
+  # @option args [String] :node_id unique id of the node
   # @option args [Hash<String,String>] :headers optional headers to set on all json-rpc messages
-  # @option args [Integer] :threads number of handler to threads to instantiate in local worker pool
-  # @option args [Integer] :timeout timeout after which worker thread being run is killed
+  # @option args [Dispatcher] :dispatcher dispatcher to assign to the node
   def initialize(args = {})
-     RJR::Node.default_threads ||=  20
-     RJR::Node.default_timeout ||=  10
+     @connection_event_handlers = {:closed => [], :error => []}
+     @response_lock = Mutex.new
+     @response_cv   = ConditionVariable.new
+     @responses     = []
 
-     @node_id     = args[:node_id]
-     @num_threads = args[:threads]  || RJR::Node.default_threads
-     @timeout     = args[:timeout]  || RJR::Node.default_timeout
-     EMAdapter.init
+     @node_id         = args[:node_id]
+     @dispatcher      = args[:dispatcher] || RJR::Dispatcher.new
+     @message_headers = args.has_key?(:headers) ? {}.merge(args[:headers]) : {}
 
-     @message_headers = {}
-     @message_headers.merge!(args[:headers]) if args.has_key?(:headers)
-  end
-
-  # Initialize the node, should be called from the event loop
-  # before any operation
-  def init_node
-    EM.error_handler { |e|
-      puts "EventMachine raised critical error #{e} #{e.backtrace}"
-      # TODO dispatch to registered event handlers (unify events system)
-    }
-  end
-
-  # Run a job in event machine.
-  # @param [Callable] bl callback to be invoked by eventmachine
-  def em_run(&bl)
-    # Nodes use shared thread pool to handle requests and free
-    # up the eventmachine reactor to continue processing requests
-    # @see ThreadPool, ThreadPoolManager
-    ThreadPoolManager.init @num_threads, :timeout => @timeout
-
-    # Nodes make use of an EM helper interface to schedule operations
-    EMAdapter.init
-
-    EMAdapter.schedule &bl
-  end
-
-  # Run a job async in event machine immediately
-  def em_run_async(&bl)
-    # same init as em_run
-    ThreadPoolManager.init @num_threads, :timeout => @timeout
-    EMAdapter.init
-    EMAdapter.schedule {
-      ThreadPoolManager << ThreadPoolJob.new { bl.call }
-    }
-  end
-
-  # TODO em_schedule
-
-  # Run an job async in event machine.
-  #
-  # This schedules a thread to be run once after a specified
-  # interval via eventmachine
-  #
-  # @param [Integer] seconds interval which to wait before invoking block
-  # @param [Callable] bl callback to be periodically invoked by eventmachine
-  def em_schedule_async(seconds, &bl)
-    # same init as em_run
-    ThreadPoolManager.init @num_threads, :timeout => @timeout
-    EMAdapter.init
-    EMAdapter.add_timer(seconds) {
-      ThreadPoolManager << ThreadPoolJob.new { bl.call }
-    }
-  end
-
-  # Run a job periodically via an event machine timer
-  #
-  # @param [Integer] seconds interval which to invoke block
-  # @param [Callable] bl callback to be periodically invoked by eventmachine
-  def em_repeat(seconds, &bl)
-    # same init as em_run
-    ThreadPoolManager.init @num_threads, :timeout => @timeout
-    EMAdapter.init
-    EMAdapter.add_periodic_timer seconds, &bl
-  end
-
-  # Run an job async via an event machine timer.
-  #
-  # This schedules a thread to be run in the thread pool on
-  # every invocation of a periodic event machine timer.
-  #
-  # @param [Integer] seconds interval which to invoke block
-  # @param [Callable] bl callback to be periodically invoked by eventmachine
-  def em_repeat_async(seconds, &bl)
-    # same init as em_schedule
-    ThreadPoolManager.init @num_threads, :timeout => @timeout
-    EMAdapter.init
-    EMAdapter.add_periodic_timer(seconds){
-      ThreadPoolManager << ThreadPoolJob.new { bl.call }
-    }
+     ThreadPool.instance.start
+     EMAdapter.instance.start
   end
 
   # Block until the eventmachine reactor and thread pool have both completed running
   def join
-    ThreadPoolManager.join
-    EMAdapter.join
+    ThreadPool.instance.join
+    EMAdapter.instance.join
   end
 
   # Immediately terminate the node
   def halt
-    EMAdapter.halt
-    ThreadPoolManager.stop
+    EMAdapter.instance.stop_event_loop
+    ThreadPool.instance.stop
   end
 
+  ##################################################################
+
+  # Register connection event handler
+  # @param [:error, :close] event the event to register the handler for
+  # @param [Callable] handler block param to be added to array of handlers that are called when event occurs
+  # @yield [TCPNode] self is passed to each registered handler when event occurs
+  def on(event, &handler)
+    if @connection_event_handlers.keys.include?(event)
+      @connection_event_handlers[event] << handler
+    end
+  end
+
+  private
+
+  # Internal helper, run connection event handlers for specified event
+  def connection_event(event)
+    if @connection_event_handlers.keys.include?(event)
+      @connection_event_handlers[event].each { |h|
+        h.call self
+      }
+    end
+  end
+
+  ##################################################################
+
+  # Handle message received
+  def handle_message(msg, connection = {})
+    if RequestMessage.is_request_message?(msg)
+      ThreadPool.instance <<
+        ThreadPoolJob.new(msg) { |m| handle_request(m, false, connection) }
+
+    elsif NotificationMessage.is_notification_message?(msg)
+      ThreadPool.instance <<
+        ThreadPoolJob.new(msg) { |m| handle_request(m, true, connection) }
+
+    elsif ResponseMessage.is_response_message?(msg)
+      handle_response(msg)
+
+    end
+  end
+
+  # Handle request message received
+  def handle_request(data, notification=false, connection={})
+    # get client for the specified connection
+    # TODO should grap port/ip immediately on connection and use that
+    client_port,client_ip = nil,nil
+    begin
+      # XXX skip if an 'indirect' node type or local
+      unless [:amqp, :local].include?(self.class.RJR_NODE_TYPE)
+        client_port, client_ip =
+          Socket.unpack_sockaddr_in(connection.get_peername)
+      end
+    rescue Exception=>e
+    end
+
+    msg = notification ?
+      NotificationMessage.new(:message => data,
+                              :headers => @message_headers) :
+            RequestMessage.new(:message => data,
+                              :headers => @message_headers)
+
+    result =
+      @dispatcher.dispatch(:rjr_method      => msg.jr_method,
+                           :rjr_method_args => msg.jr_args,
+                           :headers         => msg.headers,
+                           :client_ip       => client_port,
+                           :client_port     => client_ip,
+                           :rjr_node        => self,
+                           :rjr_node_id     => @node_id,
+                           :rjr_node_type   => self.class::RJR_NODE_TYPE,
+                           :rjr_callback    =>
+                             NodeCallback.new(:node       => self,
+                                              :connection => connection))
+
+    unless notification
+      response = ResponseMessage.new(:id => msg.msg_id,
+                                     :result => result,
+                                     :headers => msg.headers)
+      self.send_msg(response.to_s, connection)
+      return response
+    end
+  end
+
+  # Handle response message received
+  def handle_response(data)
+    msg    = ResponseMessage.new(:message => data, :headers => self.message_headers)
+    res = err = nil
+    begin
+      res = @dispatcher.handle_response(msg.result)
+    rescue Exception => e
+      err = e
+    end
+
+    @response_lock.synchronize {
+      result = [msg.msg_id, res]
+      result << err if !err.nil?
+      @responses << result
+      @response_cv.signal
+    }
+  end
+
+  # Block until response matching message id is received
+  def wait_for_result(message)
+    res = nil
+    while res.nil?
+      @response_lock.synchronize{
+        # FIXME throw err if more than 1 match found
+        res = @responses.select { |response| message.msg_id == response.first }.first
+        if !res.nil?
+          @responses.delete(res)
+
+        else
+          @response_cv.signal
+          @response_cv.wait @response_lock
+        end
+      }
+    end
+    return res
+  end
+
+end # class Node
+
+# Node callback interface, used to invoke json-rpc methods
+# against a remote node via node connection previously established
+#
+# After a node sends a json-rpc request to another, the either node may send
+# additional requests to each other via the connection already established until
+# it is closed on either end
+class NodeCallback
+
+  # NodeCallback initializer
+  # @param [Hash] args the options to create the tcp node callback with
+  # @option args [node] :node node used to send messages
+  # @option args [connection] :connection connection to be used in channel selection
+  def initialize(args = {})
+    @node        = args[:node]
+    @connection  = args[:connection]
+  end
+
+  def notify(callback_method, *data)
+    # XXX return if node type does not support
+    # pesistent conntections (throw err instead?)
+    return if @node.class::RJR_NODE_TYPE == :web
+
+    msg = NotificationMessage.new :method => callback_method,
+                                  :args => data, :headers => @node.message_headers
+
+    # TODO surround w/ begin/rescue block incase of socket errors / raise RJR::ConnectionError
+    @node.send_msg msg.to_s, @connection
+  end
 end
+
 end # module RJR

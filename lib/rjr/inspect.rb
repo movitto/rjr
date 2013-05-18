@@ -34,7 +34,7 @@ def select_stats(*filter)
       end
   end
 
-  RJR::DispatcherStat.stats.select { |ds| lf.all? { |lf| lf.call(ds) } }
+  RJR::DispatcherStat.stats.select { |ds| lf.all? { |lfi| lfi.call(ds) } }
 end
  
 rjr_method \

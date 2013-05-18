@@ -97,12 +97,12 @@ instance variables. These include:
 * @rjr_node_id
 * @rjr_node_type
 * @rjr_callback
-* @headers
-* @client_ip
-* @client_port
-* @method
-* @method_args
-* @handler
+* @rjr_headers
+* @rjr_client_ip
+* @rjr_client_port
+* @rjr_method
+* @rjr_method_args
+* @rjr_handler
 </pre>
 
 RJR implements a callback interface through which methods may be invoked on a client

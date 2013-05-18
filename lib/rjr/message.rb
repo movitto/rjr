@@ -9,17 +9,12 @@
 # newly created client, returning it after block terminates
 
 require 'json'
+require 'rjr/common'
 
 module RJR
 
 # Message sent from client to server to invoke a json-rpc method
 class RequestMessage
-  # Helper method to generate a random id
-  def self.gen_uuid
-    ["%02x"*4, "%02x"*2, "%02x"*2, "%02x"*2, "%02x"*6].join("-") %
-        Array.new(16) {|x| rand(0xff) }
-  end
-
   # Message string received from the source
   attr_accessor :json_message
 
@@ -51,8 +46,8 @@ class RequestMessage
   def initialize(args = {})
     if args.has_key?(:message)
       begin
-        request = JSON.parse(args[:message])
         @json_message = args[:message]
+        request = JSON.parse(@json_message)
         @jr_method = request['method']
         @jr_args   = request['params']
         @msg_id    = request['id']
@@ -71,7 +66,7 @@ class RequestMessage
       @jr_method = args[:method]
       @jr_args   = args[:args]
       @headers   = args[:headers]
-      @msg_id    = RequestMessage.gen_uuid
+      @msg_id    = gen_uuid
 
     end
   end
@@ -132,8 +127,8 @@ class ResponseMessage
   # @option args [RJR::Result] :result result of json-rpc method invocation
   def initialize(args = {})
     if args.has_key?(:message)
-      response = JSON.parse(args[:message])
       @json_message  = args[:message]
+      response = JSON.parse(@json_message)
       @msg_id  = response['id']
       @result   = Result.new
       @result.success   = response.has_key?('result')
@@ -235,8 +230,8 @@ class NotificationMessage
   def initialize(args = {})
     if args.has_key?(:message)
       begin
-        notification = JSON.parse(args[:message])
         @json_message = args[:message]
+        notification = JSON.parse(@json_message)
         @jr_method = notification['method']
         @jr_args   = notification['params']
         @headers   = args.has_key?(:headers) ? {}.merge!(args[:headers]) : {}

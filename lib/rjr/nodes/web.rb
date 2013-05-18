@@ -20,7 +20,7 @@ end
 if skip_module
 # TODO output: "curb/evma_httpserver gems could not be loaded, skipping web node definition"
 require 'rjr/nodes/missing_node'
-RJR::WebNode = RJR::MissingNode
+RJR::Web = RJR::Nodes::Missing
 
 else
 require 'socket'
@@ -31,76 +31,25 @@ require 'rjr/dispatcher'
 require 'rjr/thread_pool'
 
 module RJR
-
-# Web node callback interface, *note* callbacks are not supported on the web
-# node and thus this currently does nothing
-class WebNodeCallback
-  def initialize()
-  end
-
-  def invoke(callback_method, *data)
-    # TODO throw error?
-  end
-end
+module Nodes
 
 # @private
 # Helper class intialized by eventmachine encapsulating a http connection
-class WebRequestHandler < EventMachine::Connection
+class WebConnection < EventMachine::Connection
   include EventMachine::HttpServer
 
-  RJR_NODE_TYPE = :web
-
-  # WebRequestHandler initializer.
+  # WebConnection initializer.
   #
-  # specify the WebNode establishing the connection
-  def initialize(*args)
-    @web_node = args[0]
+  # specify the node establishing the connection
+  def initialize(args = {})
+    @rjr_node = args[:rjr_node]
   end
 
   # {EventMachine::Connection#process_http_request} callback, handle request messages
   def process_http_request
     # TODO support http protocols other than POST
     msg = @http_post_content.nil? ? '' : @http_post_content
-    ThreadPoolManager << ThreadPoolJob.new(msg) { |m| handle_request(m) }
-  end
-
-  private
-
-  # Internal helper, handle request message received
-  def handle_request(message)
-    msg    = nil
-    result = nil
-    notification = NotificationMessage.is_notification_message?(msg)
-
-    begin
-      client_port, client_ip = Socket.unpack_sockaddr_in(get_peername)
-      msg    = notification ? NotificationMessage.new(:message => message, :headers => @web_node.message_headers) :
-                              RequestMessage.new(:message => message, :headers => @web_node.message_headers)
-      headers = @web_node.message_headers.merge(msg.headers)
-      result = Dispatcher.dispatch_request(msg.jr_method,
-                                           :method_args => msg.jr_args,
-                                           :headers => headers,
-                                           :client_ip => client_ip,
-                                           :client_port => client_port,
-                                           :rjr_node      => @web_node,
-                                           :rjr_node_id   => @web_node.node_id,
-                                           :rjr_node_type => RJR_NODE_TYPE,
-                                           :rjr_callback => WebNodeCallback.new())
-    rescue JSON::ParserError => e
-      result = Result.invalid_request
-    end
-
-    msg_id = msg.nil? ? nil : msg.msg_id
-    response = ResponseMessage.new(:id => msg_id, :result => result, :headers => headers)
-
-    unless notification
-      resp = EventMachine::DelegatedHttpResponse.new(self)
-      #resp.status  = response.result.success ? 200 : 500
-      resp.status = 200
-      resp.content = response.to_s
-      resp.content_type "application/json"
-      resp.send_response
-    end
+    @rjr_node.send(:handle_message, msg, self) # XXX private method
   end
 end
 
@@ -119,62 +68,25 @@ end
 #   }
 #
 #   # initialize node, listen, and block
-#   server = RJR::WebNode.new :node_id => 'server', :host => 'localhost', :port => '7777'
+#   server = RJR::Nodes::Web.new :node_id => 'server', :host => 'localhost', :port => '7777'
 #   server.listen
 #   server.join
 #
 # @example Invoking json-rpc requests over http using rjr
-#   client = RJR::WebNode.new :node_id => 'client'
+#   client = RJR::Nodes::Web.new :node_id => 'client'
 #   puts client.invoke_request('http://localhost:7777', 'hello', 'mo')
 #
 # @example Invoking json-rpc requests over http using curl
 #   $ curl -X POST http://localhost:7777 -d '{"jsonrpc":"2.0","method":"hello","params":["mo"],"id":"123"}'
 #   > {"jsonrpc":"2.0","id":"123","result":"Hello mo!"}
 #
-class WebNode < RJR::Node
-  private
+class Web < RJR::Node
 
-  # Internal helper, handle response message received
-  def handle_response(http)
-    msg    = ResponseMessage.new(:message => http.response, :headers => @message_headers)
-    res = err = nil
-    begin
-      res = Dispatcher.handle_response(msg.result)
-    rescue Exception => e
-      err = e
-    end
-
-    @response_lock.synchronize {
-      result = [msg.msg_id, res]
-      result << err if !err.nil?
-      @responses << result
-      @response_cv.signal
-    }
-  end
-
-  # Internal helper, block until response matching message id is received
-  def wait_for_result(message)
-    res = nil
-    while res.nil?
-      @response_lock.synchronize{
-        # FIXME throw err if more than 1 match found
-        res = @responses.select { |response| message.msg_id == response.first }.first
-        if !res.nil?
-          @responses.delete(res)
-
-        else
-          @response_cv.signal
-          @response_cv.wait @response_lock
-
-        end
-      }
-    end
-    return res
-  end
+  RJR_NODE_TYPE = :web
 
   public
 
-  # WebNode initializer
+  # Web initializer
   # @param [Hash] args the options to create the tcp node with
   # @option args [String] :host the hostname/ip which to listen on
   # @option args [Integer] :port the port which to listen on
@@ -182,28 +94,28 @@ class WebNode < RJR::Node
      super(args)
      @host      = args[:host]
      @port      = args[:port]
-
-     @response_lock = Mutex.new
-     @response_cv   = ConditionVariable.new
-     @responses     = []
   end
 
-  # Register connection event handler,
-  #
-  # *note* Since web node connections aren't persistant, we don't do anything here.
-  # @param [:error, :close] event the event to register the handler for
-  # @param [Callable] handler block param to be added to array of handlers that are called when event occurs
-  # @yield [LocalNode] self is passed to each registered handler when event occurs
-  def on(event, &handler)
-    # TODO raise error?
+  # Send data using specified http connection
+  def send_msg(data, connection)
+    # we are assuming that since http connections
+    # are not persistant, we should be sending a
+    # response message here
+
+    resp = EventMachine::DelegatedHttpResponse.new(connection)
+    #resp.status  = response.result.success ? 200 : 500
+    resp.status = 200
+    resp.content = data.to_s
+    resp.content_type "application/json"
+    resp.send_response
   end
 
   # Instruct Node to start listening for and dispatching rpc requests
   #
   # Implementation of {RJR::Node#listen}
   def listen
-    em_run do
-      EventMachine::start_server(@host, @port, WebRequestHandler, self)
+    EMAdapter.instance.schedule do
+      EventMachine::start_server(@host, @port, WebConnection, :rjr_node => self)
     end
   end
 
@@ -212,16 +124,16 @@ class WebNode < RJR::Node
   #   in format of http://hostname:port
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
-  def invoke_request(uri, rpc_method, *args)
+  def invoke(uri, rpc_method, *args)
     message = RequestMessage.new :method => rpc_method,
                                  :args   => args,
                                  :headers => @message_headers
     cb = lambda { |http|
       # TODO handle errors
-      handle_response(http)
+      handle_message(http.response, http)
     }
 
-    em_run do
+    EMAdapter.instance.schedule do
       http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
       http.errback  &cb
       http.callback &cb
@@ -242,7 +154,7 @@ class WebNode < RJR::Node
   #   in format of http://hostname:port
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
-  def send_notification(uri, rpc_method, *args)
+  def notify(uri, rpc_method, *args)
     # will block until message is published
     published_l = Mutex.new
     published_c = ConditionVariable.new
@@ -252,7 +164,7 @@ class WebNode < RJR::Node
                                       :args   => args,
                                       :headers => @message_headers
     cb = lambda { |arg| published_l.synchronize { invoked = true ; published_c.signal }}
-    em_run do
+    EMAdapter.instance.schedule do
       http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
       http.errback  &cb
       http.callback &cb
@@ -262,5 +174,6 @@ class WebNode < RJR::Node
   end
 end
 
+end # module Nodes
 end # module RJR
-end
+end # !skip_module

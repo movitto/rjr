@@ -9,9 +9,11 @@
 require 'rjr/node'
 
 module RJR
-class MissingNode < RJR::Node
+module Nodes
+class Missing < RJR::Node
   def method_missing(method_id, *args, &bl)
     raise "rjr node #{node_id} is missing a dependency - cannot invoke #{method_id}"
   end
+end
 end
 end
