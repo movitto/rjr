@@ -1,5 +1,10 @@
 require 'rjr/nodes/amqp'
+require 'rjr/nodes/missing'
 
+if RJR::Nodes::AMQP == RJR::Nodes::Missing
+puts "Missing AMQP node dependencies, skipping amqp tests"
+
+else
 module RJR::Nodes
   describe AMQP do
     describe "#send_msg" do
@@ -71,5 +76,7 @@ module RJR::Nodes
 
     # TODO test callbacks over amqp interface
     # TODO ensure closed / error event handlers are invoked
-  end
-end
+
+  end # describe AMQP
+end # module RJR::Nodes
+end # (!missing)

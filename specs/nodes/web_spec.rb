@@ -1,6 +1,10 @@
 require 'rjr/nodes/web'
-require 'rjr/dispatcher'
+require 'rjr/nodes/missing'
 
+if RJR::Nodes::Web == RJR::Nodes::Missing
+puts "Missing Web node dependencies, skipping web tests"
+
+else
 module RJR::Nodes
   describe Web do
     describe "#send_msg" do
@@ -68,5 +72,6 @@ module RJR::Nodes
     end
 
     # TODO ensure closed / error event handlers are invoked
-  end
-end
+  end # describe Web
+end # module RJR::Nodes
+end # (!missing)

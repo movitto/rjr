@@ -1,6 +1,10 @@
 require 'rjr/nodes/ws'
-require 'rjr/dispatcher'
+require 'rjr/nodes/missing'
 
+if RJR::Nodes::WS == RJR::Nodes::Missing
+puts "Missing Ws node dependencies, skipping ws tests"
+
+else
 module RJR::Nodes
   describe WS do
     describe "#send_msg" do
@@ -69,5 +73,6 @@ module RJR::Nodes
 
     # TODO test callbacks over ws interface
     # TODO ensure closed / error event handlers are invoked
-  end
-end
+  end # describe Ws
+end # module RJR::Nodes
+end # (!missing)

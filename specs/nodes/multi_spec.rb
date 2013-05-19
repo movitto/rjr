@@ -1,7 +1,13 @@
 require 'rjr/nodes/multi'
 require 'rjr/nodes/amqp'
 require 'rjr/nodes/web'
+require 'rjr/nodes/missing'
 
+if RJR::Nodes::AMQP == RJR::Nodes::Missing ||
+   RJR::Nodes::Web  == RJR::Nodes::Missing
+puts "Missing AMQP and/or web node dependencies, skipping multi tests"
+
+else
 module RJR::Nodes
   describe Multi do
     describe "#listen" do
@@ -10,7 +16,7 @@ module RJR::Nodes
         rni1 = rni2 = nil
         rnt1 = rnt2 = nil
         p1   = p2   = nil
-        amqp  = AMQP.new  :node_id => 'amqp'
+        amqp  = AMQP.new  :node_id => 'amqp',
                           :broker => 'localhost'
         web   = Web.new   :node_id => 'web',
                           :host => 'localhost', :port => 9876
@@ -52,6 +58,8 @@ module RJR::Nodes
 
         multi.halt.join
       end
-  end
-end
-end
+    end
+  end # describe Multi
+
+end # module RJR::Nodes
+end # (!missing)
