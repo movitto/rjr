@@ -92,7 +92,7 @@ Generate documentation via
 
     rake yard
 
-Also see specs for detailed usage.
+Also see examples and specs for detailed usage.
 
 ### Advanced ###
 

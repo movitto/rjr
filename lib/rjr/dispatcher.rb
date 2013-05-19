@@ -153,10 +153,7 @@ class Request
 
 end
 
-# Primary RJR JSON-RPC method dispatcher interface.
-#
-# Provides class methods which to register global handlers to json-rpc methods and
-# to handle requests and responses.
+# Primary RJR JSON-RPC method dispatcher.
 class Dispatcher
   # Registered json-rpc request signatures and corresponding handlers
   attr_reader :handlers

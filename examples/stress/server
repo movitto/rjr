@@ -1,5 +1,5 @@
 #!/usr/bin/ruby
-# A rjr integration stress test server
+# A rjr stress example server
 #
 # Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
