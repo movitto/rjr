@@ -1,3 +1,9 @@
+#!/usr/bin/ruby
+# A RJR multi-node example
+#
+# Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+# Licensed under the Apache License, Version 2.0
+
 require 'rjr/nodes/amqp'
 require 'rjr/nodes/tcp'
 require 'rjr/nodes/ws'

@@ -3,7 +3,7 @@
 # Representation of a json-rpc request, response and mechanisms which to
 # register methods to handle requests and return responses
 #
-# Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 require 'rjr/common'
@@ -175,7 +175,11 @@ class Dispatcher
   # Loads module from fs and adds handlers defined there
   # 
   # Assumes module includes a 'dispatch_<module_name>' method
-  # which accepts a dispatcher and defines handlers on it
+  # which accepts a dispatcher and defines handlers on it.
+  #
+  # @param [String] name location which to load module(s) from, may be
+  #   a file, directory, or path specification (dirs seperated with ':')
+  # @return self
   def add_module(name)
     name.split(':').each { |p|
       if File.directory?(p)
@@ -201,13 +205,17 @@ class Dispatcher
   # @param [String] signature request signature to match
   # @param [Callable] callable callable object which to bind to signature
   # @param [Callable] &bl block parameter will be set to callback if specified
+  # @return self
   def handle(signature, callback = nil, &bl)
     @handlers[signature] = callback unless callback.nil?
     @handlers[signature] = bl       unless bl.nil?
     self
   end
 
-  # Dispatch received request. (used internally by nodes)
+  # Dispatch received request. (used internally by nodes).
+  #
+  # Arguments should include :rjr_method and other parameters
+  # required to construct a valid Request instance
   def dispatch(args = {})
      # currently we just match method name against signature
      # TODO if signature if a regex, match against method name

@@ -1,8 +1,9 @@
 # RJR WebSockets Endpoint
 #
-# Implements the RJR::Node interface to satisty JSON-RPC requests over the websockets protocol
+# Implements the RJR::Node interface to satisty JSON-RPC requests
+# over the websockets protocol
 #
-# Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 skip_module = false
@@ -35,13 +36,15 @@ module Nodes
 # messages over web sockets
 #
 # @example Listening for json-rpc requests over tcp
-#   # register rjr dispatchers (see RJR::Dispatcher)
-#   RJR::Dispatcher.add_handler('hello') { |name|
-#     "Hello #{name}!"
-#   }
-#
-#   # initialize node, listen, and block
+#   # initialize node
 #   server = RJR::Nodes::WS.new :node_id => 'server', :host => 'localhost', :port => '7777'
+#
+#   # register rjr dispatchers (see RJR::Dispatcher)
+#   server.dispatcher.handle('hello') do |name|
+#     "Hello #{name}!"
+#   end
+#
+#   # listen, and block
 #   server.listen
 #   server.join
 #
@@ -54,7 +57,7 @@ class WS < RJR::Node
 
   private
 
-  # Internal helper initialize new connection
+  # Internal helper initialize new client
   def init_client(uri, &on_init)
     connection = nil
     @connections_lock.synchronize {
@@ -76,6 +79,7 @@ class WS < RJR::Node
   end
 
   public
+
   # WS initializer
   # @param [Hash] args the options to create the web socket node with
   # @option args [String] :host the hostname/ip which to listen on
@@ -90,6 +94,8 @@ class WS < RJR::Node
   end
 
   # Send data using specified websocket safely
+  #
+  # Implementation of {RJR::Node#send_msg}
   def send_msg(data, ws)
     ws.send(data)
   end
@@ -110,6 +116,12 @@ class WS < RJR::Node
   end
 
   # Instructs node to send rpc request, and wait for / return response
+  #
+  # Implementation of {RJR::Node#invoke}
+  #
+  # Do not invoke directly from em event loop or callback as will block the message
+  # subscription used to receive responses
+  #
   # @param [String] uri location of node to send request to, should be
   #   in format of ws://hostname:port
   # @param [String] rpc_method json-rpc method to invoke on destination
@@ -137,6 +149,8 @@ class WS < RJR::Node
   end
 
   # Instructs node to send rpc notification (immadiately returns / no response is generated)
+  #
+  # Implementation of {RJR::Node#notify}
   #
   # @param [String] uri location of node to send notification to, should be
   #   in format of ws://hostname:port

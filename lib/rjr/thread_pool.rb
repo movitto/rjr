@@ -1,6 +1,6 @@
 # Thread Pool (second implementation)
 #
-# Copyright (C) 2010-2012 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2010-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 require 'singleton'
@@ -9,9 +9,9 @@ module RJR
 
 # Work item to be executed in a thread launched by {ThreadPool}.
 #
-# The end user just need to initialize this class with the handle
-# to the job to be executed and the params to pass to it, before
-# handing it off to the thread pool that will take care of the rest.
+# The end user should initialize this class with a handle
+# to the job to be executed and the params to pass to it, then
+# hand the instance off to the thread pool to take care of the rest.
 class ThreadPoolJob
   # Proc to be invoked to perform work
   attr_accessor :handler
@@ -28,7 +28,6 @@ class ThreadPoolJob
   # Thread running the job
   attr_accessor :thread
 
-
   # ThreadPoolJob initializer
   # @param [Array] params arguments to pass to the job when it is invoked
   # @param [Callable] block handle to callable object corresponding to job to invoke
@@ -39,20 +38,25 @@ class ThreadPoolJob
     @timestamp = nil
   end
 
+  # Return bool indicating if job has started
   def started?
     !@time_started.nil?
   end
 
+  # Return bool indicating if job has completed
   def completed?
     !@time_started.nil? && !@time_completed.nil?
   end
 
-  # Return bool indicating if specified timeout expired
+  # Return bool indicating if the job has started but not completed
+  # and the specified timeout has expired
   def expired?(timeout)
     !@time_started.nil? && @time_completed.nil? && ((Time.now - @time_started) > timeout)
   end
 
-  # Set job metadata and execute job with specified params
+  # Set job metadata and execute job with specified params.
+  #
+  # Used internally by thread pool
   def exec(lock)
     lock.synchronize {
       @thread = Thread.current
@@ -74,10 +78,8 @@ end
 # Utility to launches a specified number of threads on instantiation,
 # assigning work to them in order as it arrives.
 #
-# Supports optional timeout which allows the developer to kill and restart
+# Supports optional timeout which allows the user to kill and restart
 # threads if a job is taking too long to run.
-#
-# Second (and hopefully better) thread pool implementation.
 class ThreadPool
   include Singleton
 
@@ -198,9 +200,11 @@ class ThreadPool
 
   # Add work to the pool
   # @param [ThreadPoolJob] work job to execute in first available thread
+  # @return self
   def <<(work)
     # TODO option to increase worker threads if work queue gets saturated
     @work_queue.push work
+    self
   end
 
   # Terminate the thread pool, stopping all worker threads

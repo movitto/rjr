@@ -3,7 +3,7 @@
 # Provides a entity able to be associated with a rjr endpoint
 # if the corresponding node cannot be loaded for whatever reason
 #
-# Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 require 'rjr/node'

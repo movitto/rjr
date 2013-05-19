@@ -1,3 +1,8 @@
+#!/usr/bin/ruby
+# A RJR local-node example
+#
+# Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+# Licensed under the Apache License, Version 2.0
 require 'rjr/nodes/local'
 
 server = RJR::Nodes::Local.new

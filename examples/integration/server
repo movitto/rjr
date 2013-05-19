@@ -1,5 +1,8 @@
 #!/usr/bin/ruby
 # A rjr integration stress test server
+#
+# Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+# Licensed under the Apache License, Version 2.0
 
 require 'rjr/nodes/amqp'
 require 'rjr/nodes/ws'

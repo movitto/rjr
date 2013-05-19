@@ -2,10 +2,10 @@
 #
 # Implements the RJR::Node interface to satisty JSON-RPC requests over the HTTP protocol
 #
-# The web node does not support callbacks at the moment, though at some point we may
-# allow a client to specify an optional webserver to send callback requests to. (TODO)
+# The web node does not support callbacks at the moment,
+# though would like to look into how to implement this
 #
-# Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 skip_module = false
@@ -40,7 +40,7 @@ class WebConnection < EventMachine::Connection
 
   # WebConnection initializer.
   #
-  # specify the node establishing the connection
+  # specify the web node establishing the connection
   def initialize(args = {})
     @rjr_node = args[:rjr_node]
   end
@@ -67,19 +67,21 @@ end
 # messages over http
 #
 # @example Listening for json-rpc requests over tcp
-#   # register rjr dispatchers (see RJR::Dispatcher)
-#   RJR::Dispatcher.add_handler('hello') { |name|
-#     "Hello #{name}!"
-#   }
-#
-#   # initialize node, listen, and block
+#   # initialize node
 #   server = RJR::Nodes::Web.new :node_id => 'server', :host => 'localhost', :port => '7777'
+#
+#   # register rjr dispatchers (see RJR::Dispatcher)
+#   server.dispatcher.handle('hello') do |name|
+#     "Hello #{name}!"
+#   end
+#
+#   # listen, and block
 #   server.listen
 #   server.join
 #
 # @example Invoking json-rpc requests over http using rjr
 #   client = RJR::Nodes::Web.new :node_id => 'client'
-#   puts client.invoke_request('http://localhost:7777', 'hello', 'mo')
+#   puts client.invoke('http://localhost:7777', 'hello', 'mo')
 #
 # @example Invoking json-rpc requests over http using curl
 #   $ curl -X POST http://localhost:7777 -d '{"jsonrpc":"2.0","method":"hello","params":["mo"],"id":"123"}'
@@ -102,6 +104,8 @@ class Web < RJR::Node
   end
 
   # Send data using specified http connection
+  #
+  # Implementation of {RJR::Node#send_msg}
   def send_msg(data, connection)
     # we are assuming that since http connections
     # are not persistant, we should be sending a
@@ -126,6 +130,12 @@ class Web < RJR::Node
   end
 
   # Instructs node to send rpc request, and wait for / return response
+  #
+  # Implementation of {RJR::Node#invoke}
+  #
+  # Do not invoke directly from em event loop or callback as will block the message
+  # subscription used to receive responses
+  #
   # @param [String] uri location of node to send request to, should be
   #   in format of http://hostname:port
   # @param [String] rpc_method json-rpc method to invoke on destination
@@ -155,6 +165,8 @@ class Web < RJR::Node
   end
 
   # Instructs node to send rpc notification (immadiately returns / no response is generated)
+  #
+  # Implementation of {RJR::Node#notify}
   #
   # @param [String] uri location of node to send request to, should be
   #   in format of http://hostname:port

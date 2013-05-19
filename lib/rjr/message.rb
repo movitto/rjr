@@ -2,7 +2,7 @@
 #
 # Representations of json-rpc messages in accordance with the standard
 #
-# Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 # establish client connection w/ specified args and invoke block w/ 
@@ -290,7 +290,7 @@ class MessageUtil
   # to the issue of multiple messages appearing in one tcp data packet.
   #
   # TODO efficiency can probably be optimized
-  #   in the case closing '}' hasn't arrived yet
+  # in the case closing '}' hasn't arrived yet
   def self.retrieve_json(data) 
     return nil if data.nil? || data.empty?
     start  = 0
@@ -314,14 +314,19 @@ class MessageUtil
   end
 
   # Mechanism to register / retrieve preformatted message generator
-  def self.message(k, &bl)
+  #
+  # @param [Symbol] id id of message to get / set
+  # @param [Callable] bl optional block param which to invoke to generate message
+  # @return [String] json rpc message
+  def self.message(id, &bl)
     @rjr_messages ||= {}
-    @rjr_messages[k] = bl.call unless bl.nil?
-    @rjr_messages[k]
+    @rjr_messages[id] = bl.call unless bl.nil?
+    @rjr_messages[id]
   end
 
-  # Generate / return random message. Optionally specify the transport which
-  # the message must accept
+  # Return random message from registry.
+  #
+  # Optionally specify the transport which the message must accept
   def self.rand_msg(transport = nil)
     @rjr_messages ||= {}
     messages = @rjr_messages.select { |mid,m| m[:transports].nil? || transport.nil? ||
@@ -333,6 +338,8 @@ end # MessageUtil
 
 # Module providing helper methods for messages
 module MessageMixins
+
+  # Wrapper around MessageUtil.message
   def define_message(name, &bl)
     MessageUtil.message(name, &bl)
   end

@@ -1,3 +1,9 @@
+#!/usr/bin/ruby
+# A RJR ws-node example
+#
+# Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+# Licensed under the Apache License, Version 2.0
+
 require 'rjr/nodes/ws'
 
 server = RJR::Nodes::WS.new :host => 'localhost', :port => 9789, :node_id => "server"

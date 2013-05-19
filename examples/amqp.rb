@@ -1,3 +1,9 @@
+#!/usr/bin/ruby
+# A RJR AMQP-node example
+#
+# Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+# Licensed under the Apache License, Version 2.0
+
 require 'rjr/nodes/amqp'
 
 server = RJR::Nodes::AMQP.new :node_id => 'server', :broker => 'localhost'

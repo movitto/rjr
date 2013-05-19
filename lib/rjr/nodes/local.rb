@@ -2,7 +2,7 @@
 #
 # Implements the RJR::Node interface to satisty JSON-RPC requests via local method calls
 #
-# Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 require 'rjr/node'
@@ -18,14 +18,22 @@ module Nodes
 # json-rpc handlers locally, enforcing the same constraints as
 # you would on a json-rpc request coming in remotely.
 #
-# @example Listening for and dispatching json-rpc requests locally
-#   RJR::Dispatcher.add_handler('hello') { |name|
-#     @rjr_node_type == :local ? "Hello superuser #{name}" : "Hello #{name}!"
-#   }
+# *Note* this only dispatches to the methods defined on the local dispatcher!
 #
-#   # initialize node and invoke request
+# If you have two local nodes, they will have seperate dispatchers unless you
+# assign them the same object (eg node2.dispatcher = node1.dispatcher or
+# node2 = new RJR::Nodes::Local.new(:dispatcher :=> node1.dispatcher))
+#
+# @example Listening for and dispatching json-rpc requests locally
+#   # initialize node
 #   node = RJR::LocalNode.new :node_id => 'node'
-#   node.invoke_request('hello', 'mo')
+#
+#   node.dispatcher.handle('hello') do |name|
+#     @rjr_node_type == :local ? "Hello superuser #{name}" : "Hello #{name}!"
+#   end
+#
+#   # invoke request
+#   node.invoke('hello', 'mo')
 #
 class Local < RJR::Node
   RJR_NODE_TYPE = :local
@@ -40,7 +48,11 @@ class Local < RJR::Node
      @node_type = RJR_NODE_TYPE
   end
 
-  # simply dispatch local notification
+  # Send data using specified connection.
+  #
+  # Simply dispatch local notification.
+  #
+  # Implementation of {RJR::Node#send_msg}
   def send_msg(msg, connection)
     # ignore response message
     unless msg.is_a?(ResponseMessage)
@@ -48,6 +60,9 @@ class Local < RJR::Node
     end
   end
 
+  # Instruct Nodes to start listening for and dispatching rpc requests
+  #
+  # Implementation of {RJR::Node#listen}
   def listen
     # do nothing
     self
@@ -55,13 +70,15 @@ class Local < RJR::Node
 
   # Instructs node to send rpc request, and wait for and return response
   #
-  # If strictly confirming to other nodes, use event machine to launch
+  # Implementation of {RJR::Node#invoke}
+  #
+  # If strictly confirming to other nodes, this would use event machine to launch
   # a thread pool job to dispatch request and block on result.
-  # Optimized for performance reasons but recognize the semantics of using
+  # Optimized for performance reasons but recognize that the semantics of using
   # the local node will be somewhat different.
   #
   # @param [String] rpc_method json-rpc method to invoke on destination
-  # @param [Array] args array of arguments to convert to json and invoke remote method wtih
+  # @param [Array] args array of arguments to convert to json and invoke remote method with
   # @return [Object] the json result retrieved from destination converted to a ruby object
   # @raise [Exception] if the destination raises an exception, it will be converted to json and re-raised here 
   def invoke(rpc_method, *args)
@@ -74,6 +91,8 @@ class Local < RJR::Node
   end
 
   # Instructs node to send rpc notification (immediately returns / no response is generated)
+  #
+  # Implementation of {RJR::Node#notify}
   #
   # Same performance comment as invoke_request above
   #

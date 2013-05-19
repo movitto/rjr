@@ -2,7 +2,7 @@
 #
 # Implements the RJR::Node interface to satisty JSON-RPC requests over the TCP protocol
 #
-# Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 require 'uri'
@@ -23,7 +23,8 @@ class TCPConnection < EventMachine::Connection
 
   # TCPConnection intializer
   #
-  # specify the TCP establishing the connection
+  # Specify the TCP Node establishing the connection and
+  # optionaly remote host/port which this connection is connected to
   def initialize(args = {})
     @rjr_node  = args[:rjr_node]
     @host      = args[:host]
@@ -45,7 +46,7 @@ class TCPConnection < EventMachine::Connection
     end
   end
 
-  # Send data safely
+  # Send data safely using local connection
   def send_msg(data)
     @send_lock.synchronize{
       send_data(data)
@@ -60,19 +61,21 @@ end
 # when invoking them.
 #
 # @example Listening for json-rpc requests over tcp
+#   # initialize node
+#   server = RJR::Nodes::TCP.new :node_id => 'server', :host => 'localhost', :port => '7777'
+#
 #   # register rjr dispatchers (see RJR::Dispatcher)
-#   RJR::Dispatcher.add_handler('hello') { |name|
+#   server.dispatcher.handle('hello') { |name|
 #     "Hello #{name}!"
 #   }
 #
-#   # initialize node, listen, and block
-#   server = RJR::Nodes::TCP.new :node_id => 'server', :host => 'localhost', :port => '7777'
+#   # listen and block
 #   server.listen
 #   server.join
 #
 # @example Invoking json-rpc requests over tcp
 #   client = RJR::Nodes::TCP.new :node_id => 'client', :host => 'localhost', :port => '8888'
-#   puts client.invoke_request('jsonrpc://localhost:7777', 'hello', 'mo')
+#   puts client.invoke('jsonrpc://localhost:7777', 'hello', 'mo')
 #
 class TCP < RJR::Node
   RJR_NODE_TYPE = :tcp
@@ -111,10 +114,11 @@ class TCP < RJR::Node
 
      @connections = []
      @connections_lock = Mutex.new
-
   end
 
   # Send data using specified connection
+  #
+  # Implementation of {RJR::Node#send_msg}
   def send_msg(data, connection)
     connection.send_msg(data)
   end
@@ -131,11 +135,13 @@ class TCP < RJR::Node
 
   # Instructs node to send rpc request, and wait for / return response.
   #
+  # Implementation of {RJR::Node#invoke}
+  #
   # Do not invoke directly from em event loop or callback as will block the message
   # subscription used to receive responses
   #
   # @param [String] uri location of node to send request to, should be
-  #   in format of jsonrpc://hostname:port
+  #   in format of jsonrpc://hostname:port or tcp://hostname:port
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
   def invoke(uri, rpc_method, *args)
@@ -164,6 +170,8 @@ class TCP < RJR::Node
   end
 
   # Instructs node to send rpc notification (immadiately returns / no response is generated)
+  #
+  # Implementation of {RJR::Node#notify}
   #
   # @param [String] uri location of node to send notification to, should be
   #   in format of jsonrpc://hostname:port

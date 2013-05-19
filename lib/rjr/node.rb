@@ -1,6 +1,6 @@
-# RJR Node
+# RJR Base Node Interface
 #
-# Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 require 'thread'
@@ -13,16 +13,24 @@ require 'rjr/thread_pool'
 
 module RJR
 
-# Base RJR Node interface. Nodes are the central transport mechanism of rjr,
+# Base RJR Node interface. Nodes are the central transport mechanism of RJR,
 # this class provides the core methods common among all transport types and
-# mechanisms to start and run the eventmachine reactor which drives all requests.
+# mechanisms to start and run the subsystems which drives all requests.
 #
-# A subclass of RJR::Node should be defined for each transport that is supported,
-# implementing the 'listen' operation to listen for new requests and 'invoke_request'
-# to issue them.
+# A subclass of RJR::Node should be defined for each transport that is supported.
+# Each subclass should define 
+#  * RJR_NODE_TYPE - unique id of the transport
+#  * listen method - begin listening for new requests and return
+#  * send_message(msg, connection) - send message using the specified connection (transport dependent)
+#  * invoke - establish connection, send message, and wait for / return result
+#  * notify - establish connection, send message, and immediately return
+#
+# Not all methods necessarily have to be implemented depending on the context /
+# use of the node, and the base node class provides many utility methods which
+# to assist in message processing (see below).
+#
+# See nodes residing in lib/rjr/nodes/ for specific examples.
 class Node
-
-  # Subclasses should define RJR_NODE_TYPE and send_message
 
   ###################################################################
 
@@ -57,6 +65,8 @@ class Node
   end
 
   # Block until the eventmachine reactor and thread pool have both completed running
+  #
+  # @return self
   def join
     @tp.join
     @em.join
@@ -67,9 +77,12 @@ class Node
   #
   # *Warning* this does what it says it does. All running threads, and reactor
   # jobs are immediately killed
+  #
+  # @return self
   def halt
     @em.stop_event_loop
     @tp.stop
+    self
   end
 
   ##################################################################
@@ -77,7 +90,7 @@ class Node
   # Register connection event handler
   # @param [:error, :close] event the event to register the handler for
   # @param [Callable] handler block param to be added to array of handlers that are called when event occurs
-  # @yield [TCPNode] self is passed to each registered handler when event occurs
+  # @yield [Node] self is passed to each registered handler when event occurs
   def on(event, &handler)
     if @connection_event_handlers.keys.include?(event)
       @connection_event_handlers[event] << handler
@@ -97,7 +110,7 @@ class Node
 
   ##################################################################
 
-  # Handle message received
+  # Internal helper, handle message received
   def handle_message(msg, connection = {})
     if RequestMessage.is_request_message?(msg)
       @tp << ThreadPoolJob.new(msg) { |m| handle_request(m, false, connection) }
@@ -111,7 +124,7 @@ class Node
     end
   end
 
-  # Handle request message received
+  # Internal helper, handle request message received
   def handle_request(data, notification=false, connection={})
     # get client for the specified connection
     # TODO should grap port/ip immediately on connection and use that
@@ -153,7 +166,7 @@ class Node
     end
   end
 
-  # Handle response message received
+  # Internal helper, handle response message received
   def handle_response(data)
     msg    = ResponseMessage.new(:message => data, :headers => self.message_headers)
     res = err = nil
@@ -171,7 +184,7 @@ class Node
     }
   end
 
-  # Block until response matching message id is received
+  # Internal helper, block until response matching message id is received
   def wait_for_result(message)
     res = nil
     while res.nil?
@@ -203,7 +216,7 @@ end # class Node
 class NodeCallback
 
   # NodeCallback initializer
-  # @param [Hash] args the options to create the tcp node callback with
+  # @param [Hash] args the options to create the node callback with
   # @option args [node] :node node used to send messages
   # @option args [connection] :connection connection to be used in channel selection
   def initialize(args = {})

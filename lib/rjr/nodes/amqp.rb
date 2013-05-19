@@ -2,7 +2,7 @@
 #
 # Implements the RJR::Node interface to satisty JSON-RPC requests over the AMQP protocol
 #
-# Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 skip_module = false
@@ -34,25 +34,28 @@ module Nodes
 # a node and specify the remote queue when invoking requests.
 #
 # @example Listening for json-rpc requests over amqp
+#   # initialize node, 
+#   server = RJR::AMQPNode.new :node_id => 'server', :broker => 'localhost'
+#
 #   # register rjr dispatchers (see RJR::Dispatcher)
-#   RJR::Dispatcher.add_handler('hello') { |name|
+#   server.dispatcher.handle('hello') { |name|
 #     "Hello #{name}!"
 #   }
 #
-#   # initialize node, listen, and block
-#   server = RJR::AMQPNode.new :node_id => 'server', :broker => 'localhost'
+#   # listen, and block
 #   server.listen
 #   server.join
 #
 # @example Invoking json-rpc requests over amqp
 #   client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost'
-#   puts client.invoke_request('server-queue', 'hello', 'mo') # the queue name is set to "#{node_id}-queue"
+#   puts client.invoke('server-queue', 'hello', 'mo') # the queue name is set to "#{node_id}-queue"
+#
 class  AMQP < RJR::Node
   RJR_NODE_TYPE = :amqp
 
   private
 
-  # Initialize the amqp subsystem
+  # Internal helper, initialize the amqp subsystem
   def init_node(&on_init)
      if !@conn.nil? && @conn.connected?
        on_init.call
@@ -102,6 +105,7 @@ class  AMQP < RJR::Node
   public
 
   # AMQPNode initializer
+  #
   # @param [Hash] args the options to create the amqp node with
   # @option args [String] :broker the amqp message broker which to connect to
   def initialize(args = {})
@@ -111,6 +115,8 @@ class  AMQP < RJR::Node
   end
 
   # Publish a message using the amqp exchange
+  #
+  # Implementation of {RJR::Node#send_msg}
   def send_msg(msg, metadata, &on_publish)
     @amqp_lock.synchronize {
       #raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
@@ -138,6 +144,8 @@ class  AMQP < RJR::Node
   end
 
   # Instructs node to send rpc request, and wait for and return response.
+  #
+  # Implementation of {RJR::Node#invoke}
   #
   # Do not invoke directly from em event loop or callback as will block the message
   # subscription used to receive responses
@@ -172,6 +180,8 @@ class  AMQP < RJR::Node
   #        at a later time
 
   # Instructs node to send rpc notification (immadiately returns / no response is generated)
+  #
+  # Implementation of {RJR::Node#notify}
   #
   # @param [String] routing_key destination queue to send request to
   # @param [String] rpc_method json-rpc method to invoke on destination

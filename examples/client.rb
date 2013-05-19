@@ -1,4 +1,7 @@
-# default client definitions loaded in bin/rjr-client
+# default client definitions loaded by bin/rjr-client
+#
+# Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+# Licensed under the Apache License, Version 2.0
 
 include RJR::MessageMixins
 
