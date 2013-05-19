@@ -12,6 +12,8 @@ mechanisms.
 Currently supported transports include:
     tcp, amqp, http (post), websockets, local method calls, (others coming soon)
 
+Note some transports require additional dependencies, see rjr.gemspec for more info.
+
 ### Intro ###
 To install rjr simply run:
     gem install rjr
