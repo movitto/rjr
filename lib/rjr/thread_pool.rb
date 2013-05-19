@@ -84,7 +84,7 @@ class ThreadPool
   include Singleton
 
   class << self
-    # @!group Config options
+    # @!group Config options (must be set before first node is instantiated)
 
     # Number of threads to instantiate in local worker pool
     attr_accessor :num_threads
@@ -145,8 +145,6 @@ class ThreadPool
   end
 
   # Internal helper, launch management thread
-  #
-  # Should only be launched from within the pool_lock
   def launch_manager
     @manager_thread = Thread.new {
       until @terminate
@@ -193,9 +191,15 @@ class ThreadPool
   def start
     return self unless @terminate
     @terminate = false
-    0.upto(@num_threads) { |i| launch_worker }
+    0.upto(@num_threads-1) { |i| launch_worker }
     launch_manager
     self
+  end
+
+  # Return boolean indicating if thread pool is running
+  def running?
+    !@manager_thread.nil? &&
+    ['sleep', 'run'].include?(@manager_thread.status)
   end
 
   # Add work to the pool
@@ -208,14 +212,27 @@ class ThreadPool
   end
 
   # Terminate the thread pool, stopping all worker threads
+  #
+  # @return self
   def stop
     @terminate = true
-    @manager_thread.wakeup
+
+    # this will wake up on it's own, but we can
+    # speed things up if we manually wake it up,
+    # surround w/ block incase thread cleans up on its own
+    begin
+      @manager_thread.wakeup if @manager_thread
+    rescue
+    end
+    self
   end
 
   # Block until all worker threads have finished executing
+  #
+  # @return self
   def join
-    @manager_thread.join
+    @manager_thread.join if @manager_thread
+    self
   end
 end
 

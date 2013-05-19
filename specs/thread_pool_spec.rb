@@ -1,41 +1,50 @@
-require 'rjr/dispatcher'
+require 'thread'
 require 'rjr/thread_pool'
 
 # TODO ? test ThreadPoolJob being_executed?, completed?, exec, handle_timeout!
 
-describe ThreadPool do
-  it "should start and stop successfully" do
-    tp = ThreadPool.new 10, :timeout => 10
-    tp.running?.should be_false
+module RJR
+  describe ThreadPool do
+    after(:each) do
+      ThreadPool.instance.stop
+      ThreadPool.instance.join
+    end
 
-    tp.start
-    tp.running?.should be_true
-    tp.instance_variable_get(:@worker_threads).size.should == 10
-    tp.instance_variable_get(:@manager_thread).should_not be_nil
-    ['run', 'sleep'].should include(tp.instance_variable_get(:@manager_thread).status)
-    sleep 0.5
+    it "should be a singleton" do
+      tp = ThreadPool.instance
+      ThreadPool.instance.should == tp
+    end
 
-    tp.stop
-    tp.running?.should be_false
-    tp.instance_variable_get(:@manager_thread).should be_nil
-    tp.instance_variable_get(:@worker_threads).size.should == 0
-  end
+    it "should start the thread pool" do
+      tp = ThreadPool.instance
+      tp.start
+      tp.instance_variable_get(:@worker_threads).size.should == ThreadPool.num_threads
+      tp.should be_running
+    end
 
-  it "should accept and run work" do
-    tp = ThreadPool.new 10, :timeout => 10
-    tp.start
+    it "should stop the thread pool" do
+      tp = ThreadPool.instance
+      tp.start
+      tp.stop
+      tp.join
+      tp.instance_variable_get(:@worker_threads).size.should == 0
+      tp.should_not be_running
+    end
 
-    tp.instance_variable_get(:@work_queue).size.should == 0
-    jobs_executed = []
-    tp << ThreadPoolJob.new { jobs_executed << 1 }
-    tp << ThreadPoolJob.new { jobs_executed << 2 }
-    tp.instance_variable_get(:@work_queue).size.should == 2
+    it "should run work" do
+      tp = ThreadPool.instance
+      tp.start
 
-    sleep 0.5
-    jobs_executed.should include(1)
-    jobs_executed.should include(2)
-    tp.instance_variable_get(:@work_queue).size.should == 0
+      jobs_executed = []
+      m,c = Mutex.new, ConditionVariable.new
+      tp << ThreadPoolJob.new { jobs_executed << 1 ; m.synchronize { c.signal } }
+      tp << ThreadPoolJob.new { jobs_executed << 2 ; m.synchronize { c.signal }  }
 
-    tp.stop
+      m.synchronize { c.wait m, 0.1 } unless jobs_executed.include?(1)
+      m.synchronize { c.wait m, 0.1 } unless jobs_executed.include?(2)
+      jobs_executed.should include(1)
+      jobs_executed.should include(2)
+    end
+
   end
 end

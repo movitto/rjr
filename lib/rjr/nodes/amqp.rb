@@ -27,30 +27,30 @@ module RJR
 module Nodes
 
 # AMQP node definition, implements the {RJR::Node} interface to
-# listen for and invoke json-rpc requests over
-# {http://en.wikipedia.org/wiki/Advanced_Message_Queuing_Protocol AMQP}.
+# listen for and invoke json-rpc requests over the
+# Advanced Message Queuing Protocol.
 #
 # Clients should specify the amqp broker to connect to when initializing
 # a node and specify the remote queue when invoking requests.
 #
 # @example Listening for json-rpc requests over amqp
-#   # initialize node, 
-#   server = RJR::AMQPNode.new :node_id => 'server', :broker => 'localhost'
+#   # initialize node,
+#   server = RJR::Nodes::AMQP.new :node_id => 'server', :broker => 'localhost'
 #
 #   # register rjr dispatchers (see RJR::Dispatcher)
-#   server.dispatcher.handle('hello') { |name|
+#   server.dispatcher.handle('hello') do |name|
 #     "Hello #{name}!"
-#   }
+#   end
 #
 #   # listen, and block
 #   server.listen
 #   server.join
 #
 # @example Invoking json-rpc requests over amqp
-#   client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost'
+#   client = RJR::Nodes::AMQP.new :node_id => 'client', :broker => 'localhost'
 #   puts client.invoke('server-queue', 'hello', 'mo') # the queue name is set to "#{node_id}-queue"
 #
-class  AMQP < RJR::Node
+class AMQP < RJR::Node
   RJR_NODE_TYPE = :amqp
 
   private

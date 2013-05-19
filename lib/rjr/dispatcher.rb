@@ -6,6 +6,7 @@
 # Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
+require 'json'
 require 'rjr/common'
 
 module RJR
@@ -86,6 +87,21 @@ class Request
   # Result of the request operation, set by dispatcher
   attr_accessor :result
 
+  # Method which request is for
+  attr_accessor :rjr_method
+
+  # Arguments be passed to method
+  attr_accessor :rjr_method_args
+
+  # Headers which came w/ request
+  attr_accessor :rjr_headers
+
+  # Type of node which request came in on
+  attr_accessor :rjr_node_type
+
+  # ID of node which request came in on
+  attr_accessor :rjr_node_id
+
   # RJR Request initializer
   # @param [Hash] args options to set on request
   # @option args [String] :rjr_method name of the method which request is for
@@ -100,7 +116,7 @@ class Request
   # @option args [Callable] :rjr_handler callable object registered to the specified method which to invoke request on with arguments
   def initialize(args = {})
     @rjr_method      = args[:rjr_method]      || args['rjr_method']
-    @rjr_method_args = args[:rjr_method_args] || args['rjr_method_args']
+    @rjr_method_args = args[:rjr_method_args] || args['rjr_method_args'] || []
     @rjr_headers     = args[:rjr_headers]     || args['rjr_headers']
 
     @rjr_client_ip   = args[:rjr_client_ip]
@@ -130,16 +146,16 @@ class Request
     {
       'json_class' => self.class.name,
       'data'       =>
-        {:request => { :rjr_method      => request.rjr_method,
-                       :rjr_method_args => request.rjr_method_args,
-                       :rjr_headers     => request.rjr_headers,
-                       :rjr_node_type   => request.rjr_node_type,
-                       :rjr_node_id     => request.rjr_node_id },
+        {:request => { :rjr_method      => @rjr_method,
+                       :rjr_method_args => @rjr_method_args,
+                       :rjr_headers     => @rjr_headers,
+                       :rjr_node_type   => @rjr_node_type,
+                       :rjr_node_id     => @rjr_node_id },
 
-         :result  => { :result          => result.result,
-                       :error_code      => result.error_code,
-                       :error_msg       => result.error_msg,
-                       :error_class     => result.error_class } }
+         :result  => { :result          => @result.result,
+                       :error_code      => @result.error_code,
+                       :error_msg       => @result.error_msg,
+                       :error_class     => @result.error_class } }
     }.to_json(*a)
   end
 
@@ -204,6 +220,10 @@ class Dispatcher
   # @param [Callable] &bl block parameter will be set to callback if specified
   # @return self
   def handle(signature, callback = nil, &bl)
+    if signature.is_a?(Array)
+      signature.each { |s| handle(s, callback, &bl) }
+      return
+    end
     @handlers[signature] = callback unless callback.nil?
     @handlers[signature] = bl       unless bl.nil?
     self

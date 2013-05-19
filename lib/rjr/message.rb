@@ -313,20 +313,26 @@ class MessageUtil
     return data[start..mi], data[(mi+1)..-1]
   end
 
-  # Mechanism to register / retrieve preformatted message generator
+  # Mechanism to register / retrieve preformatted message
   #
   # @param [Symbol] id id of message to get / set
-  # @param [Callable] bl optional block param which to invoke to generate message
+  # @param [String] msg optional preformatted message to store
   # @return [String] json rpc message
-  def self.message(id, &bl)
+  def self.message(id, msg=nil)
     @rjr_messages ||= {}
-    @rjr_messages[id] = bl.call unless bl.nil?
+    @rjr_messages[id] = msg unless msg.nil?
     @rjr_messages[id]
+  end
+
+  # Clear preformatted messages
+  def self.clear
+    @rjr_messages = {}
   end
 
   # Return random message from registry.
   #
   # Optionally specify the transport which the message must accept
+  #   (TODO turn this into a generic selection callback)
   def self.rand_msg(transport = nil)
     @rjr_messages ||= {}
     messages = @rjr_messages.select { |mid,m| m[:transports].nil? || transport.nil? ||
@@ -341,7 +347,7 @@ module MessageMixins
 
   # Wrapper around MessageUtil.message
   def define_message(name, &bl)
-    MessageUtil.message(name, &bl)
+    MessageUtil.message(name, bl.call)
   end
 end
 

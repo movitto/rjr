@@ -1,225 +1,271 @@
 require 'rjr/dispatcher'
 
-describe RJR::Request do
-  it "invokes registered handler in request context" do
-    invoked = false
-    rjr_callback = Object.new
-    request = RJR::Request.new :method => 'foobar',
-                               :method_args => ['a', 123],
-                               :headers     => {'qqq' => 'www'},
-                               :rjr_callback => rjr_callback,
-                               :rjr_node_id  => 'test',
-                               :rjr_node_type => 'test_type',
-                               :handler => lambda { |p1, p2|
-                                 invoked = true
-                                 @method.should == 'foobar'
-                                 p1.should == 'a'
-                                 p2.should == 123
-                                 @headers['qqq'].should == 'www'
-                                 @rjr_callback.should == rjr_callback
-                                 @rjr_node_id.should == 'test'
-                                 @rjr_node_type.should == 'test_type'
-                               }
-    request.handle
-    invoked.should == true
+module RJR
+  describe Result do
+    describe "#initialize" do
+      it "initializes default attributes" do
+        result = Result.new
+        result.result.should be_nil
+        result.error_code.should be_nil
+        result.error_msg.should be_nil
+        result.error_class.should be_nil
+      end
+
+      it "stores result" do
+        result = Result.new :result => 'foobar'
+        result.result.should == 'foobar'
+      end
+
+      it "stores error" do
+        result = Result.new :error_code => 123, :error_msg => 'abc',
+                            :error_class => ArgumentError
+        result.error_code.should == 123
+        result.error_msg.should == 'abc'
+        result.error_class.should == ArgumentError
+      end
+
+      context "when an error code is not specified" do
+        it "should be marked as successful" do
+          result = Result.new
+          result.success.should == true
+          result.failed.should  == false
+        end
+      end
+
+      context "when an error code is specified" do
+        it "should be marked as failed" do
+          result = Result.new :error_code => 123
+          result.success.should == false
+          result.failed.should  == true
+        end
+      end
+
+    end # describe #initialize
+
+    describe "#==" do
+      it "return true for equal results"
+      it "return false for inequal results"
+    end # descirbe #==
+
+  end # describe Result
+end # module RJR
+
+module RJR
+  describe Request do
+    it "should be convertable to json" do
+      req = Request.new :rjr_method => 'foobar',
+                        :rjr_method_args => [:a, :b],
+                        :rjr_headers => { :header1 => :val1 },
+                        :rjr_node_type => :local,
+                        :rjr_node_id => :loc1
+
+      res = RJR::Result.new :result => 42,
+                            :error_code => 123,
+                            :error_msg  => 'error occurred',
+                            :error_class => 'ArgumentError'
+      req.result = res
+
+      j = req.to_json()
+      j.should include('"json_class":"RJR::Request"')
+      j.should include('"rjr_method":"foobar"')
+      j.should include('"rjr_method_args":["a","b"]')
+      j.should include('"rjr_headers":{"header1":"val1"}')
+      j.should include('"rjr_node_type":"local"')
+      j.should include('"rjr_node_id":"loc1"')
+      j.should include('"result":42')
+      j.should include('"error_code":123')
+      j.should include('"error_msg":"error occurred"')
+      j.should include('"error_class":"ArgumentError"')
+    end
+
+    it "should be convertable from json" do
+      j = '{"json_class":"RJR::Request","data":{"request":{"rjr_method":"foobar","rjr_method_args":["a","b"],"rjr_headers":{"foo":"bar"},"rjr_node_type":"local","rjr_node_id":"loc1"},"result":{"result":42,"error_code":null,"error_msg":null,"error_class":null}}}'
+      r = JSON.parse(j)
+
+      r.class.should == RJR::Request
+      r.rjr_method.should == 'foobar'
+      r.rjr_method_args.should == ['a', 'b']
+      r.rjr_headers.should == { 'foo' => 'bar' }
+      r.rjr_node_type.should == 'local'
+      r.rjr_node_id.should == 'loc1'
+      r.result.result.should == 42
+    end
+
+    context "handling" do
+      it "should invoke handler in request context" do
+        method = 'foobar'
+        params = ['a', 1]
+        ni = 'test'
+        nt = 'test_type'
+        cb = Object.new
+        headers = {'header1' => 'val1'}
+
+        invoked = ip1 = ip2 = 
+        icb = im = ini = int = ih = nil
+        handler = proc { |p1, p2|
+          invoked = true
+          ip1     = p1
+          ip2     = p2
+          im      = @rjr_method
+          ini     = @rjr_node_id
+          int     = @rjr_node_type
+          icb     = @rjr_callback
+          ih      = @rjr_headers
+        }
+
+        request = Request.new :rjr_method      => method,
+                              :rjr_method_args => params,
+                              :rjr_headers     => headers,
+                              :rjr_callback    => cb,
+                              :rjr_node_id     => ni,
+                              :rjr_node_type   => nt,
+                              :rjr_handler     => handler
+
+        request.handle
+        invoked.should be_true
+        ip1.should  == params[0]
+        ip2.should  == params[1]
+        im.should   == method
+        ini.should  == ni
+        int.should  == nt
+        icb.should  == cb
+        ih.should   == headers
+      end
+    end
   end
 end
 
-describe RJR::Result do
-  it "should handle successful results" do
-    result = RJR::Result.new :result => 'foobar'
-    result.success.should == true
-    result.failed.should  == false
-    result.result.should  == 'foobar'
-    result.error_code.should == nil
-    result.error_msg.should == nil
-    result.error_class.should == nil
-  end
+module RJR
+  describe Dispatcher do
+    context "registering handlers" do
+      it "should load module"
 
-  it "should handle errors" do
-    result = RJR::Result.new :error_code => 123, :error_msg => 'abc', :error_class => ArgumentError
-    result.success.should == false
-    result.failed.should  == true
-    result.result.should  == nil
-    result.error_code.should == 123
-    result.error_msg.should == 'abc'
-    result.error_class.should == ArgumentError
-  end
-end
+      it "should register handler for method" do
+        d = Dispatcher.new
+        h = proc {}
+        d.handle('foobar', h)
+        d.handlers['foobar'].should == h
+      end
 
+      it "should set handler from block param" do
+        d = Dispatcher.new
+        h = proc {}
+        d.handle('foobar', &h)
+        d.handlers['foobar'].should == h
+      end
 
-describe RJR::Handler do
-  before(:each) do
-    RJR::DispatcherStat.reset
-  end
+      it "should register handler for multiple methods" do
+        d = Dispatcher.new
+        h = proc {}
+        d.handle(['foobar', 'barfoo'], &h)
+        d.handlers['foobar'].should == h
+        d.handlers['barfoo'].should == h
+      end
+    end
 
-  it "should return method not found result if method name is not specified" do
-    handler = RJR::Handler.new :method => nil
-    result = handler.handle
-    result.should == RJR::Result.method_not_found(nil)
-  end
+    context "dispatching requests" do
+      context "handler does not exist" do
+        it "should return method not found" do
+          d = Dispatcher.new
+          r = d.dispatch :rjr_method => 'foobar'
+          r.should == Result.method_not_found('foobar')
+        end
+      end
 
-  it "should invoke registered handler for request" do
-    invoked = false
-    handler = RJR::Handler.new :method => 'foobar',
-                               :handler => lambda {
-                                 invoked = true
-                               }
-    handler.handle({:method_args => [] })
-    invoked.should == true
-  end
+      context "handler is registered" do
+        it "should invoke handler" do
+          invoked = false
+          d = Dispatcher.new
+          h = proc { invoked = true }
+          d.handle('foobar', &h)
 
-  it "should create dispatcher stat when invoking handler" do
-    handler = RJR::Handler.new :method => 'foobar',
-                               :handler => lambda { 42 }
-    handler.handle({:method_args => [] })
-    RJR::DispatcherStat.stats.size.should == 1
-    RJR::DispatcherStat.stats.first.request.method.should == 'foobar'
-    RJR::DispatcherStat.stats.first.result.result.should == 42
-  end
+          d.dispatch :rjr_method => 'foobar'
+          invoked.should be_true
+        end
 
-  it "should return handler's return value in successful result" do
-    retval  = Object.new
-    handler = RJR::Handler.new :method => 'foobar',
-                               :handler => lambda {
-                                 retval
-                               }
-    res = handler.handle({:method_args => [] })
-    res.success.should == true
-    res.result.should == retval
-  end
+        it "should pass params to handler" do
+          param = nil
+          d = Dispatcher.new
+          h = proc { |p| param = p}
+          d.handle('foobar', &h)
 
-  it "should catch handler errors and return error result" do
-    handler = RJR::Handler.new :method => 'foobar',
-                               :method_args => [],
-                               :handler => lambda {
-                                 raise ArgumentError, "uh oh!"
-                               }
-    res = handler.handle({:method_args => [] })
-    res.failed.should == true
-    res.error_code.should == -32000
-    res.error_msg.should == "uh oh!"
-    res.error_class.should == ArgumentError
-  end
-end
+          d.dispatch(:rjr_method => 'foobar', :rjr_method_args => [42])
+          param.should == 42
+        end
 
-describe RJR::DispatcherStat do
-  before(:each) do
-    RJR::DispatcherStat.reset
-  end
+        it "should return request result" do
+          d = Dispatcher.new
+          h = proc { 42 }
+          d.handle('foobar', &h)
 
-  it "should store request and result" do
-    req = RJR::Request.new
-    res = RJR::Result.new
-    stat = RJR::DispatcherStat.new req, res
-    (stat.request == req).should be_true
-    stat.result.should == res
-  end
+          r = d.dispatch :rjr_method => 'foobar'
+          r.result.should == 42
+        end
 
-  it "should track global stats" do
-    req = RJR::Request.new
-    res = RJR::Result.new
-    stat = RJR::DispatcherStat.new req, res
+        it "should return request error" do
+          d = Dispatcher.new
+          h = proc { raise ArgumentError, "bah" }
+          d.handle('foobar', &h)
 
-    RJR::DispatcherStat << stat
-    RJR::DispatcherStat.stats.should include(stat)
-  end
+          r = d.dispatch :rjr_method => 'foobar'
+          r.error_code.should == -32000
+          r.error_msg.should == "bah"
+          r.error_class.should == ArgumentError
+        end
 
-  it "should be convertable to json" do
-    req = RJR::Request.new :method => 'foobar', :method_args => [:a, :b],
-                           :headers => { :foo => :bar }, :rjr_node_type => :local,
-                           :rjr_node_id => :loc1
-    res = RJR::Result.new :result => 42
+        it "should register request" do
+          d = Dispatcher.new
+          h = proc {}
+          d.handle('foobar', &h)
 
-    stat = RJR::DispatcherStat.new req, res
-    j = stat.to_json()
-    j.should include('"json_class":"RJR::DispatcherStat"')
-    j.should include('"method":"foobar"')
-    j.should include('"method_args":["a","b"]')
-    j.should include('"headers":{"foo":"bar"}')
-    j.should include('"rjr_node_type":"local"')
-    j.should include('"rjr_node_id":"loc1"')
-    j.should include('"result":42')
-  end
+          d.requests.size.should == 0
+          d.dispatch :rjr_method => 'foobar'
+          d.requests.size.should == 1
+          d.requests.first.rjr_method.should == 'foobar'
+        end
 
-  it "should be convertable from json" do
-    j = '{"json_class":"RJR::DispatcherStat","data":{"request":{"method":"foobar","method_args":["a","b"],"headers":{"foo":"bar"},"rjr_node_type":"local","rjr_node_id":"loc1"},"result":{"result":42,"error_code":null,"error_msg":null,"error_class":null}}}'
-    s = JSON.parse(j)
+        it "should set params on request" do
+          d = Dispatcher.new
+          h = proc { |p| }
+          d.handle('foobar', &h)
 
-    s.class.should == RJR::DispatcherStat
-    s.request.method.should == 'foobar'
-    s.request.method_args.should == ['a', 'b']
-    s.request.headers.should == { 'foo' => 'bar' }
-    s.request.rjr_node_type.should == 'local'
-    s.request.rjr_node_id.should == 'loc1'
-    s.result.result.should == 42
-  end
-end
+          d.dispatch(:rjr_method => 'foobar', :rjr_method_args => [42])
+          d.requests.first.rjr_method_args.should == [42]
+        end
 
-describe RJR::Dispatcher do
-  it "should dispatch request to registered handler" do
-    invoked_foobar = false
-    invoked_barfoo = false
-    RJR::Dispatcher.init_handlers
-    RJR::Dispatcher.add_handler('foobar') { |param1, param2|
-      invoked_foobar = true
-      param1.should == "param1"
-      param2.should == "param2"
-      "retval"
-    }
-    RJR::Dispatcher.add_handler('barfoo') { |param1, param2|
-      invoked_barfoo = true
-    }
-    res = RJR::Dispatcher.dispatch_request('foobar', :method_args => ['param1', 'param2'])
-    res.success.should == true
-    res.result.should == "retval"
-    invoked_foobar.should == true
-    invoked_barfoo.should == false
-  end
+        it "should set result on request" do
+          d = Dispatcher.new
+          h = proc { 42 }
+          d.handle('foobar', &h)
 
-  it "should allow user to determine registered handlers" do
-    foobar = lambda {}
-    barfoo = lambda {}
-    RJR::Dispatcher.add_handler('foobar', &foobar)
-    RJR::Dispatcher.add_handler('barfoo', &barfoo)
+          d.dispatch :rjr_method => 'foobar'
+          d.requests.first.result.result.should == 42
+        end
+      end
+    end
 
-    RJR::Dispatcher.has_handler_for?('foobar').should be_true
-    RJR::Dispatcher.has_handler_for?('barfoo').should be_true
-    RJR::Dispatcher.has_handler_for?('money').should be_false
+    context "processing responses" do
+      context "successful response" do
+        it "should return result" do
+          r = Result.new :result => 'woot'
+          d = Dispatcher.new
+          p = d.handle_response(r)
+          p.should == "woot"
+        end
+      end
 
-    RJR::Dispatcher.handler_for('foobar').handler_proc.should == foobar
-    RJR::Dispatcher.handler_for('barfoo').handler_proc.should == barfoo
-    RJR::Dispatcher.handler_for('money').should be_nil
-  end
+      context "failed response" do
+        it "should raise error" do
+          r = Result.new :error_code => 123, :error_msg => "bah",
+                         :error_class => ArgumentError
+          d = Dispatcher.new
+          lambda{
+            d.handle_response(r)
+          }.should raise_error(Exception, "bah")
+          #}.should raise_error(ArgumentError, "bah")
+        end
+      end
+    end
 
-  it "should allow a single handler to be subscribed to multiple methods" do
-    invoked_handler = 0
-    RJR::Dispatcher.init_handlers
-    RJR::Dispatcher.add_handler(['foobar', 'barfoo']) { |param1, param2|
-      invoked_handler += 1
-    }
-    RJR::Dispatcher.dispatch_request('foobar', :method_args => ['param1', 'param2'])
-    RJR::Dispatcher.dispatch_request('barfoo', :method_args => ['param1', 'param2'])
-    invoked_handler.should == 2
-  end
-
-  it "should return method not found result if handler for specified message is missing" do
-    RJR::Dispatcher.init_handlers
-    res = RJR::Dispatcher.dispatch_request('foobar')
-    res.should == RJR::Result.method_not_found('foobar')
-  end
-
-  it "should handle success response" do
-    res = RJR::Result.new :result => 'woot'
-    processed = RJR::Dispatcher.handle_response(res)
-    processed.should == "woot"
-  end
-
-  it "should handle error response" do
-    lambda{
-      res = RJR::Result.new :error_code => 123, :error_msg => "bah", :error_class => ArgumentError
-      RJR::Dispatcher.handle_response(res)
-    }.should raise_error(Exception, "bah")
-    #}.should raise_error(ArgumentError, "bah")
-  end
-end
+  end # describe Dispatcher
+end # module RJR

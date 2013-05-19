@@ -1,169 +1,73 @@
+require 'rjr/dispatcher'
 require 'rjr/node'
 
-describe RJR::Node do
-  it "should initialize properly from params" do
-    node = RJR::Node.new :node_id => 'foobar',
-                         :headers => {:h => 123}
-    node.node_id.should == 'foobar'
-    node.message_headers[:h].should == 123
+module RJR
+  describe Node do
+
+    it "should initialize properly from params" do
+      d = Dispatcher.new
+      node = Node.new :node_id => 'foobar',
+                      :headers => {:h => 123},
+                      :dispatcher => d
+      node.node_id.should == 'foobar'
+      node.message_headers[:h].should == 123
+      node.dispatcher.should == d
+    end
+
+    it "should create a new dispatcher" do
+      node = Node.new
+      node.dispatcher.should_not be_nil
+      node.dispatcher.class.should == Dispatcher
+    end
+
+    it "should start the thread pool" do
+      ThreadPool.instance.stop.join
+      node = Node.new
+      ThreadPool.instance.should be_running
+    end
+
+    it "should start event machine" do
+      EMAdapter.instance.halt.join
+      node = Node.new
+      EMAdapter.instance.reactor_running?.should be_true
+    end
+
+    it "should halt the thread pool" do
+      node = Node.new
+      node.halt.join
+      ThreadPool.instance.should_not be_running
+    end
+
+    it "should halt event machine" do
+      node = Node.new
+      node.halt.join
+      EMAdapter.instance.reactor_running?.should be_false
+    end
+
+    it "should handle connection events" do
+      node = Node.new
+      closed = false
+      error = false
+      node.on :closed do
+        closed = true
+      end
+      node.on :error do
+        error = true
+      end
+      node.send(:connection_event, :error)
+      error.should be_true
+
+      node.send(:connection_event, :closed)
+      closed.should be_true
+    end
+
+    it "should handle request messages"
+    it "should handle notification messages"
+    it "should handle response messages"
+    it "should block until reponse is received"
   end
 
-  it "should start eventmachine and allow multiple blocks to be invoked in its context" do
-    block1_called = false
-    block2_called = false
-
-    node = RJR::Node.new :node_id => 'foobar',
-                         :headers => {:h => 123}
-    node.em_run {
-      ThreadPoolManager.running?.should be_true
-      EMAdapter.running?.should be_true
-      block1_called = true
-      node.em_run {
-        EMAdapter.running?.should be_true
-        block2_called = true
-        node.halt
-      }
-    }
-    node.join
-
-    block1_called.should be_true
-    block2_called.should be_true
+  describe NodeCallback do
+    it "should send notifications"
   end
-
-  #it "should gracefully stop managed subsystems" do
-  #  # TODO test w/ keep_alive
-  #  node = RJR::Node.new :node_id => 'foobar',
-  #                       :headers => {:h => 123}
-  #  node.em_run {}
-  #  EMAdapter.running?.should be_true
-  #  ThreadPoolManager.running?.should be_true
-  #  node.stop
-  #  node.join
-  #end
-
-  it "should halt managed subsystems" do
-    node = RJR::Node.new :node_id => 'foobar',
-                         :headers => {:h => 123}
-    node.em_run {}
-    EMAdapter.running?.should be_true
-    ThreadPoolManager.running?.should be_true
-    node.halt
-    node.join
-    EMAdapter.running?.should be_false
-    ThreadPoolManager.running?.should be_false
-  end
-
-  it "should run a block directly via eventmachine" do
-    block1_called = false
-    block1_thread = nil
-
-    node = RJR::Node.new :node_id => 'foobar',
-                         :headers => {:h => 123}
-    node.em_run {
-      block1_called = true
-      block1_thread = Thread.current
-      node.halt
-    }
-    reactor_thread = EMAdapter.instance_variable_get(:@em_manager).instance_variable_get(:@reactor_thread)
-    node.join
-    block1_called.should be_true
-    block1_thread.should == reactor_thread
-  end
-
-  it "should run a block in a thread via eventmachine" do
-    block1_called = false
-    block1_thread = nil
-
-    node = RJR::Node.new :node_id => 'foobar',
-                         :headers => {:h => 123}
-    node.em_run_async {
-      block1_called = true
-      block1_thread = Thread.current
-      node.halt
-    }
-    reactor_thread = EMAdapter.instance_variable_get(:@em_manager).instance_variable_get(:@reactor_thread)
-    worker_threads = ThreadPoolManager.thread_pool.instance_variable_get(:@worker_threads)
-    node.join
-    block1_called.should be_true
-    block1_thread.should_not == reactor_thread   
-    worker_threads.should include(block1_thread)
-  end
-
-  it "should schedule a job to be run in a thread via eventmachine after a specified interval" do
-    block1_called = false
-    block1_thread = nil
-
-    node = RJR::Node.new :node_id => 'foobar',
-                         :headers => {:h => 123}
-    node.em_schedule_async(1) {
-      block1_called = true
-      block1_thread = Thread.current
-      node.halt
-    }
-    reactor_thread = EMAdapter.instance_variable_get(:@em_manager).instance_variable_get(:@reactor_thread)
-    worker_threads = ThreadPoolManager.thread_pool.instance_variable_get(:@worker_threads)
-
-    sleep 0.5
-    block1_called.should be_false
-
-    node.join
-    block1_called.should be_true
-    block1_thread.should_not == reactor_thread   
-    worker_threads.should include(block1_thread)
-  end
-
-  it "should schedule a job to be run directly via eventmachine repeatidly with specified interval" do
-    block1_threads = []
-
-    node = RJR::Node.new :node_id => 'foobar',
-                         :headers => {:h => 123}
-    node.em_repeat(1) {
-      block1_threads << Thread.current
-    }
-    reactor_thread = EMAdapter.instance_variable_get(:@em_manager).instance_variable_get(:@reactor_thread)
-
-    sleep 0.5
-    block1_threads.size.should == 0
-
-    sleep 0.6
-    block1_threads.size.should == 1
-
-    sleep 1.1
-    block1_threads.size.should == 2
-    node.halt
-    node.join
-
-    block1_threads.each { |bt|
-      bt.should == reactor_thread   
-    }
-  end
-
-  it "should schedule a job to be run in a thread via eventmachine repeatidly with specified interval" do
-    block1_threads = []
-
-    node = RJR::Node.new :node_id => 'foobar',
-                         :headers => {:h => 123}
-    node.em_repeat_async(1) {
-      block1_threads << Thread.current
-    }
-    reactor_thread = EMAdapter.instance_variable_get(:@em_manager).instance_variable_get(:@reactor_thread)
-    worker_threads = ThreadPoolManager.thread_pool.instance_variable_get(:@worker_threads)
-
-    sleep 0.5
-    block1_threads.size.should == 0
-
-    sleep 0.6
-    block1_threads.size.should == 1
-
-    sleep 1.1
-    block1_threads.size.should == 2
-    node.halt
-    node.join
-
-    block1_threads.each { |bt|
-      bt.should_not == reactor_thread   
-      worker_threads.should include(bt)
-    }
-  end
-
 end

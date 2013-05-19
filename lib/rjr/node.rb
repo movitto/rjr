@@ -197,6 +197,13 @@ class Node
         else
           # FIXME if halt is invoked while this is sleeping, all other threads
           # may be deleted resulting in this sleeping indefinetly and a deadlock
+
+          # TODO wait for a finite # of seconds, record time we started waiting
+          # before while loop and on every iteration check to see if we've been
+          # waiting longer than an optional timeout. If so throw an error (also
+          # need mechanism to discard result if it comes in later).
+          # finite # of seconds we wait and optional timeout should be
+          # configurable on node class
           @response_cv.wait @response_lock
 
         end

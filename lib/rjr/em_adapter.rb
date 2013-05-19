@@ -41,16 +41,27 @@ class EMAdapter
         ensure
           @em_lock.synchronize { @reactor_thread = nil }
         end
-       } unless @reactor_thread
-     }
-     sleep 0.01 until EventMachine.reactor_running? # XXX hack but needed
-     self
-   end
+      } unless @reactor_thread
+    }
+    sleep 0.01 until EventMachine.reactor_running? # XXX hack but needed
+    self
+  end
+
+  # Halt the reactor if running
+  #
+  # @return self
+  def halt
+    self.stop_event_loop if self.reactor_running?
+    self
+  end
 
   # Block until reactor thread is terminated
+  #
+  # @return self
   def join
     th = @em_lock.synchronize{ @reactor_thread }
     th.join unless th.nil?
+    self
   end
 
   # Delegates everything else directly to eventmachine
