@@ -54,12 +54,13 @@ def dispatch_stats(dispatcher)
     {
       # event machine
       :event_machine => { :running => EventMachine.reactor_running?,
-                          :thread_status => "TODO",
+                          :thread_status => RJR::EMAdapter.instance.rector_thread ?
+                                            RJR::EMAdapter.instance.reactor_thread.status :
+                                                                    nil,
                           :connections => EventMachine.connection_count },
 
       # thread pool
-      :thread_pool => { :running => "TODO",
-                        :inspect => "TODO" },
+      :thread_pool => { :running => RJR::ThreadPool.instance.running? }
     }
   end
 

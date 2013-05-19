@@ -1,47 +1,48 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" 
                     "http://www.w3.org/TR/html4/loose.dtd">
+<!-- An rjr stress example js client.
+     To run:
+       - start examples/stress/server
+       - setup a frontend webserver,
+         for example, add the following apache conf:
+           Alias /rjr-stress /path/to/rjr/examples/stress
+           Alias /rjr-test /path/to/rjr/site
+           ProxyPass /rjr http://localhost:8888
+           ProxyPassReverse /rjr http://localhost:8888
+       - startup your webserver:
+           sudo service httpd start
+           (make sure to configure selinux / resolve permissions / etc)
+       - navigate to http://localhost/rjr-stress/client.html
+
+  Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+  Licensed under the Apache License, Version 2.0
+-->
 <html>
 <head>
   <script src="http://localhost/rjr-test/jquery-latest.js"></script>
-  <link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
-  <script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
-  <script type="text/javascript" src="http://localhost/rjr-test/rjr/jrw.js"></script>
-  <script type="text/javascript" src="http://localhost/rjr-test/rjr/json.js"></script>
+  <script type="text/javascript" src="http://localhost/rjr-test/jrw.js"></script>
+  <script type="text/javascript" src="http://localhost/rjr-test/json.js"></script>
   <script>
   $(document).ready(function(){
+    web_node = new WebNode('http://localhost/rjr');
+    ws_node  = new WSNode('127.0.0.1', '8080');
+
     function onopen(){
       for(var i = 0; i < 50; ++i){
-        ws_node.invoke_request('stress_callback', 'foobar');
-        web_node.invoke_request('stress', 'barfoo');
+        ws_node.invoke('stress_callback', 'foobar', callback);
+        web_node.invoke('stress', 'barfoo', callback);
       }
     }
-    function onsuccess(result){
-      console.log("success");
+    function callback(result){
       console.log(result);
     }
-    function onfailed(error, msg){
-      console.log("failed");
-      console.log(error);
+    function message_received(msg){
+      console.log("message_receieved")
       console.log(msg);
     }
-    function invoke_method(method, params){
-      console.log("invoke_method")
-      console.log(method);
-      console.log(params);
-    }
 
-    web_node = new WebNode('http://localhost/motel');
-    ws_node  = new WSNode('127.0.0.1', '8080');
-    ws_node.onopen    = function(){ onopen(); };
-    ws_node.onsuccess = function(result)     { onsuccess(result); }
-    ws_node.onfailed  = function(error, msg) { onfailed(error, msg);  }
-    //ws_node.message_received = function(msg) { }
-    ws_node.invoke_method  = function(method, params){ invoke_method(method, params); }
-
-    web_node.onsuccess = function(result)     { onsuccess(result); }
-    web_node.onfailed  = function(error, msg) { onfailed(error, msg);  }
-    //web_node.message_received = function(msg) { }
-
+    ws_node.onopen    = onopen;
+    ws_node.message_received  = message_received;
     ws_node.open();
   });
   </script>

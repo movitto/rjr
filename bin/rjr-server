@@ -17,7 +17,7 @@ config = { :node_id  =>  'rjr_test_server',
            :broker   =>        'localhost',
            :host     =>        'localhost',
            :tcp_port =>               8181,
-           :www_port =>               8888,
+           :web_port =>               8888,
            :ws_port  =>               8080 }
 
 optparse = OptionParser.new do |opts|
@@ -42,8 +42,8 @@ optparse = OptionParser.new do |opts|
     config[:tcp_port] = p
   end
 
-  opts.on('--www port', 'Port to listen on for www requests') do |p|
-    config[:www_port] = p
+  opts.on('--web port', 'Port to listen on for web requests') do |p|
+    config[:web_port] = p
   end
 
   opts.on('--ws port', 'Websocket Port to listen on') do |p|
@@ -58,7 +58,7 @@ optparse.parse!
 
 NODES = {:amqp  =>  {:node_id => config[:node_id], :broker => config[:broker]},
          :ws    =>  {:node_id => config[:node_id], :host   => config[:host], :port => config[:ws_port]},
-         :www   =>  {:node_id => config[:node_id], :host   => config[:host], :port => config[:www_port]},
+         :web   =>  {:node_id => config[:node_id], :host   => config[:host], :port => config[:web_port]},
          :tcp   =>  {:node_id => config[:node_id], :host   => config[:host], :port => config[:tcp_port]}}
 
 cdir          = File.dirname(__FILE__)

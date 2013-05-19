@@ -1,3 +1,19 @@
+<!-- An example rjr js client.
+     To run:
+       - start bin/rjr-server
+       - setup a frontend webserver,
+         for example, add the following apache conf:
+           Alias /rjr-test /path/to/rjr/site
+           ProxyPass /rjr http://localhost:8888
+           ProxyPassReverse /rjr http://localhost:8888
+       - startup your webserver:
+           sudo service httpd start
+           (make sure to configure selinux / resolve permissions / etc)
+       - navigate to http://localhost/rjr-test
+
+  Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+  Licensed under the Apache License, Version 2.0
+-->
 <html>
   <head>
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
@@ -6,40 +22,23 @@
     <script type="text/javascript">
       var ws_node = new WSNode('127.0.0.1', '8080');
       ws_node.onopen = function(){
-        //console.log("open");
-        ws_node.invoke_request('failed', 2, function(res){
-          if(res.success){
-            console.log("res2s");
-            console.log(res.result);
-          }else{
-            console.log("res2f");
-            console.log(res.error);
-          }
+        ws_node.invoke('stress', 'ws1', function(res){
+          alert(res.result);
         });
-        ws_node.invoke_request('stress_callback', 3);
+
+        ws_node.invoke('failed', 'ws2', function(res){
+          alert(res.error.message);
+        });
+        ws_node.invoke('stress_callback', 3);
       };
-      ws_node.message_received = function(msg){
-        //console.log("msg")
-        //console.log(msg);
-      };
-      ws_node.invoke_method = function(params){
-        console.log("PPPP");
-        console.log(params);
-      }
       ws_node.open();
-      ws_node.invoke_request('stress', 1, function(res){
-        console.log("res1s");
-        console.log(res.result);
-      })
 
       var www_node = new WebNode('http://localhost/rjr');
-      www_node.invoke_request('stress', 'http1', function(res){
-         console.log("hres1s");
-         console.log(res.result);
+      www_node.invoke('stress', 'http1', function(res){
+         alert(res.result);
       })
-      www_node.invoke_request('failed', 'http2', function(res){
-         console.log("hres2f");
-         console.log(res.error);
+      www_node.invoke('failed', 'http2', function(res){
+         alert(res.error.message);
       })
     </script>
   </head>

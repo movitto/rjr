@@ -1,4 +1,7 @@
 /* Json-Rpc over HTTP and Websockets
+ *
+ *  Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+ *  Licensed under the Apache License, Version 2.0
  */
 
 ///////////////////////////////////////////////////////
@@ -26,8 +29,6 @@ function JRMessage(){
   this.result = null;
 
   this.onresponse = null;
-  this.onsuccess = null;
-  this.onfailed  = null;
   this.success   = null;
 
   this.to_json = function(){
@@ -184,8 +185,6 @@ function WSNode (host, port){
 
     node.socket.onmessage = function (evnt){
       var msg = JRMessage.from_msg(evnt.data);
-      if(node.message_received)
-        node.message_received(msg);
 
       // match response w/ outstanding request
       if(msg.id){
@@ -202,6 +201,8 @@ function WSNode (host, port){
         // relying on clients to handle notifications via message_received
         // TODO add notification (and request?) handler support here
         //node.invoke_method(msg.rpc_method, msg.params)
+        if(node.message_received)
+          node.message_received(msg);
 
       }
     };
@@ -233,7 +234,7 @@ function WSNode (host, port){
   //
   // Pass in the rpc method, arguments to invoke method with, and optional callback
   // to be invoked upon received response.
-  this.invoke_request = function(){
+  this.invoke = function(){
     var req = JRMessage.pretty_request(arguments, this.node_id, this.headers);
 
     // store requests for later retrieval
@@ -259,7 +260,7 @@ function WebNode (uri){
   //
   // Pass in the rpc method, arguments to invoke method with, and optional callback
   // to be invoked upon received response.
-  this.invoke_request = function(){
+  this.invoke = function(){
     var req = JRMessage.pretty_request(arguments, this.node_id, this.headers);
 
     $.ajax({type: 'POST',
@@ -269,8 +270,9 @@ function WebNode (uri){
 
             success: function(data){
               var msg = JRMessage.from_msg(data);
-              if(node.message_received)
-                node.message_received(msg);
+              // js web client doesn't support notifications
+              //if(node.message_received)
+                //node.message_received(msg);
 
               req.handle_response(msg)
 

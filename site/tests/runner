@@ -11,7 +11,7 @@ end
 
 sleep 2
 
-`firefox http://localhost/rjr-test`
+`firefox http://localhost/rjr-test/tests`
 
 sleep 2
 
