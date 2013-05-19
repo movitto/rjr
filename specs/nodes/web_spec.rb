@@ -1,32 +1,72 @@
-require 'rjr/nodes/web_node'
+require 'rjr/nodes/web'
 require 'rjr/dispatcher'
 
-describe RJR::WebNode do
-  it "should invoke and satisfy http requests" do
-    server = RJR::WebNode.new :node_id => 'www', :host => 'localhost', :port => 9678
-    client = RJR::WebNode.new
+module RJR::Nodes
+  describe Web do
+    describe "#send_msg" do
+      it "should send response using the specified connection"
+    end
 
-    foobar_invoked = false
-    RJR::Dispatcher.init_handlers
-    RJR::Dispatcher.add_handler('foobar') { |param|
-      @client_ip.should == "127.0.0.1"
-      #@client_port.should == 9678
-      @rjr_node.should == server
-      @rjr_node_id.should == 'www'
-      @rjr_node_type.should == :web
-      param.should == 'myparam'
-      foobar_invoked = true
-      'retval'
-    }
+    describe "#listen" do
+      it "should listen for messages" do
+        ci = cp = rn = rni = rnt = p = invoked = nil
+        node = Web.new :node_id => 'www', :host => 'localhost', :port => 9678
+        node.dispatcher.handle('test') do |param|
+          ci  = @rjr_client_ip
+          cp  = @rjr_client_port
+          rn  = @rjr_node
+          rni = @rjr_node_id
+          rnt = @rjr_node_type
+          p   = param
+          invoked = true
+        end
+        node.listen
 
-    server.listen
-    sleep 1
+        # issue request
+        Web.new.invoke 'http://localhost:9678', 'test', 'myparam'
+        node.halt.join
+        invoked.should be_true
+        ci.should == '127.0.0.1'
+        #cp.should
+        rn.should == node
+        rni.should == 'www'
+        rnt.should == :web
+        p.should   == 'myparam'
+      end
+    end
 
-    res = client.invoke_request 'http://localhost:9678', 'foobar', 'myparam'
-    res.should == 'retval'
-    server.halt
+    describe "#invoke" do
+      it "should invoke request" do
+        server = Web.new :node_id => 'www', :host => 'localhost', :port => 9678
+        server.dispatcher.handle('test') do |p|
+          'retval'
+        end
+        server.listen
 
-    server.join
-    foobar_invoked.should == true
+        client = Web.new
+        res = client.invoke 'http://localhost:9678', 'test', 'myparam'
+
+        server.halt.join
+        res.should == 'retval'
+      end
+    end
+
+    describe "#notify" do
+      it "should send notification" do
+        server = Web.new :node_id => 'www', :host => 'localhost', :port => 9678
+        server.dispatcher.handle('test') do |p|
+          'retval'
+        end
+        server.listen
+
+        client = Web.new
+        res = client.notify 'http://localhost:9678', 'test', 'myparam'
+
+        server.halt.join
+        res.should == nil
+      end
+    end
+
+    # TODO ensure closed / error event handlers are invoked
   end
 end

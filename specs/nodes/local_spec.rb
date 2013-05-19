@@ -1,43 +1,72 @@
-require 'rjr/nodes/local_node'
-require 'rjr/dispatcher'
+require 'rjr/nodes/local'
 
-describe RJR::LocalNode do
-  it "should invoke requests against local handler" do
-    node = RJR::LocalNode.new :node_id => 'aaa'
-    foobar_invoked = false
-    RJR::Dispatcher.init_handlers
-    RJR::Dispatcher.add_handler('foobar') { |param|
-      @rjr_node.should == node
-      @rjr_node_id.should == 'aaa'
-      @rjr_node_type.should == :local
-      param.should == 'myparam'
-      foobar_invoked = true
-      'retval'
-    }
+module RJR::Nodes
+  describe Local do
+    describe "#send_msg" do
+      it "should dispatch local notification"
+    end
 
-    res = node.invoke_request 'foobar', 'myparam'
-    foobar_invoked.should == true
-    res.should == 'retval'
-  end
+    describe "#invoke" do
+      it "should dispatch local request" do
+        invoked = rn = rni = rnt = p = nil
+        node = Local.new :node_id => 'aaa'
+        node.dispatcher.handle('foobar') { |param|
+          rn  = @rjr_node
+          rni = @rjr_node_id
+          rnt = @rjr_node_type
+          p   = param
+          invoked = true
+          'retval'
+        }
 
-  it "should invoke callbacks against local handlers" do
-    foobar_invoked = false
-    callback_invoked = false
-    RJR::Dispatcher.init_handlers
-    RJR::Dispatcher.add_handler('foobar') {
-      foobar_invoked = true
-      @rjr_callback.invoke('callback', 'cp')
-    }
-    RJR::Dispatcher.add_handler('callback') { |*params|
-      params.length.should == 1
-      params[0].should == 'cp'
-      callback_invoked = true
-    }
+        res = node.invoke 'foobar', 'myparam'
 
-    node = RJR::LocalNode.new
-    node.invoke_request 'foobar', 'myparam'
-  end
+        invoked.should == true
+        res.should == 'retval'
+        rn.should  == node
+        rni.should == 'aaa'
+        rnt.should == :local
+        p.should   == 'myparam'
+      end
+    end
 
-  # TODO make sure object attributes not serialized to json
-  # are not available on remote end of local node invocation/response
-end
+    describe "#notify" do
+      it "should dispatch local notification" do
+        invoked = nil
+        node = Local.new :node_id => 'aaa'
+        node.dispatcher.handle('foobar') { |param|
+          invoked = true
+          'retval'
+        }
+
+        res = node.notify 'foobar', 'myparam'
+        invoked.should == true
+        res.should == nil
+      end
+    end
+
+    it "should invoke callbacks" do
+      node = Local.new
+      cbp = nil
+      foobar_invoked = false
+      callback_invoked = false
+      node.dispatcher.handle('foobar') {
+        foobar_invoked = true
+        @rjr_callback.notify('callback', 'cp')
+      }
+      node.dispatcher.handle('callback') { |param|
+        callback_invoked = true
+        cbp = param
+      }
+
+      node.invoke 'foobar', 'myparam'
+      foobar_invoked.should be_true
+      callback_invoked.should be_true
+      cbp.should == 'cp'
+    end
+
+    # TODO make sure local parameters are not modified if altered
+    # on remote end of invoke/notify
+
+  end # desribe Local
+end  # module RJR::Nodes

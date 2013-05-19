@@ -131,7 +131,7 @@ class Node
     client_port,client_ip = nil,nil
     begin
       # XXX skip if an 'indirect' node type or local
-      unless [:amqp, :local].include?(self.class.RJR_NODE_TYPE)
+      unless [:amqp, :local].include?(self.class::RJR_NODE_TYPE)
         client_port, client_ip =
           Socket.unpack_sockaddr_in(connection.get_peername)
       end
@@ -148,8 +148,8 @@ class Node
       @dispatcher.dispatch(:rjr_method      => msg.jr_method,
                            :rjr_method_args => msg.jr_args,
                            :headers         => msg.headers,
-                           :client_ip       => client_port,
-                           :client_port     => client_ip,
+                           :rjr_client_ip   => client_ip,
+                           :rjr_client_port => client_port,
                            :rjr_node        => self,
                            :rjr_node_id     => @node_id,
                            :rjr_node_type   => self.class::RJR_NODE_TYPE,

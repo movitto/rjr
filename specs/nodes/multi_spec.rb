@@ -1,45 +1,57 @@
-require 'rjr/nodes/multi_node'
-require 'rjr/nodes/amqp_node'
-require 'rjr/nodes/web_node'
-require 'rjr/dispatcher'
+require 'rjr/nodes/multi'
+require 'rjr/nodes/amqp'
+require 'rjr/nodes/web'
 
-describe RJR::MultiNode do
-  it "should invoke and satisfy requests over multiple protocols" do
-    foolbar_invoked = false
-    barfoo_invoked = false
-    RJR::Dispatcher.init_handlers
-    RJR::Dispatcher.add_handler('foolbar') { |param|
-      @rjr_node_id.should == 'amqp'
-      @rjr_node_type.should == :amqp
-      param.should == 'myparam1'
-      foolbar_invoked = true
-      'retval1'
-    }
-    RJR::Dispatcher.add_handler('barfoo') { |param|
-      @rjr_node_id.should == 'web'
-      @rjr_node_type.should == :web
-      param.should == 'myparam2'
-      barfoo_invoked = true
-      'retval2'
-    }
+module RJR::Nodes
+  describe Multi do
+    describe "#listen" do
+      it "should listen for messages" do
+        invoked1 = invoked2 = false
+        rni1 = rni2 = nil
+        rnt1 = rnt2 = nil
+        p1   = p2   = nil
+        amqp  = AMQP.new  :node_id => 'amqp'
+                          :broker => 'localhost'
+        web   = Web.new   :node_id => 'web',
+                          :host => 'localhost', :port => 9876
+        multi = Multi.new :node_id => 'multi', 
+                          :nodes => [amqp, web]
 
-    amqp = RJR::AMQPNode.new :node_id => 'amqp', :broker => 'localhost'
-    web  = RJR::WebNode.new :node_id => 'web', :host => 'localhost', :port => 9876
-    multi = RJR::MultiNode.new :node_id => 'multi', :nodes => [amqp, web], :keep_alive => true
+        multi.dispatcher.handle('method1') { |param|
+          rni1 = @rjr_node_id
+          rnt1 = @rjr_node_type
+          p1   = param
+          invoked1 = true
+          'retval1'
+        }
+        multi.dispatcher.handle('method2') { |param|
+          rni2 = @rjr_node_id
+          rnt2 = @rjr_node_type
+          p2   = param
+          invoked2 = true
+          'retval2'
+        }
+        multi.listen
+        # TODO should wait until we know server is listening
 
-    multi.listen
+        web_client  = Web.new
+        res = web_client.invoke 'http://localhost:9876', 'method2', 'myparam2'
+        res.should == 'retval2'
+        rni2.should == 'web'
+        rnt2.should == :web
+        p2.should == 'myparam2'
 
-    amqp_client = RJR::AMQPNode.new :node_id => 'client', :broker => 'localhost', :keep_alive => true # see comment about keepalive in amqp_node_spec
-    res = amqp_client.invoke_request 'amqp-queue', 'foolbar', 'myparam1'
-    res.should == 'retval1'
+        amqp_client = AMQP.new :node_id => 'client',
+                               :broker => 'localhost'
+        res = amqp_client.invoke 'amqp-queue', 'method1', 'myparam1'
+        res.should == 'retval1'
+        invoked1.should be_true
+        rni1.should == 'amqp'
+        rnt1.should == :amqp
+        p1.should == 'myparam1'
 
-    web_client  = RJR::WebNode.new
-    res = web_client.invoke_request 'http://localhost:9876', 'barfoo', 'myparam2'
-    res.should == 'retval2'
-
-    multi.halt
-    multi.join
-    foolbar_invoked.should == true
-    barfoo_invoked.should == true
+        multi.halt.join
+      end
   end
+end
 end

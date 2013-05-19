@@ -14,11 +14,10 @@ end
 
 if skip_module
 # TODO output: "amqp gem could not be loaded, skipping amqp node definition"
-require 'rjr/nodes/missing_node'
+require 'rjr/nodes/missing'
 RJR::Nodes::AMQP = RJR::Nodes::Missing
 
 else
-
 require 'thread'
 require 'rjr/node'
 require 'rjr/message'
@@ -91,7 +90,10 @@ class AMQP < RJR::Node
 
   # Internal helper, subscribe to messages using the amqp queue
   def subscribe
-    return if @listening
+    if @listening
+      return
+    end
+
     @amqp_lock.synchronize {
       @listening = true
       @queue.subscribe do |metadata, msg|

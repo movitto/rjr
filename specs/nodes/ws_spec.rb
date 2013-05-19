@@ -1,32 +1,73 @@
-require 'rjr/nodes/ws_node'
+require 'rjr/nodes/ws'
 require 'rjr/dispatcher'
 
-describe RJR::WSNode do
-  it "should invoke and satisfy websocket requests" do
-    server = RJR::WSNode.new :node_id => 'ws', :host => 'localhost', :port => 9876
-    client = RJR::WSNode.new
+module RJR::Nodes
+  describe WS do
+    describe "#send_msg" do
+      it "should send response using the specified connection"
+    end
 
-    foobar_invoked = false
-    RJR::Dispatcher.init_handlers
-    RJR::Dispatcher.add_handler('foobar') { |param|
-      @client_ip.should == "127.0.0.1"
-      #@client_port.should == 9678
-      @rjr_node.should == server
-      @rjr_node_id.should == 'ws'
-      @rjr_node_type.should == :ws
-      param.should == 'myparam'
-      foobar_invoked = true
-      'retval'
-    }
+    describe "#listen" do
+      it "should listen for messages" do
+        ci = cp = rn = rni = rnt = p = invoked = nil
+        node = WS.new :node_id => 'ws', :host => 'localhost', :port => 9678
+        node.dispatcher.handle('test') do |param|
+          ci  = @rjr_client_ip
+          cp  = @rjr_client_port
+          rn  = @rjr_node
+          rni = @rjr_node_id
+          rnt = @rjr_node_type
+          p   = param
+          invoked = true
+        end
+        node.listen
 
-    server.listen
-    sleep 1
-    res = client.invoke_request 'ws://localhost:9876', 'foobar', 'myparam'
-    res.should == 'retval'
-    server.halt
-    server.join
-    foobar_invoked.should == true
+        # issue request
+        WS.new.invoke 'http://localhost:9678', 'test', 'myparam'
+        node.halt.join
+        invoked.should be_true
+        ci.should == '127.0.0.1'
+        #cp.should
+        rn.should == node
+        rni.should == 'ws'
+        rnt.should == :ws
+        p.should   == 'myparam'
+      end
+    end
+
+    describe "#invoke" do
+      it "should invoke request" do
+        server = WS.new :node_id => 'ws', :host => 'localhost', :port => 9678
+        server.dispatcher.handle('test') do |p|
+          'retval'
+        end
+        server.listen
+
+        client = WS.new
+        res = client.invoke 'http://localhost:9678', 'test', 'myparam'
+
+        server.halt.join
+        res.should == 'retval'
+      end
+    end
+
+    describe "#notify" do
+      it "should send notification" do
+        server = WS.new :node_id => 'ws', :host => 'localhost', :port => 9678
+        server.dispatcher.handle('test') do |p|
+          'retval'
+        end
+        server.listen
+
+        client = WS.new
+        res = client.notify 'http://localhost:9678', 'test', 'myparam'
+
+        server.halt.join
+        res.should == nil
+      end
+    end
+
+    # TODO test callbacks over ws interface
+    # TODO ensure closed / error event handlers are invoked
   end
-
-  # TODO ensure closed / error event handlers are invoked
 end

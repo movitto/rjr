@@ -1,33 +1,75 @@
-require 'rjr/nodes/tcp_node'
-require 'rjr/dispatcher'
+require 'rjr/nodes/tcp'
 
-describe RJR::TCPNode do
-  it "should invoke and satisfy tcp requests" do
-    server = RJR::TCPNode.new :node_id => 'tcp', :host => 'localhost', :port => 9987
-    client = RJR::TCPNode.new
+module RJR::Nodes
+  describe TCP do
+    describe "#send_msg" do
+      it "should send message using the specifed connection"
+    end
 
-    foobar_invoked = false
-    RJR::Dispatcher.init_handlers
-    RJR::Dispatcher.add_handler('foobar') { |param|
-      @client_ip.should == "127.0.0.1"
-      #@client_port.should == 9987
-      @rjr_node.should == server
-      @rjr_node_id.should == 'tcp'
-      @rjr_node_type.should == :tcp
-      param.should == 'myparam'
-      foobar_invoked = true
-      'retval'
-    }
+    describe "#listen" do
+      it "should listen for messages" do
+        ci = cp = rn = rni = rnt = p = invoked = nil
+        server  = TCP.new :node_id => 'tcp',
+                          :host => 'localhost', :port => 9987
+        server.dispatcher.handle('foobar') { |param|
+          ci  = @rjr_client_ip
+          cp  = @rjr_client_port
+          rn  = @rjr_node
+          rni = @rjr_node_id
+          rnt = @rjr_node_type
+          p   = param
+          invoked = true
+        }
+        server.listen
 
-    server.listen
-    sleep 1
-    res = client.invoke_request 'jsonrpc://localhost:9987', 'foobar', 'myparam'
-    res.should == 'retval'
-    server.halt
-    server.join
-    foobar_invoked.should == true
+        # issue request
+        TCP.new.invoke 'jsonrpc://localhost:9987', 'foobar', 'myparam'
+        server.halt.join
+        ci.should == "127.0.0.1"
+        #cp.should == 9987
+        rn.should == server
+        rni.should == 'tcp'
+        rnt.should == :tcp
+        p.should == 'myparam'
+        invoked.should == true
+      end
+    end
+
+    describe "#invoke" do
+      it "should invoke request" do
+        server  = TCP.new :node_id => 'tcp',
+                                   :host => 'localhost', :port => 9987
+        server.dispatcher.handle('foobar') { |param|
+          'retval'
+        }
+        server.listen
+
+        client = TCP.new
+        res = client.invoke 'jsonrpc://localhost:9987', 'foobar', 'myparam'
+        server.halt.join
+        res.should == 'retval'
+      end
+    end
+
+    describe "#notify" do
+      it "should send notification" do
+        server  = TCP.new :node_id => 'tcp',
+                                   :host => 'localhost', :port => 9987
+        server.dispatcher.handle('foobar') { |param|
+          'retval'
+        }
+        server.listen
+
+        client = TCP.new
+        res = client.notify 'jsonrpc://localhost:9987', 'foobar', 'myparam'
+        server.halt.join
+        res.should == nil
+      end
+    end
+
+    # TODO test callbacks over tcp interface
+    # TODO ensure closed / error event handlers are invoked
   end
-
-  # TODO ensure closed / error event handlers are invoked
-  # TODO ensure callbacks can be invoked over established connection w/ json-rpc notifications
 end
+
+

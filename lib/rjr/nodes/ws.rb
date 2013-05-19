@@ -16,7 +16,7 @@ end
 
 if skip_module
 # TODO output: "ws dependencies could not be loaded, skipping ws node definition"
-require 'rjr/nodes/missing_node'
+require 'rjr/nodes/missing'
 RJR::Nodes::WS = RJR::Nodes::Missing
 
 else
