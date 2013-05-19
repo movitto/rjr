@@ -6,15 +6,11 @@
 # Licensed under the Apache License, Version 2.0
 
 require 'uri'
-require 'socket'
+require 'thread'
 require 'eventmachine'
 
 require 'rjr/node'
 require 'rjr/message'
-require 'rjr/message'
-require 'rjr/dispatcher'
-require 'rjr/errors'
-require 'rjr/thread_pool'
 
 module RJR
 module Nodes

@@ -1,4 +1,4 @@
-# default module loaded w/ bin/rjr-client
+# default client definitions loaded in bin/rjr-client
 
 include RJR::MessageMixins
 

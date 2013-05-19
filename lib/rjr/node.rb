@@ -3,10 +3,13 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-require 'eventmachine'
+require 'thread'
+require 'socket'
+require 'rjr/common'
+require 'rjr/message'
+require 'rjr/dispatcher'
 require 'rjr/em_adapter'
 require 'rjr/thread_pool'
-require 'rjr/common'
 
 module RJR
 
@@ -179,6 +182,8 @@ class Node
           @responses.delete(res)
 
         else
+          # FIXME if halt is invoked while this is sleeping, all other threads
+          # may be deleted resulting in this sleeping indefinetly and a deadlock
           @response_cv.wait @response_lock
 
         end

@@ -8,6 +8,8 @@
 # Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
+require 'eventmachine'
+
 # Helper method to process user params / select stats
 # from a dispatcher
 def select_stats(dispatcher, *filter)
@@ -56,7 +58,7 @@ def dispatch_stats(dispatcher)
                           :connections => EventMachine.connection_count },
 
       # thread pool
-      :thread_pool => { :running => ThreadPoolManager.thread_pool.running?,
+      :thread_pool => { :running => "TODO",
                         :inspect => "TODO" },
     }
   end

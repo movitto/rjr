@@ -7,7 +7,6 @@
 # Licensed under the Apache License, Version 2.0
 
 require 'rjr/common'
-require 'json'
 
 module RJR
 

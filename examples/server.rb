@@ -1,4 +1,4 @@
-# default module loaded w/ bin/rjr-server
+# default server definitions loaded in bin/rjr-server
 
 def dispatch_server(dispatcher)
   dispatcher.handle "messages" do |p|

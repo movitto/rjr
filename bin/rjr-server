@@ -4,11 +4,11 @@
 # Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-require 'rubygems'
 require 'optparse'
 require 'stringio'
 
-require 'rjr/stats'
+#require 'rjr/stats'
+require 'rjr/common'
 require 'rjr/nodes/easy'
 
 ##########################################################

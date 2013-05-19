@@ -18,17 +18,17 @@ rescue LoadError
 end
 
 if skip_module
-# TODO output: "curb/evma_httpserver gems could not be loaded, skipping web node definition"
+# TODO output: "em-http-request/evma_httpserver gems could not be loaded, skipping web node definition"
 require 'rjr/nodes/missing_node'
-RJR::Web = RJR::Nodes::Missing
+RJR::Nodes::Web = RJR::Nodes::Missing
 
 else
-require 'socket'
+
+require 'thread'
+require 'eventmachine'
 
 require 'rjr/node'
 require 'rjr/message'
-require 'rjr/dispatcher'
-require 'rjr/thread_pool'
 
 module RJR
 module Nodes

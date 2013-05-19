@@ -19,12 +19,10 @@ require 'rjr/nodes/missing_node'
 RJR::Nodes::WS = RJR::Nodes::Missing
 
 else
-require 'socket'
+require 'thread'
+
 require 'rjr/node'
 require 'rjr/message'
-require 'rjr/dispatcher'
-require 'rjr/errors'
-require 'rjr/thread_pool'
 
 module RJR
 module Nodes

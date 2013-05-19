@@ -1,7 +1,6 @@
 #!/usr/bin/ruby
 # A rjr integration stress test long-running client
 
-require 'rubygems'
 require 'rjr/nodes/amqp'
 
 client_id = ARGV[0]

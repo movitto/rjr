@@ -6,9 +6,7 @@
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-require 'eventmachine'
 require 'rjr/node'
-require 'rjr/message'
 
 module RJR
 module Nodes
