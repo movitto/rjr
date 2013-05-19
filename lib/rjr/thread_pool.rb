@@ -28,6 +28,7 @@ class ThreadPoolJob
   # Thread running the job
   attr_accessor :thread
 
+
   # ThreadPoolJob initializer
   # @param [Array] params arguments to pass to the job when it is invoked
   # @param [Callable] block handle to callable object corresponding to job to invoke
@@ -171,6 +172,7 @@ class ThreadPool
     @running_queue  = Queue.new
 
     @thread_lock = Mutex.new
+    @terminate = true
 
     ObjectSpace.define_finalizer(self, self.class.finalize(self))
   end
@@ -187,15 +189,11 @@ class ThreadPool
 
   # Start the thread pool
   def start
-    return if running?
+    return self unless @terminate
     @terminate = false
     0.upto(@num_threads) { |i| launch_worker }
     launch_manager
-  end
-
-  # Return boolean indicating if thread pool is running
-  def running?
-    @worker_threads.size != 0 && @worker_threads.all? { |t| t.status }
+    self
   end
 
   # Add work to the pool

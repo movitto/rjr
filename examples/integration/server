@@ -1,0 +1,37 @@
+#!/usr/bin/ruby
+# A rjr integration stress test server
+
+require 'rubygems'
+require 'rjr/nodes/amqp'
+require 'rjr/nodes/ws'
+require 'rjr/nodes/web'
+require 'rjr/nodes/multi'
+
+def setup_signals(node)
+  Signal.trap("INT") {
+    node.stop
+  }
+end
+
+#RJR::Logger.log_level = ::Logger::DEBUG
+
+amqp_node  = RJR::Nodes::AMQP.new  :node_id => 'stress_test', :broker => 'localhost'
+ws_node    = RJR::Nodes::WS.new    :node_id => 'stress_test', :host   => 'localhost', :port => 8080
+www_node   = RJR::Nodes::Web.new   :node_id => 'stress_test', :host   => 'localhost', :port => 8888
+
+multi_node = RJR::Nodes::Multi.new :nodes => [amqp_node, ws_node, www_node]
+
+multi_node.dispatcher.handle("stress") { |p|
+  puts "invoked stress method #{p}"
+  'foobar'
+}
+
+multi_node.dispatcher.handle("stress_callback") { |p|
+  puts "invoked stress_callback method #{p}"
+  @rjr_callback.notify 'client_callback', p
+  'barfoo'
+}
+
+setup_signals(multi_node)
+multi_node.listen
+multi_node.join

@@ -127,9 +127,10 @@ class TCP < RJR::Node
   #
   # Implementation of {RJR::Node#listen}
   def listen
-    EMAdapter.instance.schedule {
-      EMAdapter.instance.start_server @host, @port, TCPConnection, { :rjr_node => self }
+    @em.schedule {
+      @em.start_server @host, @port, TCPConnection, { :rjr_node => self }
     }
+    self
   end
 
   # Instructs node to send rpc request, and wait for / return response.
@@ -149,7 +150,7 @@ class TCP < RJR::Node
                                  :args   => args,
                                  :headers => @message_headers
     connection = nil
-    EMAdapter.instance.schedule {
+    @em.schedule {
       init_client(:host => host, :port => port,
                   :rjr_node => self) { |c|
         connection = c
@@ -185,7 +186,7 @@ class TCP < RJR::Node
     message = NotificationMessage.new :method => rpc_method,
                                       :args   => args,
                                       :headers => @message_headers
-    EMAdapter.instance.schedule {
+    @em.schedule {
       init_client(:host => host, :port => port,
                   :rjr_node => self) { |c|
         conn = c

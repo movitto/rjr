@@ -103,17 +103,6 @@ class Object
   end
 end
 
-module Kernel
-  def require_path(path)
-    path.split(':').all? { |dir|
-      # TODO also all .so files? allow user to specify suffix or omit?
-      Dir.glob(File.join(dir, '*.rb')).all? { |rb|
-        require rb
-      }
-    }
-  end
-end
-
 if RUBY_VERSION < "1.9"
 # We extend object in ruby 1.9 to define 'instance_exec'
 #

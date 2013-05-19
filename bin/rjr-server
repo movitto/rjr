@@ -6,10 +6,10 @@
 
 require 'rubygems'
 require 'optparse'
-require 'rjr'
 require 'stringio'
 
-require 'rjr/inspect'
+require 'rjr/stats'
+require 'rjr/nodes/easy'
 
 ##########################################################
 
@@ -62,8 +62,7 @@ NODES = {:amqp  =>  {:node_id => config[:node_id], :broker => config[:broker]},
          :tcp   =>  {:node_id => config[:node_id], :host   => config[:host], :port => config[:tcp_port]}}
 
 cdir          = File.dirname(__FILE__)
-server_path   = File.join(ENV['RJR_LOAD_PATH'] || File.join(cdir, '..', 'tests', 'harness'), 'server')
-require_path  server_path
+server_path   = File.join(ENV['RJR_LOAD_PATH'] || File.join(cdir, '..', 'examples', 'server'))
 
 ##########################################################
 
@@ -71,4 +70,7 @@ $messages = StringIO.new
 
 RJR::Logger.log_level = ::Logger::DEBUG
 RJR::Logger.log_to $messages
-RJR::EasyNode.new(NODES).stop_on("INT").listen.join
+
+node = RJR::Nodes::Easy.new(NODES)
+node.dispatcher.add_modules(server_path)
+node.stop_on("INT").listen.join

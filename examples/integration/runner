@@ -3,6 +3,7 @@
 
 cd = File.expand_path(File.dirname(__FILE__))
 
+server_pid = nil
 server_thread = Thread.new { 
   puts "Starting server"
   system("#{cd}/server")

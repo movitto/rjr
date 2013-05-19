@@ -52,6 +52,7 @@ class Local < RJR::Node
 
   def listen
     # do nothing
+    self
   end
 
   # Instructs node to send rpc request, and wait for and return response

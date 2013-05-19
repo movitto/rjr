@@ -173,6 +173,30 @@ class Dispatcher
     @requests = []
   end
 
+  # Loads module from fs and adds handlers defined there
+  # 
+  # Assumes module includes a 'dispatch_<module_name>' method
+  # which accepts a dispatcher and defines handlers on it
+  def add_module(name)
+    name.split(':').each { |p|
+      if File.directory?(p)
+        # TODO also .so files? allow user to specify suffix
+        Dir.glob(File.join(p, '*.rb')).all? { |m|
+          require m
+        }
+
+      else
+        require p
+
+      end
+
+      m = p.split(File::SEPARATOR).last
+      method("dispatch_#{m}".intern).call(self)
+    }
+    self
+  end
+  alias :add_modules :add_module
+
   # Register json-rpc handler with dispatcher
   #
   # @param [String] signature request signature to match

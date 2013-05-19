@@ -1,6 +1,7 @@
 # RJR Multi Node
 #
-# Implements the RJR::Node interface to satisty JSON-RPC requests over multiple protocols
+# Implements the RJR::Node server interface to satisty
+# JSON-RPC requests over multiple protocols
 #
 # Copyright (C) 2012 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
@@ -64,6 +65,7 @@ class Multi < RJR::Node
     @nodes.each { |node|
       node.listen
     }
+    self
   end
 end
 

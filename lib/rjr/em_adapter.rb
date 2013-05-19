@@ -44,6 +44,7 @@ class EMAdapter
        } unless @reactor_thread
      }
      sleep 0.01 until EventMachine.reactor_running? # XXX hack but needed
+     self
    end
 
   # Block until reactor thread is terminated

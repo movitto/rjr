@@ -313,6 +313,29 @@ class MessageUtil
     return data[start..mi], data[(mi+1)..-1]
   end
 
+  # Mechanism to register / retrieve preformatted message generator
+  def self.message(k, &bl)
+    @rjr_messages ||= {}
+    @rjr_messages[k] = bl.call unless bl.nil?
+    @rjr_messages[k]
+  end
+
+  # Generate / return random message. Optionally specify the transport which
+  # the message must accept
+  def self.rand_msg(transport = nil)
+    @rjr_messages ||= {}
+    messages = @rjr_messages.select { |mid,m| m[:transports].nil? || transport.nil? ||
+                                              m[:transports].include?(transport) }
+    messages[messages.keys[rand(messages.keys.size)]]
+  end
+
+end # MessageUtil
+
+# Module providing helper methods for messages
+module MessageMixins
+  def define_message(name, &bl)
+    MessageUtil.message(name, &bl)
+  end
 end
 
 end

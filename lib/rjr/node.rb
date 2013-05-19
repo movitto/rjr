@@ -49,20 +49,24 @@ class Node
      @dispatcher      = args[:dispatcher] || RJR::Dispatcher.new
      @message_headers = args.has_key?(:headers) ? {}.merge(args[:headers]) : {}
 
-     ThreadPool.instance.start
-     EMAdapter.instance.start
+     @tp = ThreadPool.instance.start
+     @em = EMAdapter.instance.start
   end
 
   # Block until the eventmachine reactor and thread pool have both completed running
   def join
-    ThreadPool.instance.join
-    EMAdapter.instance.join
+    @tp.join
+    @em.join
+    self
   end
 
   # Immediately terminate the node
+  #
+  # *Warning* this does what it says it does. All running threads, and reactor
+  # jobs are immediately killed
   def halt
-    EMAdapter.instance.stop_event_loop
-    ThreadPool.instance.stop
+    @em.stop_event_loop
+    @tp.stop
   end
 
   ##################################################################
@@ -93,12 +97,10 @@ class Node
   # Handle message received
   def handle_message(msg, connection = {})
     if RequestMessage.is_request_message?(msg)
-      ThreadPool.instance <<
-        ThreadPoolJob.new(msg) { |m| handle_request(m, false, connection) }
+      @tp << ThreadPoolJob.new(msg) { |m| handle_request(m, false, connection) }
 
     elsif NotificationMessage.is_notification_message?(msg)
-      ThreadPool.instance <<
-        ThreadPoolJob.new(msg) { |m| handle_request(m, true, connection) }
+      @tp << ThreadPoolJob.new(msg) { |m| handle_request(m, true, connection) }
 
     elsif ResponseMessage.is_response_message?(msg)
       handle_response(msg)
@@ -162,7 +164,7 @@ class Node
       result = [msg.msg_id, res]
       result << err if !err.nil?
       @responses << result
-      @response_cv.signal
+      @response_cv.broadcast
     }
   end
 
@@ -172,13 +174,13 @@ class Node
     while res.nil?
       @response_lock.synchronize{
         # FIXME throw err if more than 1 match found
-        res = @responses.select { |response| message.msg_id == response.first }.first
+        res = @responses.find { |response| message.msg_id == response.first }
         if !res.nil?
           @responses.delete(res)
 
         else
-          @response_cv.signal
           @response_cv.wait @response_lock
+
         end
       }
     end

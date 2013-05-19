@@ -50,6 +50,11 @@ class WebConnection < EventMachine::Connection
     # TODO support http protocols other than POST
     msg = @http_post_content.nil? ? '' : @http_post_content
     @rjr_node.send(:handle_message, msg, self) # XXX private method
+
+    # XXX we still have to send a response back to client to satisfy 
+    # the http standard, even if this is a notification. handle_message
+    # does not do this.
+    @rjr_node.send_msg "", self if NotificationMessage.is_notification_message?(msg)
   end
 end
 
@@ -114,9 +119,10 @@ class Web < RJR::Node
   #
   # Implementation of {RJR::Node#listen}
   def listen
-    EMAdapter.instance.schedule do
+    @em.schedule do
       EventMachine::start_server(@host, @port, WebConnection, :rjr_node => self)
     end
+    self
   end
 
   # Instructs node to send rpc request, and wait for / return response
@@ -133,7 +139,7 @@ class Web < RJR::Node
       handle_message(http.response, http)
     }
 
-    EMAdapter.instance.schedule do
+    @em.schedule do
       http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
       http.errback  &cb
       http.callback &cb
@@ -164,7 +170,7 @@ class Web < RJR::Node
                                       :args   => args,
                                       :headers => @message_headers
     cb = lambda { |arg| published_l.synchronize { invoked = true ; published_c.signal }}
-    EMAdapter.instance.schedule do
+    @em.schedule do
       http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
       http.errback  &cb
       http.callback &cb

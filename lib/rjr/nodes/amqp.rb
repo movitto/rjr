@@ -130,11 +130,12 @@ class  AMQP < RJR::Node
   #
   # Implementation of {RJR::Node#listen}
   def listen
-    EMAdapter.instance.schedule do
+    @em.schedule do
       init_node {
         subscribe # start receiving messages
       }
     end
+    self
   end
 
   # Instructs node to send rpc request, and wait for and return response.
@@ -151,7 +152,7 @@ class  AMQP < RJR::Node
     message = RequestMessage.new :method => rpc_method,
                                  :args   => args,
                                  :headers => @message_headers
-    EMAdapter.instance.schedule do
+    @em.schedule do
       init_node {
         subscribe # begin listening for result
         send_msg(message.to_s, :routing_key => routing_key, :reply_to => @queue_name)
@@ -185,7 +186,7 @@ class  AMQP < RJR::Node
     message = NotificationMessage.new :method => rpc_method,
                                       :args   => args,
                                       :headers => @message_headers
-    EMAdapter.instance.schedule do
+    @em.schedule do
       init_node {
         send_msg(message.to_s, :routing_key => routing_key, :reply_to => @queue_name){
           published_l.synchronize { invoked = true ; published_c.signal }
