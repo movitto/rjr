@@ -26,7 +26,7 @@ module Nodes
 #
 # @example Listening for and dispatching json-rpc requests locally
 #   # initialize node
-#   node = RJR::LocalNode.new :node_id => 'node'
+#   node = RJR::Nodes::Local.new :node_id => 'node'
 #
 #   node.dispatcher.handle('hello') do |name|
 #     @rjr_node_type == :local ? "Hello superuser #{name}" : "Hello #{name}!"
@@ -41,7 +41,7 @@ class Local < RJR::Node
   # allows clients to override the node type for the local node
   attr_accessor :node_type
 
-  # LocalNode initializer
+  # Nodes::Local initializer
   # @param [Hash] args the options to create the local node with
   def initialize(args = {})
      super(args)
@@ -55,8 +55,8 @@ class Local < RJR::Node
   # Implementation of {RJR::Node#send_msg}
   def send_msg(msg, connection)
     # ignore response message
-    unless msg.is_a?(ResponseMessage)
-      handle_request(msg, true, nil)
+    unless ResponseMessage.is_response_message?(msg)
+      launch_request(msg, true) # .join?
     end
   end
 
@@ -66,6 +66,18 @@ class Local < RJR::Node
   def listen
     # do nothing
     self
+  end
+
+  # Helper to launch request in new thread
+  #
+  # This needs to happen so that each request runs in its own context
+  # (or close to it, globals will still be available, but locks will
+  #  not be locally held, etc)
+  def launch_request(req, notification)
+    Thread.new(req,notification) { |req,notification|
+      res = handle_request(req, notification, nil)
+      handle_response(res.to_s) unless res.nil?
+    }
   end
 
   # Instructs node to send rpc request, and wait for and return response
@@ -85,9 +97,16 @@ class Local < RJR::Node
     0.upto(args.size).each { |i| args[i] = args[i].to_s if args[i].is_a?(Symbol) }
     message = RequestMessage.new(:method => rpc_method,
                                  :args   => args,
-                                 :headers => @message_headers).to_s
-    res = handle_request(message, false, nil)
-    return @dispatcher.handle_response(res.result)
+                                 :headers => @message_headers)
+    launch_request(message.to_s, false)
+
+    # TODO optional timeout for response ?
+    res = wait_for_result(message)
+
+    if res.size > 2
+      raise Exception, res[2]
+    end
+    return res[1]
   end
 
   # Instructs node to send rpc notification (immediately returns / no response is generated)
@@ -99,15 +118,11 @@ class Local < RJR::Node
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
   def notify(rpc_method, *args)
-    # TODO run in thread & immediately return?
-    begin
-      0.upto(args.size).each { |i| args[i] = args[i].to_s if args[i].is_a?(Symbol) }
-      message = NotificationMessage.new(:method => rpc_method,
-                                        :args   => args,
-                                        :headers => @message_headers).to_s
-      handle_request(message, true, nil)
-    rescue
-    end
+    0.upto(args.size).each { |i| args[i] = args[i].to_s if args[i].is_a?(Symbol) }
+    message = NotificationMessage.new(:method => rpc_method,
+                                      :args   => args,
+                                      :headers => @message_headers)
+    launch_request(message.to_s, true) #.join ?
     nil
   end
 
