@@ -21,27 +21,26 @@ module RJR
     end
 
     it "should start the thread pool" do
-      ThreadPool.instance.stop.join
       node = Node.new
-      ThreadPool.instance.should be_running
+      node.class.class_variable_get(:@@tp).should be_running
     end
 
     it "should start event machine" do
-      EMAdapter.instance.halt.join
+      EventMachine.stop_event_loop
       node = Node.new
-      EMAdapter.instance.reactor_running?.should be_true
+      EventMachine.reactor_running?.should be_true
     end
 
     it "should halt the thread pool" do
       node = Node.new
       node.halt.join
-      ThreadPool.instance.should_not be_running
+      node.class.class_variable_get(:@@tp).should_not be_running
     end
 
     it "should halt event machine" do
       node = Node.new
       node.halt.join
-      EMAdapter.instance.reactor_running?.should be_false
+      EventMachine.reactor_running?.should be_false
     end
 
     it "should handle connection events" do

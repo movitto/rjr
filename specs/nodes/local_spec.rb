@@ -32,16 +32,22 @@ module RJR::Nodes
 
     describe "#notify" do
       it "should dispatch local notification" do
+        # notify will most likely return before
+        # handler is executed (in seperate thread), wait
+        m,c = Mutex.new, ConditionVariable.new
+
         invoked = nil
         node = Local.new :node_id => 'aaa'
         node.dispatcher.handle('foobar') { |param|
           invoked = true
+          m.synchronize { c.signal }
           'retval'
         }
 
         res = node.notify 'foobar', 'myparam'
-        invoked.should == true
         res.should == nil
+        m.synchronize { c.wait m, 0.1 } unless invoked
+        invoked.should == true
       end
     end
 

@@ -145,6 +145,7 @@ module RJR
         h = proc {}
         d.handle('foobar', h)
         d.handlers['foobar'].should == h
+        d.handles?('foobar').should be_true
       end
 
       it "should set handler from block param" do
@@ -152,6 +153,7 @@ module RJR
         h = proc {}
         d.handle('foobar', &h)
         d.handlers['foobar'].should == h
+        d.handles?('foobar').should be_true
       end
 
       it "should register handler for multiple methods" do
@@ -160,6 +162,8 @@ module RJR
         d.handle(['foobar', 'barfoo'], &h)
         d.handlers['foobar'].should == h
         d.handlers['barfoo'].should == h
+        d.handles?('foobar').should be_true
+        d.handles?('barfoo').should be_true
       end
     end
 
@@ -181,6 +185,10 @@ module RJR
 
           d.dispatch :rjr_method => 'foobar'
           invoked.should be_true
+        end
+
+        context "handler is regex" do
+          it "should match method"
         end
 
         it "should pass params to handler" do
