@@ -181,12 +181,16 @@ class Dispatcher
   # Registered json-rpc request signatures and corresponding handlers
   attr_reader :handlers
 
+  # Registered json-rpc request signatures and environments which to execute handlers in
+  attr_reader :environments
+
   # Requests which have been dispatched
   def requests ; @requests_lock.synchronize { Array.new(@requests) } ; end
 
   # RJR::Dispatcher intializer
   def initialize
     @handlers = Hash.new()
+    @environments = Hash.new()
 
     @requests_lock = Mutex.new
     @requests = []
@@ -201,38 +205,57 @@ class Dispatcher
   #   a file, directory, or path specification (dirs seperated with ':')
   # @return self
   def add_module(name)
-    name.split(':').each { |p|
-      if File.directory?(p)
-        # TODO also .so files? allow user to specify suffix
-        Dir.glob(File.join(p, '*.rb')).all? { |m|
-          require m
-        }
+    require name
 
-      else
-        require p
+    m = name.downcase.gsub(File::SEPARATOR, '_')
+    method("dispatch_#{m}".intern).call(self)
 
-      end
-
-      m = p.split(File::SEPARATOR).last
-      method("dispatch_#{m}".intern).call(self)
-    }
     self
   end
   alias :add_modules :add_module
 
   # Register json-rpc handler with dispatcher
   #
-  # @param [String] signature request signature to match
+  # @param [String,Regex] signature request signature to match
   # @param [Callable] callable callable object which to bind to signature
   # @param [Callable] &bl block parameter will be set to callback if specified
   # @return self
   def handle(signature, callback = nil, &bl)
     if signature.is_a?(Array)
       signature.each { |s| handle(s, callback, &bl) }
-      return
+      return self
     end
     @handlers[signature] = callback unless callback.nil?
     @handlers[signature] = bl       unless bl.nil?
+    self
+  end
+
+  # Return boolean indicating if dispatcher can handle method
+  #
+  # @param [String] string rjr method to match
+  # @return [true,false] indicating if requests to specified method will be matched
+  def handles?(rjr_method)
+     !@handlers.find { |k,v|
+       k.is_a?(String)         ?
+       k == rjr_method :
+       k =~ rjr_method
+     }.nil?
+  end
+
+  # Register environment to run json-rpc handler w/ dispatcher.
+  #
+  # Currently environments may be set to modules which requests
+  # will extend before executing handler
+  #
+  # @param [String,Regex] signature request signature to match
+  # @param [Module] module which to extend requests with
+  # @return self
+  def env(signature, environment)
+    if signature.is_a?(Array)
+      signature.each { |s| env(s, environment) }
+      return self
+    end
+    @environments[signature] = environment
     self
   end
 
@@ -241,17 +264,29 @@ class Dispatcher
   # Arguments should include :rjr_method and other parameters
   # required to construct a valid Request instance
   def dispatch(args = {})
-     # currently we just match method name against signature
-     # TODO if signature if a regex, match against method name
-     #      or if callable, invoke it w/ request checking boolean return value for match
-     # TODO not using concurrent access portection, assumes all handlers are registered
+     # currently we match method name string or regex against signature
+     # TODO not using concurrent access protection, assumes all handlers are registered
      #      before first dispatch occurs
-     handler = @handlers[args[:rjr_method]]
+     handler = @handlers.find { |k,v|
+       k.is_a?(String)         ?
+       k == args[:rjr_method] :
+       k =~ args[:rjr_method] }
+
+     # TODO currently just using last environment that matches,
+     #      allow multiple environments to be used?
+     environment = @environments.keys.select { |k|
+       k.is_a?(String)         ?
+       k == args[:rjr_method] :
+       k =~ args[:rjr_method]
+     }.last
 
      return Result.method_not_found(args[:rjr_method]) if handler.nil?
 
      # TODO compare arity of handler to number of method_args passed in
-     request = Request.new args.merge(:rjr_handler  => handler)
+     request = Request.new args.merge(:rjr_handler  => handler.last)
+
+     # set request environment
+     request.extend(@environments[environment]) unless environment.nil?
 
      begin
        retval  = request.handle
