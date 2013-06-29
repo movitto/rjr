@@ -127,8 +127,8 @@ class TCP < RJR::Node
   #
   # Implementation of {RJR::Node#listen}
   def listen
-    @em.schedule {
-      @em.start_server @host, @port, TCPConnection, { :rjr_node => self }
+    @@em.schedule {
+      @@em.start_server @host, @port, TCPConnection, { :rjr_node => self }
     }
     self
   end
@@ -152,7 +152,7 @@ class TCP < RJR::Node
                                  :args   => args,
                                  :headers => @message_headers
     connection = nil
-    @em.schedule {
+    @@em.schedule {
       init_client(:host => host, :port => port,
                   :rjr_node => self) { |c|
         connection = c
@@ -190,7 +190,7 @@ class TCP < RJR::Node
     message = NotificationMessage.new :method => rpc_method,
                                       :args   => args,
                                       :headers => @message_headers
-    @em.schedule {
+    @@em.schedule {
       init_client(:host => host, :port => port,
                   :rjr_node => self) { |c|
         conn = c

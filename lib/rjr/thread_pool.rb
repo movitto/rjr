@@ -3,8 +3,6 @@
 # Copyright (C) 2010-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-require 'singleton'
-
 module RJR
 
 # Work item to be executed in a thread launched by {ThreadPool}.
@@ -81,8 +79,6 @@ end
 # Supports optional timeout which allows the user to kill and restart
 # threads if a job is taking too long to run.
 class ThreadPool
-  include Singleton
-
   class << self
     # @!group Config options (must be set before first node is instantiated)
 

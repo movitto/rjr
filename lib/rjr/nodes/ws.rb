@@ -104,7 +104,7 @@ class WS < RJR::Node
   #
   # Implementation of {RJR::Node#listen}
   def listen
-    @em.schedule do
+    @@em.schedule do
       EventMachine::WebSocket.start(:host => @host, :port => @port) do |ws|
         ws.onopen    { }
         ws.onclose   {       @connection_event_handlers[:closed].each { |h| h.call self } }
@@ -131,7 +131,7 @@ class WS < RJR::Node
                                  :args   => args,
                                  :headers => @message_headers
 
-    @em.schedule {
+    @@em.schedule {
       init_client(uri) do |c|
         c.stream { |msg| handle_message(msg, c) }
 
@@ -165,7 +165,7 @@ class WS < RJR::Node
     message = NotificationMessage.new :method => rpc_method,
                                       :args   => args,
                                       :headers => @message_headers
-    @em.schedule {
+    @@em.schedule {
       init_client(uri) do |c|
         c.stream { |msg| handle_message(msg, c) }
 

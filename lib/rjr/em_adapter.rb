@@ -3,7 +3,6 @@
 # Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-require 'singleton'
 require 'eventmachine'
 
 module RJR
@@ -11,8 +10,6 @@ module RJR
 # EventMachine adapater interface, ties reactor
 # lifecycle to an instance of this class.
 class EMAdapter
-  include Singleton
-
   # Run reactor in its own interally managed thread
   attr_accessor :reactor_thread
 

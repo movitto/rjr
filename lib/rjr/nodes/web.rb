@@ -123,7 +123,7 @@ class Web < RJR::Node
   #
   # Implementation of {RJR::Node#listen}
   def listen
-    @em.schedule do
+    @@em.schedule do
       EventMachine::start_server(@host, @port, WebConnection, :rjr_node => self)
     end
     self
@@ -149,7 +149,7 @@ class Web < RJR::Node
       handle_message(http.response, http)
     }
 
-    @em.schedule do
+    @@em.schedule do
       http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
       http.errback  &cb
       http.callback &cb
@@ -182,7 +182,7 @@ class Web < RJR::Node
                                       :args   => args,
                                       :headers => @message_headers
     cb = lambda { |arg| published_l.synchronize { invoked = true ; published_c.signal }}
-    @em.schedule do
+    @@em.schedule do
       http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
       http.errback  &cb
       http.callback &cb

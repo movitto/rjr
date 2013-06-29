@@ -44,6 +44,11 @@ class Node
   # Dispatcher to use to satisfy requests
   attr_accessor :dispatcher
 
+  # alias of RJR_NODE_TYPE
+  def node_type
+    self.class::RJR_NODE_TYPE
+  end
+
   # RJR::Node initializer
   #
   # @param [Hash] args options to set on request
@@ -60,16 +65,20 @@ class Node
      @dispatcher      = args[:dispatcher] || RJR::Dispatcher.new
      @message_headers = args.has_key?(:headers) ? {}.merge(args[:headers]) : {}
 
-     @tp = ThreadPool.instance.start
-     @em = EMAdapter.instance.start
+     @@tp ||= ThreadPool.new
+     @@em ||= EMAdapter.new
+
+     # will do nothing if already started
+     @@tp.start
+     @@em.start
   end
 
   # Block until the eventmachine reactor and thread pool have both completed running
   #
   # @return self
   def join
-    @tp.join
-    @em.join
+    @@tp.join
+    @@em.join
     self
   end
 
@@ -80,8 +89,8 @@ class Node
   #
   # @return self
   def halt
-    @em.stop_event_loop
-    @tp.stop
+    @@em.stop_event_loop
+    @@tp.stop
     self
   end
 
@@ -113,10 +122,10 @@ class Node
   # Internal helper, handle message received
   def handle_message(msg, connection = {})
     if RequestMessage.is_request_message?(msg)
-      @tp << ThreadPoolJob.new(msg) { |m| handle_request(m, false, connection) }
+      @@tp << ThreadPoolJob.new(msg) { |m| handle_request(m, false, connection) }
 
     elsif NotificationMessage.is_notification_message?(msg)
-      @tp << ThreadPoolJob.new(msg) { |m| handle_request(m, true, connection) }
+      @@tp << ThreadPoolJob.new(msg) { |m| handle_request(m, true, connection) }
 
     elsif ResponseMessage.is_response_message?(msg)
       handle_response(msg)
@@ -142,12 +151,12 @@ class Node
       NotificationMessage.new(:message => data,
                               :headers => @message_headers) :
             RequestMessage.new(:message => data,
-                              :headers => @message_headers)
+                               :headers => @message_headers)
 
     result =
       @dispatcher.dispatch(:rjr_method      => msg.jr_method,
                            :rjr_method_args => msg.jr_args,
-                           :headers         => msg.headers,
+                           :rjr_headers     => msg.headers,
                            :rjr_client_ip   => client_ip,
                            :rjr_client_port => client_port,
                            :rjr_node        => self,
@@ -164,6 +173,8 @@ class Node
       self.send_msg(response.to_s, connection)
       return response
     end
+
+    nil
   end
 
   # Internal helper, handle response message received
