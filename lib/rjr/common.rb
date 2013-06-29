@@ -4,7 +4,6 @@
 #
 # Copyright (C) 2011-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
-
 require 'logger'
 
 # Return a random uuid
@@ -34,21 +33,27 @@ class Logger
          @logger = ::Logger.new(output)
          @logger.level = @log_level || ::Logger::FATAL
          @logger_mutex = Mutex.new
+         @filters = []
        end 
     end 
 
   public
 
+    # Add method which to call on every log message to determine
+    # if messages should be included/excluded
+    def self.add_filter(filter)
+      @logger_mutex.synchronize{
+        @filters << filter
+      }
+    end
+
     def self.method_missing(method_id, *args)
        _instantiate_logger
        @logger_mutex.synchronize {
-         if args.first.is_a?(Array)
-           args.first.each{ |a|
-             @logger.send(method_id, a)
-           }
-         else
-           @logger.send(method_id, args)
-         end
+         args = args.first if args.first.is_a?(Array)
+         args.each { |a|
+           @logger.send(method_id, a) if @filters.all? { |f| f.call a }
+         }
        }
     end 
 

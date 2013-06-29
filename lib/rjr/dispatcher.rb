@@ -135,9 +135,16 @@ class Request
   # Invoke the request by calling the registered handler with the registered
   # method parameters in the local scope
   def handle
-    RJR::Logger.info "Dispatching '#{@rjr_method}' request with parameters (#{@rjr_method_args.join(',')}) on #{@rjr_node_type}-node(#{@rjr_node_id})"
+    node_sig   = "#{@rjr_node_id}(#{@rjr_node_type})"
+    method_sig = "#{@rjr_method}(#{@rjr_method_args.join(',')})"
+
+    RJR::Logger.info "#{node_sig}->#{method_sig}"
+
     retval = instance_exec(*@rjr_method_args, &@rjr_handler)
-    RJR::Logger.info "#{@rjr_method} request with parameters (#{@rjr_method_args.join(',')}) returning #{retval}"
+
+    RJR::Logger.info \
+      "#{node_sig}<-#{method_sig}<-#{retval.nil? ? "nil" : retval}"
+
     return retval
   end
 
