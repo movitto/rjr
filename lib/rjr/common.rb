@@ -57,6 +57,13 @@ class Logger
        }
     end 
 
+    def self.safe_exec(*args, &bl)
+      _instantiate_logger
+      @logger_mutex.synchronize {
+        bl.call *args
+      }
+    end
+
     def self.logger
        _instantiate_logger
        @logger
@@ -99,6 +106,13 @@ class Logger
 end
 
 end # module RJR
+
+# Serialized puts, uses logger lock to serialize puts output
+def sputs(*args)
+  ::RJR::Logger.safe_exec {
+    puts *args
+  }
+end
 
 class Object
   def eigenclass
