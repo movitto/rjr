@@ -120,7 +120,7 @@ function JRObject (type, value, ignore_properties){
   this.type  = type;
   this.value = value;
   this.ignore_properties = (typeof(ignore_properties) != 'undefined') ?
-                            ignore_properties : ["toJSON"];
+                            ignore_properties : ["toJSON", "json_class"];
   this.toJSON = function(){
      var data = {};
      for(p in this.value)
@@ -169,6 +169,7 @@ JRObject.from_json_array = function(json){
 // Main json-rpc client websocket interface
 function WSNode (host, port){
   var node      = this;
+  this.opening  = false;
   this.opened   = false;
   this.node_id  = null;
   this.headers  = {};
@@ -176,6 +177,8 @@ function WSNode (host, port){
 
   // Open socket connection
   this.open = function(){
+    if(this.opening) return;
+    this.opening = true;
     node.socket = new WebSocket("ws://" + host + ":" + port);
 
     node.socket.onclose   = function (){
@@ -197,14 +200,14 @@ function WSNode (host, port){
           if(node.onerror)
             node.onerror(msg)
 
-      }else{
-        // relying on clients to handle notifications via message_received
-        // TODO add notification (and request?) handler support here
-        //node.invoke_method(msg.rpc_method, msg.params)
-        if(node.message_received)
-          node.message_received(msg);
-
       }
+
+      // relying on clients to handle notifications via message_received
+      // TODO add notification (and request?) handler support here
+      // clients may user this to register additional handlers to be invoked
+      // upon request responses
+      if(node.message_received)
+        node.message_received(msg);
     };
 
     node.socket.onerror = function(e){
@@ -213,11 +216,12 @@ function WSNode (host, port){
     }
 
     node.socket.onopen = function (){
+      node.opened = true;
+      node.opening = false;
+
       // send queued messages
       for(var m in node.messages)
         node.socket.send(node.messages[m].to_json());
-
-      node.opened = true;
 
       // invoke client callback
       if(node.onopen)
@@ -270,9 +274,10 @@ function WebNode (uri){
 
             success: function(data){
               var msg = JRMessage.from_msg(data);
-              // js web client doesn't support notifications
-              //if(node.message_received)
-                //node.message_received(msg);
+              // clients may register additional callbacks
+              // to handle web node responses
+              if(node.message_received)
+                node.message_received(msg);
 
               req.handle_response(msg)
 
