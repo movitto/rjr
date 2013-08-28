@@ -34,6 +34,7 @@ class Logger
          @logger.level = @log_level || ::Logger::FATAL
          @logger_mutex = Mutex.new
          @filters = []
+         @highlights = []
        end 
     end 
 
@@ -47,12 +48,25 @@ class Logger
       }
     end
 
+    # Add a method which to call on every log message to determine
+    # if message should be highlighted
+    def self.highlight(hlight)
+      @logger_mutex.synchronize{
+        @highlights << hlight
+      }
+    end
+
     def self.method_missing(method_id, *args)
        _instantiate_logger
        @logger_mutex.synchronize {
          args = args.first if args.first.is_a?(Array)
          args.each { |a|
-           @logger.send(method_id, a) if @filters.all? { |f| f.call a }
+           # run highlights / filters against output before
+           # sending formatted output to logger
+           # TODO allow user to customize highlight mechanism/text
+           na = @highlights.any? { |h| h.call a } ?
+                  "\e[1m\e[31m#{a}\e[0m\e[0m" : a
+           @logger.send(method_id, na) if @filters.all? { |f| f.call a }
          }
        }
     end 
