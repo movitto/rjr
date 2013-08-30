@@ -8,6 +8,14 @@
 # Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
+# TODO
+# - data received/sent (on different interfaces)
+# - messages received/sent (on different interfaces)
+# - dispatches on a per node basis
+# - unresolved/invalid dispatches/messages
+# - em jobs
+# - thread pool jobs (started / completed / etc)
+
 require 'eventmachine'
 
 # Helper method to process user params / select stats
@@ -37,34 +45,51 @@ def select_stats(dispatcher, *filter)
   dispatcher.requests.select { |ds| lf.all? { |lfi| lfi.call(ds) } }
 end
 
-# Add stats methods to specified dispatcher
-def dispatch_stats(dispatcher)
+# Add inspection methods to specified dispatcher
+def dispatch_rjr_inspect(dispatcher)
   # Retrieve all the dispatches this node served matching the specified criteri
   dispatcher.handle "rjr::dispatches" do |filter|
-    select_stats(*filter) 
+    select_stats(dispatcher, *filter) 
   end
 
   # Retrieve the number of dispatches this node served matching the specified criteria
   dispatcher.handle "rjr::num_dispatches" do |filter|
-    select_stats(*filter).size
+    select_stats(dispatcher, *filter).size
   end
 
   # Retrieve the internal status of this node
   dispatcher.handle "rjr::status" do
+    nodes = []
+    ObjectSpace.each_object RJR::Node do |node|
+      nodes << node.to_s
+    end
+
     {
+      # nodes
+      :nodes => nodes,
+
+      # dispatcher
+      :dispatcher => {
+        :requests => dispatcher.requests.size,
+        :handlers =>
+          dispatcher.handlers.keys,
+          #dispatcher.handlers.collect { |k,v|
+          #  [k, v.source_location] },
+        :environments => dispatcher.environments
+      },
+
       # event machine
       :event_machine => { :running => EventMachine.reactor_running?,
-                          :thread_status => RJR::EMAdapter.instance.rector_thread ?
-                                            RJR::EMAdapter.instance.reactor_thread.status :
-                                                                    nil,
+                          :thread_status =>
+                           (RJR::Node.em && RJR::Node.em.reactor_thread) ?
+                                RJR::Node.em.reactor_thread.status : nil,
                           :connections => EventMachine.connection_count },
 
       # thread pool
-      :thread_pool => { :running => RJR::ThreadPool.instance.running? }
+      :thread_pool => { :running => RJR::Node.tp ? RJR::Node.tp.running? : nil }
     }
   end
 
   #:log =>
   #  lambda {},
 end
-

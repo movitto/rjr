@@ -49,6 +49,10 @@ class Node
     self.class::RJR_NODE_TYPE
   end
 
+  # XXX used by debugging / stats interface
+  def self.em ; defined?(@@em) ? @@em : nil end
+  def self.tp ; defined?(@@tp) ? @@tp : nil end
+
   # RJR::Node initializer
   #
   # @param [Hash] args options to set on request
