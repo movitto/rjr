@@ -48,6 +48,10 @@ class Local < RJR::Node
      @node_type = RJR_NODE_TYPE
   end
 
+  def to_s
+    "RJR::Nodes::Local<#{@node_id}>"
+  end
+
   # Send data using specified connection.
   #
   # Simply dispatch local notification.

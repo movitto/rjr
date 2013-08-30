@@ -56,6 +56,10 @@ class Multi < RJR::Node
     } if args[:nodes]
   end
 
+  def to_s
+    "RJR::Nodes::Multi<#{@node_id}>"
+  end
+
   # Add node to multinode
   # @param [RJR::Node] node the node to add
   def <<(node)

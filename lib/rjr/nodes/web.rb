@@ -103,6 +103,10 @@ class Web < RJR::Node
      @port      = args[:port]
   end
 
+  def to_s
+    "RJR::Nodes::Web<#{@node_id},#{@host},#{@port}>"
+  end
+
   # Send data using specified http connection
   #
   # Implementation of {RJR::Node#send_msg}

@@ -116,6 +116,10 @@ class TCP < RJR::Node
      @connections_lock = Mutex.new
   end
 
+  def to_s
+    "RJR::Nodes::TCP<#{@node_id},#{@host},#{@port}>"
+  end
+
   # Send data using specified connection
   #
   # Implementation of {RJR::Node#send_msg}

@@ -93,6 +93,10 @@ class WS < RJR::Node
      @connections_lock = Mutex.new
   end
 
+  def to_s
+    "RJR::Nodes::WS<#{@node_id},#{@host},#{@port}>"
+  end
+
   # Send data using specified websocket safely
   #
   # Implementation of {RJR::Node#send_msg}

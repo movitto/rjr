@@ -116,6 +116,10 @@ class AMQP < RJR::Node
      @amqp_lock     = Mutex.new
   end
 
+  def to_s
+    "RJR::Nodes::AMQP<#{@node_id},#{@broker},#{@queue_name}>"
+  end
+
   # Publish a message using the amqp exchange
   #
   # Implementation of {RJR::Node#send_msg}
