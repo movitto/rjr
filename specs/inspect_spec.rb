@@ -1,5 +1,5 @@
 require 'rjr/dispatcher'
-require 'rjr/stats'
+require 'rjr/inspect'
 
 describe "#select_stats" do
   before(:each) do
