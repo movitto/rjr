@@ -5,8 +5,9 @@
 # Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-# establish client connection w/ specified args and invoke block w/ 
-# newly created client, returning it after block terminates
+# FIXME https://github.com/flori/json/issues/179
+#   if pull request doesn't get accepted implement
+#   one of the workarounds in rjr
 
 require 'json'
 require 'rjr/common'

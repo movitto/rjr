@@ -109,7 +109,7 @@ class WS < RJR::Node
   # Implementation of {RJR::Node#listen}
   def listen
     @@em.schedule do
-      EventMachine::WebSocket.start(:host => @host, :port => @port) do |ws|
+      EventMachine::WebSocket.run(:host => @host, :port => @port) do |ws|
         ws.onopen    { }
         ws.onclose   {       @connection_event_handlers[:closed].each { |h| h.call self } }
         ws.onerror   { |e|   @connection_event_handlers[:error].each  { |h| h.call self } }

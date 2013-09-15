@@ -61,30 +61,33 @@ class AMQP < RJR::Node
        return
      end
 
-     @conn = ::AMQP.connect(:host => @broker) do |*args|
+     @conn = ::AMQP.connect(:host => @broker) do |conn|
+       ::AMQP.connection = conn # XXX not sure why this is needed but the amqp
+                                # em interface won't shut down cleanly otherwise
+
+       conn.on_tcp_connection_failure { puts "OTCF #{@node_id}" }
+
+       ### connect to qpid broker
+       @channel = ::AMQP::Channel.new(conn)
+
+       # qpid constructs that will be created for node
+       @queue_name  = "#{@node_id.to_s}-queue"
+       @queue       = @channel.queue(@queue_name, :auto_delete => true)
+       @exchange    = @channel.default_exchange
+
+       @listening = false
+       #@disconnected = false
+
+       @exchange.on_return do |basic_return, metadata, payload|
+           puts "#{payload} was returned! reply_code = #{basic_return.reply_code}, reply_text = #{basic_return.reply_text}"
+           #@disconnected = true # FIXME member will be set on wrong class
+           # TODO these are only run when we fail to send message to queue,
+           # need to detect when that queue is shutdown & other events
+           connection_event(:error)
+           connection_event(:closed)
+       end
+
        on_init.call
-     end
-     @conn.on_tcp_connection_failure { puts "OTCF #{@node_id}" }
-
-     # TODO move the rest into connect callback ?
-
-     ### connect to qpid broker
-     @channel = ::AMQP::Channel.new(@conn)
-
-     # qpid constructs that will be created for node
-     @queue_name  = "#{@node_id.to_s}-queue"
-     @queue       = @channel.queue(@queue_name, :auto_delete => true)
-     @exchange    = @channel.default_exchange
-
-     @listening = false
-     #@disconnected = false
-
-     @exchange.on_return do |basic_return, metadata, payload|
-         puts "#{payload} was returned! reply_code = #{basic_return.reply_code}, reply_text = #{basic_return.reply_text}"
-         #@disconnected = true # FIXME member will be set on wrong class
-         # TODO these are only run when we fail to send message to queue, need to detect when that queue is shutdown & other events
-         connection_event(:error)
-         connection_event(:closed)
      end
   end
 
