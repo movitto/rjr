@@ -3,6 +3,12 @@ require 'rjr/node'
 
 module RJR
   describe Node do
+    before(:all) do
+      # was made public in ruby 1.9
+      if RUBY_VERSION < "1.9"
+        RJR::Node.public_class_method(:class_variable_get)
+      end
+    end
 
     it "should initialize properly from params" do
       d = Dispatcher.new

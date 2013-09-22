@@ -295,12 +295,12 @@ class MessageUtil
   def self.retrieve_json(data) 
     return nil if data.nil? || data.empty?
     start  = 0
-    start += 1 until start == data.length || data[start] == '{'
+    start += 1 until start == data.length || data[start].chr == '{'
     on = mi = 0 
     start.upto(data.length - 1).each { |i|
-      if data[i] == '{'
+      if data[i].chr == '{'
         on += 1
-      elsif data[i] == '}'
+      elsif data[i].chr == '}'
         on -= 1
       end
 

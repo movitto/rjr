@@ -43,7 +43,15 @@ module RJR
         invoked = true
         m.synchronize { c.signal }
       }
-      m.synchronize { c.wait m, 0.5 } if !invoked
+      if !invoked
+        if RUBY_VERSION < "1.9"
+          # XXX ruby 1.8 didn't support timeout via cv.wait
+          Thread.new { sleep 0.5 ; c.signal }
+          m.synchronize { c.wait m }
+        else
+          m.synchronize { c.wait m, 0.5 }
+        end
+      end
       invoked.should be_true
     end
 
