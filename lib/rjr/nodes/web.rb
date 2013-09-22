@@ -42,6 +42,7 @@ class WebConnection < EventMachine::Connection
   #
   # specify the web node establishing the connection
   def initialize(args = {})
+    super
     @rjr_node = args[:rjr_node]
   end
 
@@ -115,12 +116,14 @@ class Web < RJR::Node
     # are not persistant, we should be sending a
     # response message here
 
-    resp = EventMachine::DelegatedHttpResponse.new(connection)
-    #resp.status  = response.result.success ? 200 : 500
-    resp.status = 200
-    resp.content = data.to_s
-    resp.content_type "application/json"
-    resp.send_response
+    @@em.schedule  do
+      resp = EventMachine::DelegatedHttpResponse.new(connection)
+      #resp.status  = response.result.success ? 200 : 500
+      resp.status = 200
+      resp.content = data.to_s
+      resp.content_type "application/json"
+      resp.send_response
+    end
   end
 
   # Instruct Node to start listening for and dispatching rpc requests
@@ -154,7 +157,8 @@ class Web < RJR::Node
     }
 
     @@em.schedule do
-      http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
+      http = EventMachine::HttpRequest.new(uri).post :body => message.to_s,
+                                                     :head => {'content-type' => 'application/json'}
       http.errback  &cb
       http.callback &cb
     end
@@ -187,7 +191,8 @@ class Web < RJR::Node
                                       :headers => @message_headers
     cb = lambda { |arg| published_l.synchronize { invoked = true ; published_c.signal }}
     @@em.schedule do
-      http = EventMachine::HttpRequest.new(uri).post :body => message.to_s
+      http = EventMachine::HttpRequest.new(uri).post :body => message.to_s,
+                                                     :head => {'content-type' => 'application/json'}
       http.errback  &cb
       http.callback &cb
     end

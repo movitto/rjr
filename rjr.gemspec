@@ -18,7 +18,7 @@ Gem::Specification.new do |s|
     s.required_ruby_version = '>= 1.8.1'
     s.required_rubygems_version = Gem::Requirement.new(">= 1.3.3")
     s.add_development_dependency('rspec', '>= 2.0.0')
-    s.add_dependency('eventmachine', '= 1.0.1') # rjr is incompatible current release 1.0.3 and one before it 1.0.2 and 1.0.0 and before
+    s.add_dependency('eventmachine')
     s.add_dependency('json') # TODO use multi_json
 
     s.requirements = ['The amqp gem and a running rabbitmq server is needed to use the amqp node',
