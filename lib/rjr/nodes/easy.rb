@@ -37,11 +37,9 @@ module Nodes
 #   # => sent via amqp
 #
 class Easy < RJR::Node
-  private
-
-  # Internal helper, retrieved the registered node type depending on
-  # the dst. If matching node type can't be found, nil is returned
-  def get_node(dst)
+  # Publically available helper, retrieve the rjr node type
+  # based on dst format
+  def self.node_type_for(dst)
     type = nil
     if dst.is_a?(String)
       if /tcp:\/\/.*/      =~ dst ||
@@ -64,7 +62,21 @@ class Easy < RJR::Node
       end
     end
 
+    type
+  end
+
+  private
+
+  # Internal helper, retrieved the registered node depending on
+  # the type retrieved from the dst. If matching node type can't
+  # be found, nil is returned
+  def get_node(dst)
+    type = self.class.node_type_for(dst)
+
+    # TODO also add optional mechanism to class to load nodes of
+    # new types on the fly as they are needed
     return @multi_node.nodes.find { |n| n.is_a?(type) } unless type.nil?
+
     nil
   end
 
@@ -79,7 +91,7 @@ class Easy < RJR::Node
   def initialize(args = {})
      super(args)
 
-     nodes = []
+     nodes = args[:nodes] || []
      args.keys.each { |n|
        node = 
        case n
