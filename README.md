@@ -14,8 +14,8 @@ Currently supported transports include:
 
 Note some transports require additional dependencies, see rjr.gemspec for more info.
 
-**Note** currently there is an issue regarding compatability with the latest json gem.
-Developers wishing to use RJR should use version 1.7.5 of lower (workaround is in progress).
+**Note** currently there is an [issue](https://github.com/flori/json/issues/179) regarding compatability with the latest json gem.
+Developers wishing to use RJR should use version 1.7.5 or lower (workaround is in progress).
 
 
 ### Intro ###
