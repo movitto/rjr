@@ -5,6 +5,8 @@ if RJR::Nodes::AMQP == RJR::Nodes::Missing
 puts "Missing AMQP node dependencies, skipping amqp tests"
 
 else
+# TODO stub out calls to external rabbitmq server
+
 module RJR::Nodes
   describe AMQP do
     describe "#send_msg" do
