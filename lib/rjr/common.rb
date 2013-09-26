@@ -5,6 +5,7 @@
 # Copyright (C) 2011-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 require 'logger'
+require 'json'
 
 # Return a random uuid
 def gen_uuid
@@ -163,4 +164,64 @@ class Object
     ret
   end
 end
+end
+
+# Two stage json parsing required, for more details
+# see json issue https://github.com/flori/json/issues/179
+
+# FIXME this will only work for json >= 1.7.6 where
+# create_additions is defined
+
+class Class
+  class << self
+    attr_accessor :whitelist_json_classes
+    attr_accessor :permitted_json_classes
+  end
+
+  def permit_json_create
+    Class.whitelist_json_classes = true
+    Class.permitted_json_classes ||= []
+    unless Class.permitted_json_classes.include?(self.name)
+      Class.permitted_json_classes << self.name
+    end
+  end
+end
+
+module RJR
+  def self.validate_json_class(jc)
+    Class.whitelist_json_classes ||= false
+
+    Class.whitelist_json_classes ?
+      # only permit classes user explicitly authorizes
+      !Class.permitted_json_classes.include?(jc) :
+
+      # allow any class
+      jc.to_s.split(/::/).inject(Object) do |p,c|
+        case
+        when c.empty?  then p
+        when p.constants.collect { |c| c.to_s }.include?(c)
+          then p.const_get(c)
+        else
+          nil
+        end
+      end.nil?
+  end
+
+  def self.validate_json_hash(jh)
+    jh.each { |k,v|
+      if k == ::JSON.create_id &&
+         validate_json_class(v)
+        raise ArgumentError, "can't create json class #{v}"
+      elsif v.is_a?(Hash)
+        validate_json_hash(v)
+      end
+    }
+  end
+  
+  def self.parse_json(js)
+    jp = ::JSON.parse js, :create_additions => false
+    return jp unless jp.is_a?(Hash)
+    validate_json_hash(jp)
+    ::JSON.parse js, :create_additions => true
+  end
 end
