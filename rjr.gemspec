@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 GEM_NAME    = 'rjr'
-PKG_VERSION = '0.16.2'
+PKG_VERSION = '0.16.3'
 
 PKG_FILES =
   Dir.glob('{examples,lib,site,specs}/**/*.rb') +
@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
     s.required_rubygems_version = Gem::Requirement.new(">= 1.3.3")
     s.add_development_dependency('rspec', '>= 2.0.0')
     s.add_dependency('eventmachine')
-    s.add_dependency('json') # TODO use multi_json
+    s.add_dependency('json', '<= 1.7.5')
 
     s.requirements = ['The amqp gem and a running rabbitmq server is needed to use the amqp node',
                       'The eventmachine_httpserver and em-http-request gems are needed to use the web node',
@@ -27,7 +27,7 @@ Gem::Specification.new do |s|
 
     s.author = "Mohammed Morsi"
     s.email = "mo@morsi.org"
-    s.date = %q{2013-09-22}
+    s.date = %q{2013-09-26}
     s.description = %q{Ruby Json Rpc library}
     s.summary = %q{JSON RPC server and client library over amqp, websockets, http, etc}
     s.homepage = %q{http://github.com/movitto/rjr}
