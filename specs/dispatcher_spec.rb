@@ -80,7 +80,7 @@ module RJR
 
     it "should be convertable from json" do
       j = '{"json_class":"RJR::Request","data":{"request":{"rjr_method":"foobar","rjr_method_args":["a","b"],"rjr_headers":{"foo":"bar"},"rjr_node_type":"local","rjr_node_id":"loc1"},"result":{"result":42,"error_code":null,"error_msg":null,"error_class":null}}}'
-      r = JSON.parse(j)
+      r = JSON.parse(j, :create_additions => true)
 
       r.class.should == RJR::Request
       r.rjr_method.should == 'foobar'

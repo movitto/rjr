@@ -5,10 +5,6 @@
 # Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-# FIXME https://github.com/flori/json/issues/179
-#   if pull request doesn't get accepted implement
-#   one of the workarounds in rjr
-
 require 'json'
 require 'rjr/common'
 
@@ -48,7 +44,7 @@ class RequestMessage
     if args.has_key?(:message)
       begin
         @json_message = args[:message]
-        request = JSON.parse(@json_message)
+        request = RJR.parse_json(@json_message)
         @jr_method = request['method']
         @jr_args   = request['params']
         @msg_id    = request['id']
@@ -79,7 +75,7 @@ class RequestMessage
   def self.is_request_message?(message)
     begin
        # FIXME log error
-       parsed = JSON.parse(message)
+       parsed = RJR.parse_json(message)
        parsed.has_key?('method') && parsed.has_key?('id')
     rescue Exception => e
       false
@@ -129,7 +125,7 @@ class ResponseMessage
   def initialize(args = {})
     if args.has_key?(:message)
       @json_message  = args[:message]
-      response = JSON.parse(@json_message)
+      response = RJR.parse_json(@json_message)
       @msg_id  = response['id']
       @result   = Result.new
       @result.success   = response.has_key?('result')
@@ -168,7 +164,7 @@ class ResponseMessage
   # @return [true,false] indicating if message is response message
   def self.is_response_message?(message)
     begin
-      json = JSON.parse(message)
+      json = RJR.parse_json(message)
       json.has_key?('result') || json.has_key?('error')
     rescue Exception => e
       # FIXME log error
@@ -232,7 +228,7 @@ class NotificationMessage
     if args.has_key?(:message)
       begin
         @json_message = args[:message]
-        notification = JSON.parse(@json_message)
+        notification = RJR.parse_json(@json_message)
         @jr_method = notification['method']
         @jr_args   = notification['params']
         @headers   = args.has_key?(:headers) ? {}.merge!(args[:headers]) : {}
@@ -262,7 +258,7 @@ class NotificationMessage
   def self.is_notification_message?(message)
     begin
        # FIXME log error
-       parsed = JSON.parse(message)
+       parsed = RJR.parse_json(message)
        parsed.has_key?('method') && !parsed.has_key?('id')
     rescue Exception => e
       false
