@@ -188,7 +188,7 @@ class Class
 end
 
 module RJR
-  def self.validate_json_class(jc)
+  def self.invalid_json_class?(jc)
     Class.whitelist_json_classes ||= false
 
     Class.whitelist_json_classes ?
@@ -209,17 +209,22 @@ module RJR
 
   def self.validate_json_hash(jh)
     jh.each { |k,v|
-      if k == ::JSON.create_id &&
-         validate_json_class(v)
+      if k == ::JSON.create_id && invalid_json_class?(v)
         raise ArgumentError, "can't create json class #{v}"
       elsif v.is_a?(Array)
-        v.each { |vi|
-          if vi.is_a?(Hash)
-            validate_json_hash(vi)
-          end
-        }
+        validate_json_array(v)
       elsif v.is_a?(Hash)
         validate_json_hash(v)
+      end
+    }
+  end
+
+  def self.validate_json_array(ja)
+    ja.each { |jai|
+      if jai.is_a?(Array)
+        validate_json_array(jai)
+      elsif jai.is_a?(Hash)
+        validate_json_hash(jai)
       end
     }
   end
@@ -227,11 +232,12 @@ module RJR
   def self.parse_json(js)
     jp = ::JSON.parse js, :create_additions => false
     if jp.is_a?(Array)
-      jp.each { |jpi| parse_json(jpi.to_json) }
-    elsif !jp.is_a?(Hash)
-      return
+      validate_json_array(jp)
+    elsif jp.is_a?(Hash)
+      validate_json_hash(jp)
+    else
+      return jp
     end
-    validate_json_hash(jp)
     ::JSON.parse js, :create_additions => true
   end
 end

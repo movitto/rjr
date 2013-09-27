@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 GEM_NAME    = 'rjr'
-PKG_VERSION = '0.16.5'
+PKG_VERSION = '0.16.6'
 
 PKG_FILES =
   Dir.glob('{examples,lib,site,specs}/**/*.rb') +
