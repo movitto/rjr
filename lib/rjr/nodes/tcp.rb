@@ -49,7 +49,7 @@ class TCPConnection < EventMachine::Connection
   # Send data safely using local connection
   def send_msg(data)
     @send_lock.synchronize{
-      send_data(data)
+      TCP.em.schedule { send_data(data) }
     }
   end
 

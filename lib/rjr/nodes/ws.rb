@@ -101,7 +101,7 @@ class WS < RJR::Node
   #
   # Implementation of {RJR::Node#send_msg}
   def send_msg(data, ws)
-    ws.send(data)
+    @@em.schedule { ws.send(data) }
   end
 
   # Instruct Node to start listening for and dispatching rpc requests
