@@ -7,6 +7,12 @@ puts "Missing AMQP node dependencies, skipping amqp tests"
 else
 # TODO stub out calls to external rabbitmq server
 
+# helper to stop em
+def stop_node(node)
+  Thread.new { ::AMQP.stop { node.halt } }
+  node.join
+end
+
 module RJR::Nodes
   describe AMQP do
     describe "#send_msg" do
@@ -33,7 +39,7 @@ module RJR::Nodes
                  :broker => 'localhost').invoke 'server-queue',
                                                 'test',
                                                 'myparam'
-        node.halt.join
+        stop_node(node)
         invoked.should be_true
         ci.should be_nil
         cp.should be_nil
@@ -55,7 +61,7 @@ module RJR::Nodes
         client = AMQP.new :node_id => 'client', :broker => 'localhost'
         res = client.invoke 'server-queue', 'test', 'myparam'
 
-        server.halt.join
+        stop_node(client)
         res.should == 'retval'
       end
     end
@@ -71,7 +77,7 @@ module RJR::Nodes
         client = AMQP.new :node_id => 'client', :broker => 'localhost'
         res = client.notify 'server-queue', 'test', 'myparam'
 
-        server.halt.join
+        stop_node(server)
         res.should == nil
       end
     end
