@@ -137,7 +137,7 @@ class WS < RJR::Node
 
     @@em.schedule {
       init_client(uri) do |c|
-        c.stream { |msg| handle_message(msg, c) }
+        c.stream { |msg| handle_message(msg.data, c) }
 
         c.send_msg message.to_s
       end
@@ -171,7 +171,7 @@ class WS < RJR::Node
                                       :headers => @message_headers
     @@em.schedule {
       init_client(uri) do |c|
-        c.stream { |msg| handle_message(msg, c) }
+        c.stream { |msg| handle_message(msg.data, c) }
 
         c.send_msg message.to_s
 
