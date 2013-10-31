@@ -1,4 +1,5 @@
 ## RJR - Ruby Json Rpc Library ##
+[![Build Status](https://travis-ci.org/movitto/rjr.png?branch=dep-fixes)](https://travis-ci.org/movitto/rjr)
 
 Copyright (C) 2012-2013 Mo Morsi <mo@morsi.org>
 
