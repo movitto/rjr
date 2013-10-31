@@ -189,11 +189,15 @@ class Dispatcher
 
   # RJR::Dispatcher intializer
   def initialize
-    @handlers = Hash.new()
-    @environments = Hash.new()
-
+    clear!
     @requests_lock = Mutex.new
-    @requests = []
+  end
+
+  # Return dispatcher to its initial state
+  def clear!
+    @handlers      = {}
+    @environments  = {}
+    @requests      = []
   end
 
   # Loads module from fs and adds handlers defined there
