@@ -16,6 +16,8 @@ Currently supported transports include:
 Note some transports require additional dependencies, see rjr.gemspec for more info.
 
 ### Intro ###
+RJR is currently built ontop of [eventmachine](http://eventmachine.rubyforge.org/) and [json](https://github.com/flori/json), any dependencies of those are needed to run rjr.
+
 To install rjr simply run:
     gem install rjr
 
@@ -105,8 +107,7 @@ Also see examples and specs for detailed usage.
 
 ### Advanced ###
 
-RJR uses {http://rubyeventmachine.com/ eventmachine} to process server requests.
-Upon being received requests are handed off to a thread pool to free up the reactor.
+Upon receiving requests from eventmachine, rjr hands them off to a thread pool to free up the reactor.
 It is up to the developer to ensure resources accessed in the method handlers
 are protected from concurrent access.
 
