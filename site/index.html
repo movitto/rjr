@@ -20,7 +20,7 @@
     <script type="text/javascript" src="json.js"></script>
     <script type="text/javascript" src="jrw.js"></script>
     <script type="text/javascript">
-      var ws_node = new WSNode('127.0.0.1', '8080');
+      var ws_node = new RJR.WsNode('127.0.0.1', '8080');
       ws_node.onopen = function(){
         ws_node.invoke('stress', 'ws1', function(res){
           alert(res.result);
@@ -33,7 +33,7 @@
       };
       ws_node.open();
 
-      var www_node = new WebNode('http://localhost/rjr');
+      var www_node = new RJR.HttpNode('http://localhost/rjr');
       www_node.invoke('stress', 'http1', function(res){
          alert(res.result);
       })

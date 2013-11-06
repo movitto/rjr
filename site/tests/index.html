@@ -21,18 +21,18 @@
 <html>
 <head>
   <script src="http://localhost/rjr-test/jquery-latest.js"></script>
-  <link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
-  <script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
+  <link rel="stylesheet" href="http://code.jquery.com/qunit/qunit-git.css" type="text/css" media="screen" />
+  <script type="text/javascript" src="http://code.jquery.com/qunit/qunit-git.js"></script>
   <script type="text/javascript" src="http://localhost/rjr-test/jrw.js"></script>
   <script type="text/javascript" src="http://localhost/rjr-test/json.js"></script>
 
   <script>
   $(document).ready(function(){
 
-module("JRObject");
+module("RJR.JRObject");
 
 test("convert to json", function() {
-  var obj = new JRObject('Foo', {'a': 123, 'aaa': 'bbb'}, ['toJSON', 'aaa']);
+  var obj = new RJR.JRObject('Foo', {'a': 123, 'aaa': 'bbb'}, ['toJSON', 'aaa']);
   var json = obj.toJSON();
   ok('json_class' in json);
   ok('data' in json);
@@ -44,7 +44,7 @@ test("convert to json", function() {
 
 test("convert from json", function() {
   var json = {'json_class': 'Foo', 'data': {'a': 123, 'b' : {'json_class' : 'Bar', 'data': {'z': 654 }}}};
-  var obj = JRObject.from_json(json);
+  var obj = RJR.JRObject.from_json(json);
   ok('a' in obj);
   ok('b' in obj);
   ok('z' in obj['b']);
@@ -55,7 +55,7 @@ test("convert from json", function() {
 test("convert from json array", function() {
   var json = [{'json_class': 'Foo', 'data': {'a': 123, 'b' : {'json_class' : 'Bar', 'data': {'z': 654 }}}},
               {'json_class': 'Foo', 'data': {'a': 456, 'b' : {'json_class' : 'Bar', 'data': {'z': 987 }}}}];
-  var objs = JRObject.from_json_array(json);
+  var objs = RJR.JRObject.from_json_array(json);
   equal(2, objs.length);
   ok('a' in objs[0]);
   ok('b' in objs[0]);
@@ -71,33 +71,33 @@ test("convert from json array", function() {
 
 test("is_jrobject helper", function() {
   var json = {'json_class': 'Foo', 'data': 'bar'};
-  ok(JRObject.is_jrobject(json))
+  ok(RJR.JRObject.is_jrobject(json))
 
   json = {'json_class': 'Foo'};
-  ok(!JRObject.is_jrobject(json))
+  ok(!RJR.JRObject.is_jrobject(json))
 
   json = {'data': 'bar'};
-  ok(!JRObject.is_jrobject(json))
+  ok(!RJR.JRObject.is_jrobject(json))
 });
 
 test("is_jrobject_array helper", function() {
   expect(3);
 
   var json = [{'json_class': 'Foo', 'data': 'bar'}];
-  ok(JRObject.is_jrobject_array(json))
+  ok(RJR.JRObject.is_jrobject_array(json))
 
   json = [{'json_class': 'Foo'}];
-  ok(!JRObject.is_jrobject(json))
+  ok(!RJR.JRObject.is_jrobject(json))
 
   json = {'json_class': 'Foo', 'data': 'bar'};
-  ok(!JRObject.is_jrobject_array(json))
+  ok(!RJR.JRObject.is_jrobject_array(json))
 });
 
-module("JRMessage");
+module("RJR.JRMessage");
 
 test("create jr method message", function() {
-  var id  = guid(); 
-  var msg = JRMessage.from_msg('{"jsonrpc":"2.0","method":"foobar","id":"'+id+'","params":[1,"abc"]}');
+  var id  = RJR.guid();
+  var msg = RJR.JRMessage.from_msg('{"jsonrpc":"2.0","method":"foobar","id":"'+id+'","params":[1,"abc"]}');
   equal(id, msg.id);
   equal('foobar', msg.rpc_method);
   equal(2, msg.params.length);
@@ -106,54 +106,62 @@ test("create jr method message", function() {
 });
 
 test("convert jr method object params", function() {
-  var id  = guid(); 
+  var id  = RJR.guid();
   var json = '{"json_class": "Foo", "data": {"a": 123 }}';
-  var msg = JRMessage.from_msg('{"jsonrpc":"2.0","method":"foobar","id":"'+id+'","params":['+json+']}');
+  var msg = RJR.JRMessage.from_msg('{"jsonrpc":"2.0","method":"foobar","id":"'+id+'","params":['+json+']}');
   equal(1, msg.params.length);
   ok('a' in msg.params[0]);
   equal(123, msg.params[0]['a']);
 });
 
 test("create jr success response message", function() {
-  var id  = guid(); 
-  var msg = JRMessage.from_msg('{"id":"'+id+'","jsonrpc":"2.0","result":5}');
+  var id  = RJR.guid();
+  var msg = RJR.JRMessage.from_msg('{"id":"'+id+'","jsonrpc":"2.0","result":5}');
   equal(id, msg.id);
   equal(5, msg.result);
 });
 
 test("create jr failed response message", function() {
-  var id  = guid(); 
-  var msg = JRMessage.from_msg('{"id":"'+id+'","jsonrpc":"2.0","error":{"code":101,"message":"arg"}}');
+  var id  = RJR.guid();
+  var msg = RJR.JRMessage.from_msg('{"id":"'+id+'","jsonrpc":"2.0","error":{"code":101,"message":"arg"}}');
   equal(id, msg.id);
   equal(101, msg.error['code']);
   equal('arg', msg.error['message']);
 });
 
-module("WSNode");
+module("RJR.WsNode");
 
-asyncTest("invoke rpc request", 4, function() {
-  var ws_node = new WSNode('localhost', 8080);
+asyncTest("invoke rpc request", 6, function() {
+  var ws_node = new RJR.WsNode('localhost', 8080);
   ws_node.onopen = function(result){
     ws_node.invoke("callback_method", function(res){
       ok(res.result == null);
-      start(2); // continue the test runner
+      start(); // continue the test runner
     });
   }
   ws_node.message_received = function(msg){
-    equal('client_callback', msg['rpc_method']);
-    equal(1, msg['params'].length);
-    equal('cb', msg['params'][0]);
-    start(2);
+console.log(msg);
+    if(msg['rpc_method']){
+      // callback method request
+      equal('client_callback', msg['rpc_method']);
+      equal(1, msg['params'].length);
+      equal('cb', msg['params'][0]);
+    }else{
+      // response message
+      equal(msg['success'], true);
+      equal(msg['result'], null);
+    }
+    start();
   }
   ws_node.open();
-  stop(1); // pause the testrunner to wait for callback
+  stop(2); // pause the testrunner to wait for callback
 });
 
-module("WebNode");
+module("RJR.HttpNode");
 
 asyncTest("invoke successful rpc request", 2, function() {
-  var web_node = new WebNode("http://localhost/rjr");
-  web_node.invoke("success_method", "haha", function(res){
+  var http_node = new RJR.HttpNode("http://localhost/rjr");
+  http_node.invoke("success_method", "haha", function(res){
     equal('response-haha', res['result']);
     equal(null, res['error']);
     start(2); // continue the test runner
@@ -162,8 +170,8 @@ asyncTest("invoke successful rpc request", 2, function() {
 });
 
 asyncTest("invoke failed rpc request", 2, function() {
-  var web_node = new WebNode("http://localhost/rjr");
-  web_node.invoke("failed_method", function(res){
+  var http_node = new RJR.HttpNode("http://localhost/rjr");
+  http_node.invoke("failed_method", function(res){
     equal(-32000, res['error']['code']);
     equal("epic fail", res['error']['message']);
     start(2); // continue the test runner
