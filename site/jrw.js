@@ -1,7 +1,7 @@
-/* Json-Rpc over HTTP and Websockets
+/* JSON-RPC over HTTP and WebSockets
  *
- *  Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
- *  Licensed under the Apache License, Version 2.0
+ * Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
+ * Licensed under the Apache License, Version 2.0
  */
 
 var RJR = { REVISION: '1' };
@@ -16,153 +16,173 @@ RJR.guid = function() {
   return (RJR.S4()+RJR.S4()+"-"+RJR.S4()+"-"+RJR.S4()+"-"+RJR.S4()+"-"+RJR.S4()+RJR.S4()+RJR.S4());
 };
 
+// Return bool indicating if specified data is a jsonrpc object
+RJR.is_jr_object = function(obj){
+  return obj && obj['json_class'];
+}
+
+// Return bool indicating if specified data is an array
+RJR.is_array = function(obj){
+  return obj && typeof(obj) == 'object' && obj.length != undefined;
+}
+
 // Encapsulates a json-rpc message
 RJR.JRMessage = function(){
-  this.id = null;
+  // standard jsonrpc message fields
+  this.id         = null;
   this.rpc_method = null;
-  this.args = null;
+  this.params     =   [];
+  this.error      = null;
+  this.result     = null;
 
-  this.data = null;
-  this.json = null;
-
-  this.error = null;
-  this.result = null;
-
+  // extra data used locally
   this.onresponse = null;
-  this.success   = null;
+  this.headers    =   {};
 };
 
 RJR.JRMessage.prototype = {
+  // Convert message to json string
   to_json : function(){
-    this.json = $.toJSON(this.data);
-    return this.json;
+    var params = RJR.JRMessage.convert_params(this.params);
+    var msg = {jsonrpc: '2.0',
+               method:  this.rpc_method,
+               params:  params,
+               id:      this.id};
+    for(var h in this.headers)
+      msg[h] = this.headers[h];
+    return $.toJSON(msg);
   },
 
+  // Invoke response handler if registered
   handle_response : function(res){
-    res.success = (res.error == undefined);
-    if(this.onresponse)
-      this.onresponse(res);
+    if(this.onresponse) this.onresponse(res);
   }
 };
 
-// Create new request message to send
-RJR.JRMessage.new_request = function(rpc_method, args){
-  var msg = new RJR.JRMessage();
-  msg.id = RJR.guid();
-  msg.rpc_method = rpc_method;
-  msg.args = args;
-  msg.data = {jsonrpc:  '2.0',
-              method: msg.rpc_method,
-              params: msg.args,
-              id: msg.id};
-  return msg;
-};
-
-// Internal helper to generate request from common args.
-//
-// rpc method, parameter list, and optional response callback
-// will be extracted from the 'args' param in that order.
-//
-// node_id and headers will be set on request message before it
-// is returned
-RJR.JRMessage.pretty_request = function(args, node_id, headers){
-  // create request message
-  var rpc_method = args[0];
-  var params = [];
-  var cb = null;
-  for(a = 1; a < args.length; a++){
-      if(a == args.length - 1 && typeof args[a] === 'function')
-        cb = args[a];
-      else
-        params.push(args[a]);
+// Convert js params to json params
+RJR.JRMessage.convert_params = function(params){
+  var jrparams = [];
+  for(var p = 0; p < params.length; p++){
+    var param = params[p];
+    if(RJR.is_jr_object(param)){
+      // FIXME need to check each param property as well (converting if necessary)
+      var json_class = param['json_class'];
+      delete param['json_class'];
+      jrparams.push({json_class: json_class,
+                     data      :      param});
+    }else if(RJR.is_array(param))
+      jrparams.push(RJR.JRMessage.convert_params(param));
+    else
+      jrparams.push(param);
   }
-  var req = RJR.JRMessage.new_request(rpc_method, params);
-  if(node_id) req.data['node_id'] = node_id;
-  for(var header in headers)
-    req.data[header] = headers[header];
-
-  // register callback if last argument is a function
-  if(cb) req.onresponse = cb;
-
-  return req;
-};
-
-// Parse message received in json string
-RJR.JRMessage.from_msg = function(dat){
-  var msg = new RJR.JRMessage();
-  msg.json = dat;
-  msg.data = $.evalJSON(dat);
-
-  msg.id = msg.data['id'];
-  msg.rpc_method = msg.data['method'];
-  if(msg.data['params']){
-    msg.params = msg.data['params'];
-    for(p=0;p<msg.params.length;++p){
-      if(RJR.JRObject.is_jrobject(msg.params[p]))
-        msg.params[p] = RJR.JRObject.from_json(msg.params[p]);
-      else if(RJR.JRObject.is_jrobject_array(msg.params[p]))
-        msg.params[p] = RJR.JRObject.from_json_array(msg.params[p]);
-    }
-  }
-  msg.error  = msg.data['error'];
-  msg.result = msg.data['result'];
-  if(msg.result && RJR.JRObject.is_jrobject(msg.result))
-    msg.result = RJR.JRObject.from_json(msg.result);
-  else if(RJR.JRObject.is_jrobject_array(msg.result))
-    msg.result = RJR.JRObject.from_json_array(msg.result);
-  return msg;
+  return jrparams;
 }
 
-// Encapsulates an object w/ type
-//  - adaptor for the ruby 'json' library
-RJR.JRObject = function (type, value, ignore_properties){
-  this.type  = type;
-  this.value = value;
-  this.ignore_properties = (typeof(ignore_properties) != 'undefined') ?
-                            ignore_properties : ["toJSON", "json_class"];
-};
+// Parse a json string to a JRMessage
+RJR.JRMessage.parse = function(json){
+  var data = $.evalJSON(json);
 
-RJR.JRObject.prototype = {
-  toJSON : function(){
-     var data = {};
-     for(p in this.value)
-       if($.inArray(p, this.ignore_properties) == -1)
-         data[p] = this.value[p];
-     return {json_class: this.type, data: data };
+  var msg        = new RJR.JRMessage();
+  msg.id         = data['id'];
+  msg.rpc_method = data['method'];
+  msg.error      = data['error'];
+
+  var params = data['params'];
+  if(params){
+    for(var d=0; d<params.length; d++){
+      var param = params[d];
+      if(RJR.is_jr_object(param))
+        msg.params.push(RJR.JRMessage.parse_obj(param));
+      else if(RJR.is_array(param))
+        msg.params.push(RJR.JRMessage.parse_array(param));
+      else
+        msg.params.push(param);
+    }
   }
-};
 
-// Return boolean indicating if json contains encapsulated JRObject
-RJR.JRObject.is_jrobject = function(json){
-  return json && json['json_class'] && json['data'];
-};
-
-// Return boolean indicating if json contains array of encapsulated JRObjects
-RJR.JRObject.is_jrobject_array = function(json){
-  return json && typeof(json) == "object" && json.length > 0 && RJR.JRObject.is_jrobject(json[0]);
-};
-
-// Convert json to JRObject
-RJR.JRObject.from_json = function(json){
-  var obj = json['data'];
-  obj.json_class = json['json_class'];
-  for(var p in obj){
-    if(RJR.JRObject.is_jrobject(obj[p]))
-      obj[p] = RJR.JRObject.from_json(obj[p]);
-    else if(RJR.JRObject.is_jrobject_array(obj[p])){
-      obj[p] = RJR.JRObject.from_json_array(obj[p]);
-   }
+  var result = data['result'];
+  if(result){
+    if(RJR.is_jr_object(result))
+      msg.result = RJR.JRMessage.parse_obj(result);
+    else if(RJR.is_array(result))
+      msg.result = RJR.JRMessage.is_array(result);
+    else
+      msg.result = result;
   }
-  return obj;
+
+  return msg;
 };
 
-// Convert json to array of JRObjects
-RJR.JRObject.from_json_array = function(json){
-  var objs = [];
-  for(var i in json)
-    if(RJR.JRObject.is_jrobject(json[i]))
-      objs[i] = RJR.JRObject.from_json(json[i]);
-  return objs;
+// Parse a json object into a js object
+RJR.JRMessage.parse_obj = function(obj){
+  // TODO mechanism to lookup class and auto
+  // instantiate instead of generic js object
+  var result = {json_class : obj['json_class']};
+  for(var p in obj['data']){
+    var property = obj['data'][p];
+    if(RJR.is_jr_object(property))
+      result[p] = RJR.JRMessage.parse_obj(property);
+    else if(RJR.is_array(obj[p]))
+      result[p] = RJR.JRMessage.parse_array(property);
+    else
+      result[p] = property;
+  }
+  return result;
+}
+
+// Parse an array, potentially containing json data,
+// into a js array
+RJR.JRMessage.parse_array = function(array){
+  var result = [];
+  for(var a=0; a<array.length; a++){
+    var item = array[a];
+    if(RJR.is_jr_object(item))
+      result.push(RJR.JRMessage.parse_obj(item));
+    else if(RJR.is_array(item))
+      result.push(RJR.JRMessage.parse_array(item));
+    else
+      result.push(item);
+  }
+  return result;
+}
+
+// Create new request message to send
+RJR.JRMessage.new_request = function(rpc_method, params){
+  var msg        = new RJR.JRMessage();
+  msg.id         = RJR.guid();
+  msg.rpc_method = rpc_method;
+  msg.params     = params;
+  return msg;
+};
+
+// Helper method to convert method arguments to:
+//  - rpc_method
+//  - parameter list
+//  - callback (if last argument is a function, else null)
+RJR.JRMessage.prepare_args = function(args){
+  var rpc_method = args[0];
+  var cb = null;
+  if(typeof(args[args.length-1]) === 'function')
+    cb = args[args.length-1];
+
+  var params = [];
+  for(var a = 1; a < args.length; a++){
+    var arg = args[a];
+    if(typeof(arg) !== 'function')
+      params.push(arg);
+  }
+
+  return [rpc_method, params, cb];
+};
+
+// Helper to prepare a request for the specified node
+RJR.JRMessage.request_for_node = function(node, args){
+  var preq = RJR.JRMessage.prepare_args(args);
+  var req  = RJR.JRMessage.new_request(preq[0], preq[1]);
+  req.onresponse = preq[2];
+  req.headers = node.headers;
+  req.headers['node_id'] = node.node_id;
+  return req;
 };
 
 // Main json-rpc client websocket interface
@@ -174,7 +194,7 @@ RJR.WsNode = function(host, port){
   this.node_id  = null;
   this.headers  = {};
   this.messages = {};
-}
+};
 
 RJR.WsNode.prototype = {
   // Open socket connection
@@ -195,7 +215,7 @@ RJR.WsNode.prototype = {
   },
 
   _socket_msg : function(evnt){
-    var msg = RJR.JRMessage.from_msg(evnt.data);
+    var msg = RJR.JRMessage.parse(evnt.data);
 
     // match response w/ outstanding request
     if(msg.id){
@@ -245,7 +265,7 @@ RJR.WsNode.prototype = {
   // Pass in the rpc method, arguments to invoke method with, and optional callback
   // to be invoked upon received response.
   invoke : function(){
-    var req = RJR.JRMessage.pretty_request(arguments, this.node_id, this.headers);
+    var req = RJR.JRMessage.request_for_node(this, arguments);
 
     // store requests for later retrieval
     this.messages[req.id] = req;
@@ -270,7 +290,7 @@ RJR.HttpNode.prototype = {
   // Pass in the rpc method, arguments to invoke method with, and optional callback
   // to be invoked upon received response.
   invoke : function(){
-    var req = RJR.JRMessage.pretty_request(arguments, this.node_id, this.headers);
+    var req = RJR.JRMessage.request_for_node(this, arguments);
 
     var node      = this;
     $.ajax({type: 'POST',
@@ -284,7 +304,7 @@ RJR.HttpNode.prototype = {
   },
 
   _http_success : function(data, req){
-    var msg = RJR.JRMessage.from_msg(data);
+    var msg = RJR.JRMessage.parse(data);
     // clients may register additional callbacks
     // to handle web node responses
     if(this.message_received)

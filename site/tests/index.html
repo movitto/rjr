@@ -17,6 +17,9 @@
      Alternatively if your frontend webserver is already configured and started
      simply run ./site/tests/runner to startup the rjr-server and popup a firefox
      instance w/ the site preloaded
+
+     TODO: stub out calls to web sockets & http request mechanisms
+           so external server is not needed
 -->
 <html>
 <head>
@@ -29,22 +32,86 @@
   <script>
   $(document).ready(function(){
 
-module("RJR.JRObject");
+module("RJR");
+
+test("is_jr_object helper", function() {
+  var json = {'json_class': 'Foo', 'data': 'bar'};
+  ok(RJR.is_jr_object(json))
+
+  json = {'json_class': 'Foo'};
+  ok(RJR.is_jr_object(json))
+
+  json = {'data': 'bar'};
+  ok(!RJR.is_jr_object(json))
+});
+
+test("is_array helper", function() {
+  expect(3);
+
+  var json = [{'json_class': 'Foo', 'data': 'bar'}];
+  ok(RJR.is_array(json))
+
+  json = [{'json_class': 'Foo'}];
+  ok(!RJR.is_jr_object(json))
+
+  json = {'json_class': 'Foo', 'data': 'bar'};
+  ok(!RJR.is_array(json))
+});
+
+module("RJR.JRMessage");
 
 test("convert to json", function() {
-  var obj = new RJR.JRObject('Foo', {'a': 123, 'aaa': 'bbb'}, ['toJSON', 'aaa']);
-  var json = obj.toJSON();
-  ok('json_class' in json);
-  ok('data' in json);
-  ok('a' in json['data']);
-  ok(!json['data'].hasOwnProperty('aaa'));
-  equal('Foo', json['json_class']);
-  equal(123, json['data']['a']);
+  var obj = new RJR.JRMessage();
+  obj.id = RJR.guid();
+  obj.rpc_method = 'Foo';
+  obj.params = ['a', 1, {'json_class' : 'Bar', 'id': 42}];
+  obj.headers = {'node-id': 'Node1'};
+
+  var json = obj.to_json();
+  ok(json.indexOf('"id":"'+obj.id) != -1);
+  ok(json.indexOf('"method":"Foo"') != -1);
+  ok(json.indexOf('"node-id":"Node1"') != -1);
+  ok(json.indexOf('"json_class":"Bar"') != -1);
+  ok(json.indexOf('"data":{"id":42}') != -1);
+});
+
+test("create jr method message", function() {
+  var id  = RJR.guid();
+  var msg = RJR.JRMessage.parse('{"jsonrpc":"2.0","method":"foobar","id":"'+id+'","params":[1,"abc"]}');
+  equal(id, msg.id);
+  equal('foobar', msg.rpc_method);
+  equal(2, msg.params.length);
+  equal(1, msg.params[0]);
+  equal('abc', msg.params[1]);
+});
+
+test("convert jr method object params", function() {
+  var id  = RJR.guid();
+  var json = '{"json_class": "Foo", "data": {"a": 123 }}';
+  var msg = RJR.JRMessage.parse('{"jsonrpc":"2.0","method":"foobar","id":"'+id+'","params":['+json+']}');
+  equal(1, msg.params.length);
+console.log(msg)
+  ok(msg.params[0]['a'] == 123);
+});
+
+test("create jr success response message", function() {
+  var id  = RJR.guid();
+  var msg = RJR.JRMessage.parse('{"id":"'+id+'","jsonrpc":"2.0","result":5}');
+  equal(id, msg.id);
+  equal(5, msg.result);
+});
+
+test("create jr failed response message", function() {
+  var id  = RJR.guid();
+  var msg = RJR.JRMessage.parse('{"id":"'+id+'","jsonrpc":"2.0","error":{"code":101,"message":"arg"}}');
+  equal(id, msg.id);
+  equal(101, msg.error['code']);
+  equal('arg', msg.error['message']);
 });
 
 test("convert from json", function() {
   var json = {'json_class': 'Foo', 'data': {'a': 123, 'b' : {'json_class' : 'Bar', 'data': {'z': 654 }}}};
-  var obj = RJR.JRObject.from_json(json);
+  var obj = RJR.JRMessage.parse_obj(json);
   ok('a' in obj);
   ok('b' in obj);
   ok('z' in obj['b']);
@@ -55,7 +122,7 @@ test("convert from json", function() {
 test("convert from json array", function() {
   var json = [{'json_class': 'Foo', 'data': {'a': 123, 'b' : {'json_class' : 'Bar', 'data': {'z': 654 }}}},
               {'json_class': 'Foo', 'data': {'a': 456, 'b' : {'json_class' : 'Bar', 'data': {'z': 987 }}}}];
-  var objs = RJR.JRObject.from_json_array(json);
+  var objs = RJR.JRMessage.parse_array(json);
   equal(2, objs.length);
   ok('a' in objs[0]);
   ok('b' in objs[0]);
@@ -69,65 +136,6 @@ test("convert from json array", function() {
   equal(987, objs[1]['b']['z']);
 });
 
-test("is_jrobject helper", function() {
-  var json = {'json_class': 'Foo', 'data': 'bar'};
-  ok(RJR.JRObject.is_jrobject(json))
-
-  json = {'json_class': 'Foo'};
-  ok(!RJR.JRObject.is_jrobject(json))
-
-  json = {'data': 'bar'};
-  ok(!RJR.JRObject.is_jrobject(json))
-});
-
-test("is_jrobject_array helper", function() {
-  expect(3);
-
-  var json = [{'json_class': 'Foo', 'data': 'bar'}];
-  ok(RJR.JRObject.is_jrobject_array(json))
-
-  json = [{'json_class': 'Foo'}];
-  ok(!RJR.JRObject.is_jrobject(json))
-
-  json = {'json_class': 'Foo', 'data': 'bar'};
-  ok(!RJR.JRObject.is_jrobject_array(json))
-});
-
-module("RJR.JRMessage");
-
-test("create jr method message", function() {
-  var id  = RJR.guid();
-  var msg = RJR.JRMessage.from_msg('{"jsonrpc":"2.0","method":"foobar","id":"'+id+'","params":[1,"abc"]}');
-  equal(id, msg.id);
-  equal('foobar', msg.rpc_method);
-  equal(2, msg.params.length);
-  equal(1, msg.params[0]);
-  equal('abc', msg.params[1]);
-});
-
-test("convert jr method object params", function() {
-  var id  = RJR.guid();
-  var json = '{"json_class": "Foo", "data": {"a": 123 }}';
-  var msg = RJR.JRMessage.from_msg('{"jsonrpc":"2.0","method":"foobar","id":"'+id+'","params":['+json+']}');
-  equal(1, msg.params.length);
-  ok('a' in msg.params[0]);
-  equal(123, msg.params[0]['a']);
-});
-
-test("create jr success response message", function() {
-  var id  = RJR.guid();
-  var msg = RJR.JRMessage.from_msg('{"id":"'+id+'","jsonrpc":"2.0","result":5}');
-  equal(id, msg.id);
-  equal(5, msg.result);
-});
-
-test("create jr failed response message", function() {
-  var id  = RJR.guid();
-  var msg = RJR.JRMessage.from_msg('{"id":"'+id+'","jsonrpc":"2.0","error":{"code":101,"message":"arg"}}');
-  equal(id, msg.id);
-  equal(101, msg.error['code']);
-  equal('arg', msg.error['message']);
-});
 
 module("RJR.WsNode");
 
@@ -140,7 +148,6 @@ asyncTest("invoke rpc request", 6, function() {
     });
   }
   ws_node.message_received = function(msg){
-console.log(msg);
     if(msg['rpc_method']){
       // callback method request
       equal('client_callback', msg['rpc_method']);
@@ -148,7 +155,7 @@ console.log(msg);
       equal('cb', msg['params'][0]);
     }else{
       // response message
-      equal(msg['success'], true);
+      equal(msg['error'], null);
       equal(msg['result'], null);
     }
     start();
