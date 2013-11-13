@@ -105,7 +105,7 @@ RJR.JRMessage.parse = function(json){
     if(RJR.is_jr_object(result))
       msg.result = RJR.JRMessage.parse_obj(result);
     else if(RJR.is_array(result))
-      msg.result = RJR.JRMessage.is_array(result);
+      msg.result = RJR.JRMessage.parse_array(result);
     else
       msg.result = result;
   }
