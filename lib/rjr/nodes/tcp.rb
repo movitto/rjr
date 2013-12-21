@@ -16,7 +16,7 @@ module RJR
 module Nodes
 
 # @private
-# Helper class intialized by eventmachine encapsulating a socket connection
+# Helper class intialized by eventmachine encapsulating a tcp socket connection
 class TCPConnection < EventMachine::Connection
   attr_reader :host
   attr_reader :port
@@ -209,7 +209,7 @@ class TCP < RJR::Node
     #sleep 0.01 until conn.get_outbound_data_size == 0
     nil
   end
-end
+end # class TCP
 
 end # module Nodes
 end # module RJR

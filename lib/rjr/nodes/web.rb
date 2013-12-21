@@ -8,6 +8,8 @@
 # Copyright (C) 2012-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
+# TODO rename to HTTP
+
 skip_module = false
 begin
 require 'evma_httpserver'
