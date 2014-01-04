@@ -15,6 +15,16 @@ end
 
 module RJR
 
+# Return the persistent rjr nodes
+def self.persistent_nodes
+  # rerun each time (eg don't store in var) incase new nodes were included
+  RJR::Nodes.constants.collect { |n|
+    nc = RJR::Nodes.const_get(n)
+    nc.superclass == RJR::Node && nc.persistent? ?
+    nc : nil
+  }.compact
+end
+
 # Logger helper class.
 #
 # Encapsulates the standard ruby logger in a thread safe manner. Dispatches

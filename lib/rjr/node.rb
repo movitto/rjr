@@ -44,6 +44,19 @@ class Node
   # Dispatcher to use to satisfy requests
   attr_accessor :dispatcher
 
+  class <<self
+    # Bool indiciting if this node is persistent
+    def persistent?
+      self.const_defined?(:PERSISTENT_NODE) &&
+      self.const_get(:PERSISTENT_NODE)
+    end
+  end
+
+  # Bool indicating if this node class is persistent
+  def persistent?
+    self.class.persistent?
+  end
+
   # alias of RJR_NODE_TYPE
   def node_type
     self.class::RJR_NODE_TYPE

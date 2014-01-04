@@ -64,6 +64,7 @@ end
 #
 class Unix < RJR::Node
   RJR_NODE_TYPE = :unix
+  PERSISTENT_NODE = true
 
   attr_accessor :connections
 

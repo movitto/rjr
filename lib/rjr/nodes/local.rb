@@ -37,6 +37,7 @@ module Nodes
 #
 class Local < RJR::Node
   RJR_NODE_TYPE = :local
+  PERSISTENT_NODE = true
 
   # allows clients to override the node type for the local node
   attr_accessor :node_type

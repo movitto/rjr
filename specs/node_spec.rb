@@ -10,6 +10,38 @@ module RJR
       end
     end
 
+    describe "::persistent?" do
+      context "PERSISTENT_NODE is defined and true" do
+        it "returns true" do
+          new_node = Class.new(Node)
+          new_node.const_set(:PERSISTENT_NODE, true)
+          new_node.should be_persistent
+        end
+      end
+
+      context "PERSISTENT_NODE is not defined or returns false" do
+        it "returns false" do
+          Node.should_not be_persistent
+        end
+      end
+    end
+
+    describe "#persistent?" do
+      context "instance of a persistent node" do
+        it "returns true" do
+          new_node = Class.new(Node)
+          new_node.const_set(:PERSISTENT_NODE, true)
+          new_node.new.should be_persistent
+        end
+      end
+
+      context "not an instance of a persistent node" do
+        it "returns false" do
+          Node.new.should_not be_persistent
+        end
+      end
+    end
+
     it "should initialize properly from params" do
       d = Dispatcher.new
       node = Node.new :node_id => 'foobar',

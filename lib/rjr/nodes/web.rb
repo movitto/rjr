@@ -93,6 +93,7 @@ end
 class Web < RJR::Node
 
   RJR_NODE_TYPE = :web
+  PERSISTENT_NODE = false
 
   public
 

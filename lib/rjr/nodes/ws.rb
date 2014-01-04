@@ -54,6 +54,7 @@ module Nodes
 #
 class WS < RJR::Node
   RJR_NODE_TYPE = :ws
+  PERSISTENT_NODE = true
 
   private
 
