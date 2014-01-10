@@ -73,7 +73,7 @@ class Node
   # @option args [Hash<String,String>] :headers optional headers to set on all json-rpc messages
   # @option args [Dispatcher] :dispatcher dispatcher to assign to the node
   def initialize(args = {})
-     @connection_event_handlers = {:closed => [], :error => []}
+     clear_event_handlers
      @response_lock = Mutex.new
      @response_cv   = ConditionVariable.new
      @responses     = []
@@ -112,6 +112,10 @@ class Node
   end
 
   ##################################################################
+  # Reset connection event handlers
+  def clear_event_handlers
+    @connection_event_handlers = {:closed => [], :error => []}
+  end
 
   # Register connection event handler
   # @param [:error, :close] event the event to register the handler for
