@@ -184,11 +184,16 @@ class Dispatcher
   # Registered json-rpc request signatures and environments which to execute handlers in
   attr_reader :environments
 
+  # Flag toggling whether or not to keep requests (& responses) around.
+  attr_accessor :keep_requests
+
   # Requests which have been dispatched
   def requests ; @requests_lock.synchronize { Array.new(@requests) } ; end
 
   # RJR::Dispatcher intializer
-  def initialize
+  def initialize(args = {})
+    @keep_requests = args[:keep_requests] || false
+
     clear!
     @requests_lock = Mutex.new
   end
@@ -306,7 +311,7 @@ class Dispatcher
 
      end
 
-     @requests_lock.synchronize { @requests << request }
+     @requests_lock.synchronize { @requests << request } if @keep_requests
      return request.result
   end
 

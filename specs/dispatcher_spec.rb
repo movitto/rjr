@@ -221,33 +221,47 @@ module RJR
           r.error_class.should == ArgumentError
         end
 
-        it "should register request" do
-          d = Dispatcher.new
-          h = proc {}
-          d.handle('foobar', &h)
-
-          d.requests.size.should == 0
-          d.dispatch :rjr_method => 'foobar'
-          d.requests.size.should == 1
-          d.requests.first.rjr_method.should == 'foobar'
+        context "keep_requests is false (default)" do
+          it "should not store requests" do
+            d = Dispatcher.new
+            d.handle('foobar') {}
+            d.requests.should be_empty
+            d.dispatch :rjr_method => 'foobar'
+            d.requests.should be_empty
+          end
         end
 
-        it "should set params on request" do
-          d = Dispatcher.new
-          h = proc { |p| }
-          d.handle('foobar', &h)
+        context "keep_requests is true" do
+          it "should store request locally" do
+            d = Dispatcher.new :keep_requests => true
+            h = proc {}
+            d.handle('foobar', &h)
 
-          d.dispatch(:rjr_method => 'foobar', :rjr_method_args => [42])
-          d.requests.first.rjr_method_args.should == [42]
-        end
+            d.requests.size.should == 0
+            d.dispatch :rjr_method => 'foobar'
+            d.requests.size.should == 1
+            d.requests.first.rjr_method.should == 'foobar'
+          end
 
-        it "should set result on request" do
-          d = Dispatcher.new
-          h = proc { 42 }
-          d.handle('foobar', &h)
+          it "should set params on request" do
+            d = Dispatcher.new
+            d.keep_requests = true
+            h = proc { |p| }
+            d.handle('foobar', &h)
 
-          d.dispatch :rjr_method => 'foobar'
-          d.requests.first.result.result.should == 42
+            d.dispatch(:rjr_method => 'foobar', :rjr_method_args => [42])
+            d.requests.first.rjr_method_args.should == [42]
+          end
+
+          it "should set result on request" do
+            d = Dispatcher.new
+            d.keep_requests = true
+            h = proc { 42 }
+            d.handle('foobar', &h)
+
+            d.dispatch :rjr_method => 'foobar'
+            d.requests.first.result.result.should == 42
+          end
         end
       end
     end
