@@ -5,6 +5,11 @@
 # manually include this module to incorporate these additional rjr method
 # definitions into your node
 #
+# Note by default RJR will _not_ keep persistant copies or requests
+# and responses. If available these are leveraged here to provide
+# a detailed analysis of the server. To enabled set the 'keep_requests'
+# flag on your RJR::Dispatcher instance to true
+#
 # Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
