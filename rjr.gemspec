@@ -38,7 +38,7 @@ Gem::Specification.new do |s|
 
     s.author = "Mo Morsi"
     s.email = "mo@morsi.org"
-    s.date = %q{2013-12-31}
+    s.date = %q{2014-01-18}
     s.description = %q{Ruby Json Rpc library}
     s.summary = %q{JSON RPC server and client library over amqp, websockets, http, etc}
     s.homepage = %q{http://github.com/movitto/rjr}
