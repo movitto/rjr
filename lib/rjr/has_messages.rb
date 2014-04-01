@@ -3,8 +3,6 @@
 # Copyright (C) 2014 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-# TODO ensure client works
-
 module RJR
 
 # Mixin adding methods allowing developer to define performatted
@@ -33,7 +31,7 @@ module HasMessages
     end
 
     # Clear preformatted messages
-    def clear
+    def clear_messages
       @rjr_messages = {}
     end
 
@@ -41,7 +39,7 @@ module HasMessages
     #
     # Optionally specify the transport which the message must accept.
     # TODO turn this into a generic selection callback
-    def rand_msg(transport = nil)
+    def rand_message(transport = nil)
       @rjr_messages ||= {}
       messages = @rjr_messages.select { |mid,m| m[:transports].nil? || transport.nil? ||
                                                 m[:transports].include?(transport) }

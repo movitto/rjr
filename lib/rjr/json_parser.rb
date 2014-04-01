@@ -43,23 +43,18 @@ class JSONParser
     return data[start..mi], data[(mi+1)..-1]
   end
 
+  # Return bool indicating if json class is invalid in context
+  # of rjr & cannot be parsed.
+  #
+  # An invalid class is one not on whitelist if enabled or one
+  # not in ruby class heirachy.
+  #
+  # Implements a safe mechanism which to validate json data
+  # to parse
   def self.invalid_json_class?(jc)
     Class.whitelist_json_classes ||= false
-
     Class.whitelist_json_classes ?
-      # only permit classes user explicitly authorizes
-      !Class.permitted_json_classes.include?(jc) :
-
-      # allow any class
-      jc.to_s.split(/::/).inject(Object) do |p,c|
-        case
-        when c.empty?  then p
-        when p.constants.collect { |c| c.to_s }.include?(c)
-          then p.const_get(c)
-        else
-          nil
-        end
-      end.nil?
+      !Class.permitted_json_classes.include?(jc) : jc.to_s.to_class.nil?
   end
 
   def self.validate_json_hash(jh)

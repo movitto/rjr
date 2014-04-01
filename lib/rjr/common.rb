@@ -147,6 +147,21 @@ class Object
   end
 end
 
+class String
+  # Safely convert string to ruby class it represents
+  def to_class
+    split(/::/).inject(Object) do |p,c|
+      case
+      when c.empty?  then p
+      when p.constants.collect { |c| c.to_s }.include?(c)
+        then p.const_get(c)
+      else
+        nil
+      end
+    end
+  end
+end
+
 if RUBY_VERSION < "1.9"
 # We extend object in ruby 1.9 to define 'instance_exec'
 #

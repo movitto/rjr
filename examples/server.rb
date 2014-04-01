@@ -3,7 +3,7 @@
 # Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-def dispatch_server(dispatcher)
+def dispatch_examples_server(dispatcher)
   dispatcher.handle "messages" do |p|
     $messages.string.split("\n")
   end

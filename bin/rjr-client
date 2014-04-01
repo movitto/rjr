@@ -6,7 +6,6 @@
 
 require 'optparse'
 require 'rjr/common'
-require 'rjr/message'
 require 'rjr/nodes/easy'
 
 RJR::Logger.log_level = ::Logger::DEBUG
@@ -27,7 +26,8 @@ config = { :mode       =>                    :msg,
            :msg_id     =>                   :rand,
            :block      =>                   false,
            :interval   =>                       0,
-           :disconnect =>                   false}
+           :disconnect =>                   false,
+           :class      =>                'Object'}
 
 optparse = OptionParser.new do |opts|
   opts.on('-h', '--help', 'Display this help screen') do
@@ -59,6 +59,10 @@ optparse = OptionParser.new do |opts|
     config[:block] = !ret
   end
 
+  opts.on('-c', '--class [value]', 'Ruby class to extract messages from (default Class)') do |cls|
+    config[:class] = cls
+  end
+
   opts.on('-n', '--num number_of_messages', 'Number of messages to send to server (may be a number, :rand, or :indefinite)') do |n|
     config[:num_msg] = case n.to_s.intern
                        when :rand       then rand(MAX_MESSAGES)
@@ -68,7 +72,7 @@ optparse = OptionParser.new do |opts|
   end
 
   opts.on('--message ID', 'Message to send to server (rand to select random)') do |mid|
-    config[:msg_id] = mid.intern
+    config[:msg_id] = (mid == 'rand' ? :rand : mid)
   end
 
   opts.on('--interval seconds', 'Number of seconds after which to wait between requests (or rand)') do |s|
@@ -94,9 +98,12 @@ NODES = {config[:transport] => {:node_id    => config[:node_id],
                                 :keep_alive => true} }          # conditionally set keep alive?
 
 cdir          = File.dirname(__FILE__)
-client_path   = File.join(ENV['RJR_LOAD_PATH'] || File.join(cdir, '..', 'examples', 'client'))
+client_path   = File.join(ENV['RJR_LOAD_PATH'] ||
+                File.join(cdir, '..', 'examples', 'client'))
 
 ##########################################################
+
+msg_class = config[:class].to_class
 
 node = RJR::Nodes::Easy.new(NODES)
 client_path.split(':').each { |cp|
@@ -112,13 +119,14 @@ if config[:disconnect]
   }
 end
 
+
 # invoke request(s)
 0.upto(config[:num_msg]-1) { |i|
   # TODO implement mode == :rand
 
   # grab message (or rand message)
-  msg = (config[:msg_id] == :rand ? RJR::MessageUtil.rand_msg(config[:transport]) :
-                                    RJR::MessageUtil.message(config[:msg_id]))
+  msg = (config[:msg_id] == :rand ? msg_class.rand_message(config[:transport]) :
+                                    msg_class.message(config[:msg_id]))
 
   if msg.nil?
     puts "Invalid message id"
@@ -141,8 +149,6 @@ end
   res = node.invoke(config[:dst], msg[:method], *params)
 
   # verify and output result
-puts res
-puts msg[:result]
   ress = (msg[:result].nil? ? "" : (msg[:result].call(res) ? "passed" : "failed"))
   RJR::Logger.info "#{msg[:method]} result #{res} #{ress}"
 

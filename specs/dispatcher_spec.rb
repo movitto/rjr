@@ -140,6 +140,14 @@ module RJR
           d.handler_for('foobar').should be_nil
         end
       end
+
+      it "matches regex signature" do
+        d = Dispatcher.new
+        cb = proc {}
+        d.handle /foobar.*/, cb
+        d.handler_for('foobar1').should == cb
+        d.handler_for('barfoo1').should be_nil
+      end
     end
 
     describe "#handles?" do
@@ -189,6 +197,13 @@ module RJR
           d = Dispatcher.new
           d.env_for('foobar').should be_nil
         end
+      end
+
+      it "matches regex signature" do
+        d = Dispatcher.new
+        d.env(/foobar.*/, 'fooenv')
+        d.env_for('foobar1').should == 'fooenv'
+        d.env_for('barfoo1').should be_nil
       end
     end
 
@@ -342,10 +357,6 @@ module RJR
 
             d.dispatch :rjr_method => 'foobar'
             invoked.should be_true
-          end
-
-          context "handler is regex" do
-            it "should match method"
           end
 
           it "should pass params to handler" do
