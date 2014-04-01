@@ -23,7 +23,14 @@ class Dispatcher
   attr_accessor :keep_requests
 
   # Requests which have been dispatched
-  def requests ; @requests_lock.synchronize { Array.new(@requests) } ; end
+  def requests
+    @requests_lock.synchronize { Array.new(@requests) }
+  end
+
+  # Store request if configured to do so
+  def store_request(request)
+    @requests_lock.synchronize { @requests << request } if @keep_requests
+  end
 
   # RJR::Dispatcher intializer
   def initialize(args = {})
@@ -74,16 +81,26 @@ class Dispatcher
     self
   end
 
+  # Return handler for specified method.
+  #
+  # Currently we match method name string or regex against signature
+  # @param [String] string rjr method to match
+  # @return [Callable, nil] callback proc registered to handle rjr_method
+  #   or nil if not found
+  def handler_for(rjr_method)
+    handler = @handlers.find { |k,v|
+      k.is_a?(String) ? (k == rjr_method) : (k =~ rjr_method)
+    }
+
+    handler.nil? ? nil : handler.last
+  end
+
   # Return boolean indicating if dispatcher can handle method
   #
   # @param [String] string rjr method to match
   # @return [true,false] indicating if requests to specified method will be matched
   def handles?(rjr_method)
-     !@handlers.find { |k,v|
-       k.is_a?(String)         ?
-       k == rjr_method :
-       k =~ rjr_method
-     }.nil?
+    !handler_for(rjr_method).nil?
   end
 
   # Register environment to run json-rpc handler w/ dispatcher.
@@ -103,51 +120,50 @@ class Dispatcher
     self
   end
 
+  # Return the environment registered for the specified method
+  def env_for(rjr_method)
+     env = @environments.find { |k,v|
+       k.is_a?(String) ? (k == rjr_method) : (k =~ rjr_method)
+     }
+
+     env.nil? ? nil : env.last
+  end
+
   # Dispatch received request. (used internally by nodes).
   #
   # Arguments should include :rjr_method and other parameters
   # required to construct a valid Request instance
   def dispatch(args = {})
-     # currently we match method name string or regex against signature
-     # TODO not using concurrent access protection, assumes all handlers are registered
-     #      before first dispatch occurs
-     handler = @handlers.find { |k,v|
-       k.is_a?(String)         ?
-       k == args[:rjr_method] :
-       k =~ args[:rjr_method] }
+    rjr_method = args[:rjr_method]
 
-     # TODO currently just using last environment that matches,
-     #      allow multiple environments to be used?
-     environment = @environments.keys.select { |k|
-       k.is_a?(String)         ?
-       k == args[:rjr_method] :
-       k =~ args[:rjr_method]
-     }.last
+    # *note* not using concurrent access protection,
+    # assumes all handlers/enviroments are registered
+    # before first dispatch occurs
+    handler     = handler_for(rjr_method)
+    environment = env_for(rjr_method)
 
-     return Result.method_not_found(args[:rjr_method]) if handler.nil?
+    return Result.method_not_found(rjr_method) if handler.nil?
 
-     # TODO compare arity of handler to number of method_args passed in
-     request = Request.new args.merge(:rjr_handler  => handler.last)
+    request = Request.new args.merge(:rjr_handler  => handler)
 
-     # set request environment
-     request.extend(@environments[environment]) unless environment.nil?
+    # set request environment
+    request.extend(environment) unless environment.nil?
 
-     begin
-       retval  = request.handle
-       request.result  = Result.new(:result => retval)
+    begin
+      retval = request.handle
+      request.result  = Result.new(:result => retval)
 
-     rescue Exception => e
-       RJR::Logger.warn ["Exception Raised in #{args[:rjr_method]} handler #{e}"] +
-                         e.backtrace
-       request.result =
-         Result.new(:error_code => -32000,
-                    :error_msg  => e.to_s,
-                    :error_class => e.class)
+    rescue Exception => e
+      warning = "Exception Raised in #{rjr_method} handler #{e}"
+      RJR::Logger.warn [warning] + e.backtrace
 
-     end
+      request.result = Result.new(:error_code  => -32000,
+                                  :error_msg   => e.to_s,
+                                  :error_class => e.class)
+    end
 
-     @requests_lock.synchronize { @requests << request } if @keep_requests
-     return request.result
+    store_request request
+    return request.result
   end
 
   # Handle responses received from rjr requests. (used internally by nodes)

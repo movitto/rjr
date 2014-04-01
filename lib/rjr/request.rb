@@ -5,6 +5,7 @@
 
 require 'json'
 require 'rjr/common'
+require 'rjr/result'
 
 module RJR
 
@@ -70,6 +71,8 @@ class Request
 
     RJR::Logger.info "#{node_sig}->#{method_sig}"
 
+    # TODO option to compare arity of handler to number
+    # of method_args passed in ?
     retval = instance_exec(*@rjr_method_args, &@rjr_handler)
 
     RJR::Logger.info \
