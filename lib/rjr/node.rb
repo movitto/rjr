@@ -6,7 +6,7 @@
 require 'thread'
 require 'socket'
 require 'rjr/common'
-require 'rjr/message'
+require 'rjr/messages'
 require 'rjr/dispatcher'
 require 'rjr/em_adapter'
 require 'rjr/thread_pool'
@@ -142,13 +142,13 @@ class Node
 
   # Internal helper, handle message received
   def handle_message(msg, connection = {})
-    if RequestMessage.is_request_message?(msg)
+    if Messages::Request.is_request_message?(msg)
       @@tp << ThreadPoolJob.new(msg) { |m| handle_request(m, false, connection) }
 
-    elsif NotificationMessage.is_notification_message?(msg)
+    elsif Messages::Notification.is_notification_message?(msg)
       @@tp << ThreadPoolJob.new(msg) { |m| handle_request(m, true, connection) }
 
-    elsif ResponseMessage.is_response_message?(msg)
+    elsif Messages::Response.is_response_message?(msg)
       handle_response(msg)
 
     end
@@ -169,10 +169,10 @@ class Node
     end
 
     msg = notification ?
-      NotificationMessage.new(:message => data,
-                              :headers => @message_headers) :
-            RequestMessage.new(:message => data,
-                               :headers => @message_headers)
+      Messages::Notification.new(:message => data,
+                                 :headers => @message_headers) :
+           Messages::Request.new(:message => data,
+                                 :headers => @message_headers)
 
     result =
       @dispatcher.dispatch(:rjr_method      => msg.jr_method,
@@ -188,9 +188,9 @@ class Node
                                               :connection => connection))
 
     unless notification
-      response = ResponseMessage.new(:id => msg.msg_id,
-                                     :result => result,
-                                     :headers => msg.headers)
+      response = Messages::Response.new(:id      => msg.msg_id,
+                                        :result  => result,
+                                        :headers => msg.headers)
       self.send_msg(response.to_s, connection)
       return response
     end
@@ -200,7 +200,8 @@ class Node
 
   # Internal helper, handle response message received
   def handle_response(data)
-    msg    = ResponseMessage.new(:message => data, :headers => self.message_headers)
+    msg    = Messages::Response.new(:message => data,
+                                    :headers => self.message_headers)
     res = err = nil
     begin
       res = @dispatcher.handle_response(msg.result)
@@ -268,8 +269,8 @@ class NodeCallback
     # pesistent conntections (throw err instead?)
     return if @node.class::RJR_NODE_TYPE == :web
 
-    msg = NotificationMessage.new :method => callback_method,
-                                  :args => data, :headers => @node.message_headers
+    msg = Messages::Notification.new :method => callback_method,
+                                     :args => data, :headers => @node.message_headers
 
     # TODO surround w/ begin/rescue block incase of socket errors / raise RJR::ConnectionError
     @node.send_msg msg.to_s, @connection

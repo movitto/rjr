@@ -30,7 +30,7 @@ require 'thread'
 require 'eventmachine'
 
 require 'rjr/node'
-require 'rjr/message'
+require 'rjr/messages'
 
 module RJR
 module Nodes
@@ -57,7 +57,7 @@ class WebConnection < EventMachine::Connection
     # XXX we still have to send a response back to client to satisfy 
     # the http standard, even if this is a notification. handle_message
     # does not do this.
-    @rjr_node.send_msg "", self if NotificationMessage.is_notification_message?(msg)
+    @rjr_node.send_msg "", self if Messages::Notification.is_notification_message?(msg)
   end
 end
 
@@ -151,9 +151,9 @@ class Web < RJR::Node
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
   def invoke(uri, rpc_method, *args)
-    message = RequestMessage.new :method => rpc_method,
-                                 :args   => args,
-                                 :headers => @message_headers
+    message = Messages::Request.new :method => rpc_method,
+                                    :args   => args,
+                                    :headers => @message_headers
     cb = lambda { |http|
       # TODO handle errors
       handle_message(http.response, http)
@@ -189,9 +189,9 @@ class Web < RJR::Node
     published_c = ConditionVariable.new
 
     invoked = false
-    message = NotificationMessage.new :method => rpc_method,
-                                      :args   => args,
-                                      :headers => @message_headers
+    message = Messages::Notification.new :method => rpc_method,
+                                         :args   => args,
+                                         :headers => @message_headers
     cb = lambda { |arg| published_l.synchronize { invoked = true ; published_c.signal }}
     @@em.schedule do
       http = EventMachine::HttpRequest.new(uri).post :body => message.to_s,

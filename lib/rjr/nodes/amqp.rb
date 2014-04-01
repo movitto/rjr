@@ -20,7 +20,7 @@ RJR::Nodes::AMQP = RJR::Nodes::Missing
 else
 require 'thread'
 require 'rjr/node'
-require 'rjr/message'
+require 'rjr/messages'
 
 module RJR
 module Nodes
@@ -166,9 +166,9 @@ class AMQP < RJR::Node
   # @return [Object] the json result retrieved from destination converted to a ruby object
   # @raise [Exception] if the destination raises an exception, it will be converted to json and re-raised here 
   def invoke(routing_key, rpc_method, *args)
-    message = RequestMessage.new :method => rpc_method,
-                                 :args   => args,
-                                 :headers => @message_headers
+    message = Messages::Request.new :method => rpc_method,
+                                    :args   => args,
+                                    :headers => @message_headers
     @@em.schedule do
       init_node {
         subscribe # begin listening for result
@@ -202,9 +202,9 @@ class AMQP < RJR::Node
     published_c = ConditionVariable.new
 
     invoked = false
-    message = NotificationMessage.new :method => rpc_method,
-                                      :args   => args,
-                                      :headers => @message_headers
+    message = Messages::Notification.new :method => rpc_method,
+                                         :args   => args,
+                                         :headers => @message_headers
     @@em.schedule do
       init_node {
         send_msg(message.to_s, :routing_key => routing_key, :reply_to => @queue_name){

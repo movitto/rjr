@@ -23,7 +23,7 @@ else
 require 'thread'
 
 require 'rjr/node'
-require 'rjr/message'
+require 'rjr/messages'
 
 module RJR
 module Nodes
@@ -132,9 +132,9 @@ class WS < RJR::Node
   # @param [String] rpc_method json-rpc method to invoke on destination
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
   def invoke(uri, rpc_method, *args)
-    message = RequestMessage.new :method => rpc_method,
-                                 :args   => args,
-                                 :headers => @message_headers
+    message = Messages::Request.new :method => rpc_method,
+                                    :args   => args,
+                                    :headers => @message_headers
 
     @@em.schedule {
       init_client(uri) do |c|
@@ -167,9 +167,9 @@ class WS < RJR::Node
     published_c = ConditionVariable.new
 
     invoked = false
-    message = NotificationMessage.new :method => rpc_method,
-                                      :args   => args,
-                                      :headers => @message_headers
+    message = Messages::Notification.new :method => rpc_method,
+                                         :args   => args,
+                                         :headers => @message_headers
     @@em.schedule {
       init_client(uri) do |c|
         c.stream { |msg| handle_message(msg.data, c) }

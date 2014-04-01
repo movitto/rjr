@@ -6,7 +6,7 @@
 # Licensed under the Apache License, Version 2.0
 
 require 'rjr/node'
-require 'rjr/message'
+require 'rjr/messages'
 
 module RJR
 module Nodes
@@ -60,7 +60,7 @@ class Local < RJR::Node
   # Implementation of {RJR::Node#send_msg}
   def send_msg(msg, connection)
     # ignore response message
-    unless ResponseMessage.is_response_message?(msg)
+    unless Messages::Response.is_response_message?(msg)
       launch_request(msg, true) # .join?
     end
   end
@@ -100,9 +100,9 @@ class Local < RJR::Node
   # @raise [Exception] if the destination raises an exception, it will be converted to json and re-raised here 
   def invoke(rpc_method, *args)
     0.upto(args.size).each { |i| args[i] = args[i].to_s if args[i].is_a?(Symbol) }
-    message = RequestMessage.new(:method => rpc_method,
-                                 :args   => args,
-                                 :headers => @message_headers)
+    message = Messages::Request.new(:method => rpc_method,
+                                    :args   => args,
+                                    :headers => @message_headers)
     launch_request(message.to_s, false)
 
     # TODO optional timeout for response ?
@@ -124,9 +124,9 @@ class Local < RJR::Node
   # @param [Array] args array of arguments to convert to json and invoke remote method wtih
   def notify(rpc_method, *args)
     0.upto(args.size).each { |i| args[i] = args[i].to_s if args[i].is_a?(Symbol) }
-    message = NotificationMessage.new(:method => rpc_method,
-                                      :args   => args,
-                                      :headers => @message_headers)
+    message = Messages::Notification.new(:method => rpc_method,
+                                         :args   => args,
+                                         :headers => @message_headers)
     launch_request(message.to_s, true) #.join ?
     nil
   end

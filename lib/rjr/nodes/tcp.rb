@@ -10,7 +10,8 @@ require 'thread'
 require 'eventmachine'
 
 require 'rjr/node'
-require 'rjr/message'
+require 'rjr/json_parser'
+require 'rjr/messages'
 
 module RJR
 module Nodes
@@ -40,7 +41,7 @@ class TCPConnection < EventMachine::Connection
     #   (invocations of receive_data)
     # and multiple messages may be concatinated into one packet
     @data += data
-    while extracted = MessageUtil.retrieve_json(@data)
+    while extracted = JSONParser.extract_json_from(@data)
       msg, @data = *extracted
       @rjr_node.send(:handle_message, msg, self) # XXX private method
     end
@@ -153,9 +154,9 @@ class TCP < RJR::Node
     uri = URI.parse(uri)
     host,port = uri.host, uri.port
 
-    message = RequestMessage.new :method => rpc_method,
-                                 :args   => args,
-                                 :headers => @message_headers
+    message = Messages::Request.new :method => rpc_method,
+                                    :args   => args,
+                                    :headers => @message_headers
     connection = nil
     @@em.schedule {
       init_client(:host => host, :port => port,
@@ -192,9 +193,9 @@ class TCP < RJR::Node
 
     invoked = false
     conn    = nil
-    message = NotificationMessage.new :method => rpc_method,
-                                      :args   => args,
-                                      :headers => @message_headers
+    message = Messages::Notification.new :method => rpc_method,
+                                         :args   => args,
+                                         :headers => @message_headers
     @@em.schedule {
       init_client(:host => host, :port => port,
                   :rjr_node => self) { |c|
