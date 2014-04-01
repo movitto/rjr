@@ -11,7 +11,7 @@ module RJR
     end
 
     describe "#store_request" do
-      describe "keep_requests is true" do
+      context "keep_requests is true" do
         it "stores request locally" do
           d = Dispatcher.new :keep_requests => true
           d.store_request 'request'
@@ -19,7 +19,7 @@ module RJR
         end
       end
 
-      describe "keep_requests is false" do
+      context "keep_requests is false" do
         it "does not store request locally" do
           d = Dispatcher.new :keep_requests => false
           d.store_request 'request'
@@ -125,7 +125,7 @@ module RJR
     end
 
     describe "#handler_for" do
-      describe "dispatcher has handler" do
+      context "dispatcher has handler" do
         it "returns registered handler" do
           d = Dispatcher.new
           cb = proc {}
@@ -134,7 +134,7 @@ module RJR
         end
       end
 
-      describe "dispatcher does not have handler" do
+      context "dispatcher does not have handler" do
         it "returns nil" do
           d = Dispatcher.new
           d.handler_for('foobar').should be_nil
@@ -151,7 +151,7 @@ module RJR
     end
 
     describe "#handles?" do
-      describe "dispatcher has handler" do
+      context "dispatcher has handler" do
         it "returns true" do
           d = Dispatcher.new
           cb = proc {}
@@ -160,7 +160,7 @@ module RJR
         end
       end
 
-      describe "dispatcher does not have handler" do
+      context "dispatcher does not have handler" do
         it "returns false" do
           d = Dispatcher.new
           d.handles?('foobar').should be_false
@@ -184,7 +184,7 @@ module RJR
     end
 
     describe "#env_for" do
-      describe "dispatcher has environment" do
+      context "dispatcher has environment" do
         it "returns registered environment" do
           d = Dispatcher.new
           d.env('foobar', 'fooenv')
@@ -192,7 +192,7 @@ module RJR
         end
       end
 
-      describe "dispatcher does not have environment" do
+      context "dispatcher does not have environment" do
         it "returns nil" do
           d = Dispatcher.new
           d.env_for('foobar').should be_nil
@@ -208,7 +208,7 @@ module RJR
     end
 
     describe "#dispatch" do
-      describe "no handler registered for method" do
+      context "no handler registered for method" do
         it "returns Result.method_not_found" do
           expected = Result.method_not_found('foobar')
           Dispatcher.new.dispatch(:rjr_method => 'foobar').should == expected
@@ -258,7 +258,7 @@ module RJR
         d.dispatch(:rjr_method => 'foobar').should == result
       end
 
-      describe "successful request" do
+      context "successful request" do
         it "returns return value in result" do
           d = Dispatcher.new
           d.handle 'foobar', proc { 42 }
@@ -266,7 +266,7 @@ module RJR
         end
       end
 
-      describe "exception during request" do
+      context "exception during request" do
         it "returns exception error in result" do
           d = Dispatcher.new
           d.handle 'foobar', proc { raise ArgumentError, "invalid" }
@@ -291,7 +291,7 @@ module RJR
     end
 
     describe "#handle_response" do
-      describe "error response" do
+      context "error response" do
         it "raises exception with response error" do
           r = Result.new :error_code => -32000, :error_msg => "invalid"
           d = Dispatcher.new
@@ -301,7 +301,7 @@ module RJR
         end
       end
 
-      describe "successful response" do
+      context "successful response" do
         it "returns result" do
           r = Result.new :success => true, :result => 42
           d = Dispatcher.new

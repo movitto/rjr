@@ -24,19 +24,19 @@ describe JSONParser do
       Class.whitelist_json_classes = @orig_whitelist
     end
 
-    describe "json class whitelisting enabled" do
+    context "json class whitelisting enabled" do
       before(:each) do
         Class.whitelist_json_classes = true
       end
 
-      describe "class not on permitted classes list" do
+      context "class not on permitted classes list" do
         it "returns true" do
           Class.should_receive(:permitted_json_classes).and_return([])
           JSONParser.invalid_json_class?('foobar').should be_true
         end
       end
 
-      describe "class on permitted classes list" do
+      context "class on permitted classes list" do
         it "returns false" do
           Class.should_receive(:permitted_json_classes).and_return(['foobar'])
           JSONParser.invalid_json_class?('foobar').should be_false
@@ -44,18 +44,18 @@ describe JSONParser do
       end
     end
 
-    describe "json class whitelisting not enabled" do
+    context "json class whitelisting not enabled" do
       before(:each) do
         Class.whitelist_json_classes = false
       end
 
-      describe "class not on ruby heirarchy" do
+      context "class not on ruby heirarchy" do
         it "returns true" do
           JSONParser.invalid_json_class?('Foobar').should be_true
         end
       end
 
-      describe "class on ruby heirarchy" do
+      context "class on ruby heirarchy" do
         it "returns false" do
           JSONParser.invalid_json_class?('Integer').should be_false
         end
@@ -64,7 +64,7 @@ describe JSONParser do
   end
 
   describe "#validate_json_hash" do
-    describe "a hash key is the JSON.create_id and value is invalid class" do
+    context "a hash key is the JSON.create_id and value is invalid class" do
       it "raises argument error" do
         hash = {JSON.create_id => 'foobar'}
         JSONParser.should_receive(:invalid_json_class?).
@@ -75,7 +75,7 @@ describe JSONParser do
       end
     end
 
-    describe "a value is an array" do
+    context "a value is an array" do
       it "validates json array" do
         arr  = []
         hash = {'foobar' => arr}
@@ -84,7 +84,7 @@ describe JSONParser do
       end
     end
 
-    describe "a value is a hash" do
+    context "a value is a hash" do
       it "validates json hash" do
         inner  = {}
         hash = {'foobar' => inner}
@@ -96,7 +96,7 @@ describe JSONParser do
   end
 
   describe "#validate_json_array" do
-    describe "a value is an array" do
+    context "a value is an array" do
       it "validates json array" do
         inner = []
         array = [inner]
@@ -106,7 +106,7 @@ describe JSONParser do
       end
     end
 
-    describe "a value is a hash" do
+    context "a value is a hash" do
       it "validates json hash" do
         inner = {}
         array = [inner]
@@ -128,7 +128,7 @@ describe JSONParser do
       JSONParser.parse(@json)
     end
 
-    describe "json is an array" do
+    context "json is an array" do
       it "validates json array" do
         arr = []
         JSON.should_receive(:parse).and_return(arr)
@@ -138,7 +138,7 @@ describe JSONParser do
       end
     end
 
-    describe "json is a hash" do
+    context "json is a hash" do
       it "validates json hash" do
         hash = {}
         JSON.should_receive(:parse).and_return(hash)
@@ -148,7 +148,7 @@ describe JSONParser do
       end
     end
 
-    describe "json is not a array/hash" do
+    context "json is not a array/hash" do
       it "returns value" do
         JSON.should_receive(:parse).and_return(42)
         JSONParser.parse(@json).should == 42
