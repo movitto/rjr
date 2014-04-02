@@ -4,8 +4,9 @@
 # Licensed under the Apache License, Version 2.0
 
 require 'json'
-require 'rjr/common'
+require 'rjr/logger'
 require 'rjr/result'
+require 'rjr/core_ext'
 
 module RJR
 

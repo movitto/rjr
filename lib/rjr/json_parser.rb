@@ -79,6 +79,12 @@ class JSONParser
     }
   end
   
+  # Two stage json parser.
+  # For more details why this is required see json issue:
+  #   https://github.com/flori/json/issues/179
+  #
+  # FIXME this will only work for json >= 1.7.6 where
+  # create_additions is defined
   def self.parse(js)
     jp = ::JSON.parse js, :create_additions => false
     if jp.is_a?(Array)
