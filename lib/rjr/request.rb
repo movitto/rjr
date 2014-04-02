@@ -7,6 +7,7 @@ require 'json'
 require 'rjr/logger'
 require 'rjr/result'
 require 'rjr/core_ext'
+require 'rjr/args'
 
 module RJR
 
@@ -24,6 +25,9 @@ class Request
 
   # Arguments be passed to method
   attr_accessor :rjr_method_args
+
+  # Argument object encapsulating arguments
+  attr_accessor :rjr_args
 
   # Headers which came w/ request
   attr_accessor :rjr_headers
@@ -61,6 +65,7 @@ class Request
 
     @rjr_handler     = args[:rjr_handler]
 
+    @rjr_args        = Arguments.new :args => @rjr_method_args
     @result = nil
   end
 
