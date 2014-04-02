@@ -3,6 +3,8 @@
 # Copyright (C) 2010-2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
+require 'thread'
+
 module RJR
 
 # Work item to be executed in a thread launched by {ThreadPool}.

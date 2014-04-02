@@ -81,6 +81,7 @@ end
 class TCP < RJR::Node
   RJR_NODE_TYPE = :tcp
   PERSISTENT_NODE = true
+  INDIRECT_NODE = false
 
   attr_accessor :connections
 

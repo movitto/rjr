@@ -94,6 +94,7 @@ class Web < RJR::Node
 
   RJR_NODE_TYPE = :web
   PERSISTENT_NODE = false
+  INDIRECT_NODE = false
 
   public
 

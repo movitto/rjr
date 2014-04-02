@@ -52,6 +52,7 @@ module Nodes
 class AMQP < RJR::Node
   RJR_NODE_TYPE = :amqp
   PERSISTENT_NODE = true
+  INDIRECT_NODE = true
 
   private
 
