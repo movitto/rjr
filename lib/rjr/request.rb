@@ -4,10 +4,10 @@
 # Licensed under the Apache License, Version 2.0
 
 require 'json'
-require 'rjr/logger'
 require 'rjr/result'
 require 'rjr/core_ext'
-require 'rjr/args'
+require 'rjr/util/args'
+require 'rjr/util/logger'
 
 module RJR
 

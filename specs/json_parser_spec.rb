@@ -1,4 +1,4 @@
-require 'rjr/json_parser'
+require 'rjr/util/json_parser'
 
 module RJR
 describe JSONParser do

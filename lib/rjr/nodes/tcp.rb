@@ -10,8 +10,8 @@ require 'thread'
 require 'eventmachine'
 
 require 'rjr/node'
-require 'rjr/json_parser'
 require 'rjr/messages'
+require 'rjr/util/json_parser'
 
 module RJR
 module Nodes

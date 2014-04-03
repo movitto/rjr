@@ -1,5 +1,5 @@
 require 'thread'
-require 'rjr/em_adapter'
+require 'rjr/util/em_adapter'
 
 module RJR
   describe EMAdapter do

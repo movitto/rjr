@@ -1,4 +1,4 @@
-require 'rjr/args'
+require 'rjr/util/args'
 
 module RJR
   describe Arguments do

@@ -3,7 +3,7 @@
 # Copyright (C) 2013 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-require 'rjr/has_messages'
+require 'rjr/util/has_messages'
 
 include RJR::HasMessages
 

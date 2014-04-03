@@ -5,7 +5,7 @@
 
 require 'json'
 require 'rjr/result'
-require 'rjr/json_parser'
+require 'rjr/util/json_parser'
 
 module RJR
 module Messages

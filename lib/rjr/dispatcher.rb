@@ -6,9 +6,9 @@
 # Copyright (C) 2012-2014 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
-require 'rjr/logger'
 require 'rjr/request'
 require 'rjr/result'
+require 'rjr/util/logger'
 
 module RJR
 

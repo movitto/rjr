@@ -6,8 +6,8 @@
 require 'socket'
 require 'rjr/messages'
 require 'rjr/dispatcher'
-require 'rjr/em_adapter'
-require 'rjr/thread_pool'
+require 'rjr/util/em_adapter'
+require 'rjr/util/thread_pool'
 require 'rjr/node_callback'
 
 module RJR

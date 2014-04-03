@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0
 
 require 'json'
-require 'rjr/json_parser'
+require 'rjr/util/json_parser'
 
 module RJR
 module Messages

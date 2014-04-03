@@ -1,4 +1,4 @@
-require 'rjr/has_messages'
+require 'rjr/util/has_messages'
 
 module RJR
   class HasMessagesTest

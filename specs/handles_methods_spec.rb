@@ -1,4 +1,4 @@
-require 'rjr/handles_methods'
+require 'rjr/util/handles_methods'
 require 'rjr/dispatcher'
 
 module RJR

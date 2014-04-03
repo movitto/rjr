@@ -1,5 +1,5 @@
 require 'thread'
-require 'rjr/thread_pool'
+require 'rjr/util/thread_pool'
 
 # TODO ? test ThreadPoolJob being_executed?, completed?, exec, handle_timeout!
 
