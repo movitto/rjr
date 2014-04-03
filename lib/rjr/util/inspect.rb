@@ -51,7 +51,7 @@ def select_stats(dispatcher, *filter)
 end
 
 # Add inspection methods to specified dispatcher
-def dispatch_rjr_inspect(dispatcher)
+def dispatch_rjr_util_inspect(dispatcher)
   # Retrieve all the dispatches this node served matching the specified criteri
   dispatcher.handle "rjr::dispatches" do |filter|
     select_stats(dispatcher, *filter) 
