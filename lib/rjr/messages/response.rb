@@ -78,7 +78,7 @@ class Response
 
   def parse_headers(request)
     request.keys.select { |k|
-      !['jsonrpc', 'id', 'method', 'params'].include?(k)
+      !['jsonrpc', 'id', 'method', 'result', 'error'].include?(k)
     }.each { |k| @headers[k] = request[k] }
   end
 
