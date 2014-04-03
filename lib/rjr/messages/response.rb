@@ -27,52 +27,62 @@ class Response
 
   # ResponseMessage initializer
   #
-  # This should be invoked with one of two argument sets. If creating a new message
-  # to send to the client, specify :id, :result, and :headers to include in the message.
-  # If handling an new request message sent from the client, simply specify :message
-  # and optionally any additional headers (they will be merged with the headers contained
-  # in the message)
-  #
   # @param [Hash] args options to set on request
   # @option args [String] :message json string received from sender
-  # @option args [Hash] :headers optional headers to set in request and subsequent messages
-  # @option args [String] :id id to set in response message, should be same as that in received message
+  # @option args [Hash] :headers optional headers to set in request
+  #   and subsequent messages
+  # @option args [String] :id id to set in response message, should
+  #   be same as that in received message
   # @option args [RJR::Result] :result result of json-rpc method invocation
   def initialize(args = {})
-    if args.has_key?(:message)
-      @json_message  = args[:message]
-      response = JSONParser.parse(@json_message)
-      @msg_id  = response['id']
-      @result   = Result.new
-      @result.success   = response.has_key?('result')
-      @result.failed    = !response.has_key?('result')
-      @headers   = args.has_key?(:headers) ? {}.merge!(args[:headers]) : {}
+    parse_args(args)
+  end
 
-      if @result.success
-        @result.result = response['result']
+  private
 
-      elsif response.has_key?('error')
-        @result.error_code = response['error']['code']
-        @result.error_msg  = response['error']['message']
-        @result.error_class = response['error']['class']  # TODO safely constantize this ?
+  def parse_args(args)
+    @msg_id  = args[:id]
+    @result  = args[:result]
+    @headers = args[:headers] || {}
 
-      end
+    parse_message(args[:message]) if args.has_key?(:message)
+  end
 
-      response.keys.select { |k|
-        !['jsonrpc', 'id', 'result', 'error'].include?(k)
-      }.each { |k| @headers[k] = response[k] }
+  def parse_message(message)
+    @json_message = message
+    response      = JSONParser.parse(@json_message)
+    @msg_id       = response['id']
 
-    elsif args.has_key?(:result)
-      @msg_id  = args[:id]
-      @result  = args[:result]
-      @headers = args[:headers]
+    parse_result(response)
+    parse_headers(response)
+  end
 
-    #else
-    #  raise ArgumentError, "must specify :message or :result"
+  def parse_result(response)
+    @result         = Result.new
+    @result.success = response.has_key?('result')
+    @result.failed  = !@result.success
 
+    if @result.success
+      @result.result = response['result']
+
+    elsif response.has_key?('error')
+      @result.error_code  = response['error']['code']
+      @result.error_msg   = response['error']['message']
+
+      # TODO can we safely constantize this ?
+      @result.error_class = response['error']['class']
     end
 
+    @result
   end
+
+  def parse_headers(request)
+    request.keys.select { |k|
+      !['jsonrpc', 'id', 'method', 'params'].include?(k)
+    }.each { |k| @headers[k] = request[k] }
+  end
+
+  public
 
   # Class helper to determine if the specified string is a valid json-rpc
   # method response
@@ -80,33 +90,37 @@ class Response
   # @return [true,false] indicating if message is response message
   def self.is_response_message?(message)
     begin
+      # FIXME log error
       json = JSONParser.parse(message)
       json.has_key?('result') || json.has_key?('error')
     rescue Exception => e
-      # FIXME log error
       puts e.to_s
       false
     end
   end
 
-  # Convert request message to string json format
+  def success_json
+    {'result' => @result.result}
+  end
+
+  def error_json
+    {'error' => {'code'    => @result.error_code,
+                 'message' => @result.error_msg,
+                 'class'   => @result.error_class}}
+  end
+
+  # Convert request message to json
+  def to_json(*a)
+    result_json = @result.success ? success_json : error_json
+
+    {'jsonrpc' => '2.0',
+     'id'      => @msg_id}.merge(@headers).
+                           merge(result_json).to_json(*a)
+  end
+
+  # Convert request to string format
   def to_s
-    s = ''
-    if result.success
-      s =    {'jsonrpc' => '2.0',
-              'id'      => @msg_id,
-              'result'  => @result.result}
-
-    else
-      s =    {'jsonrpc' => '2.0',
-              'id'      => @msg_id,
-              'error'   => { 'code'    => @result.error_code,
-                             'message' => @result.error_msg,
-                             'class'   => @result.error_class}}
-    end
-
-    s.merge! @headers unless headers.nil?
-    return s.to_json.to_s
+    to_json.to_s
   end
 
 end # class Response
