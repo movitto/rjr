@@ -223,7 +223,8 @@ class Node
     unless notification
       response = Messages::Response.new(:id      => msg.msg_id,
                                         :result  => result,
-                                        :headers => msg.headers)
+                                        :headers => msg.headers,
+                                        :request => msg)
       self.send_msg(response.to_s, connection)
       return response
     end
