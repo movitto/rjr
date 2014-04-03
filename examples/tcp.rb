@@ -5,6 +5,7 @@
 # Licensed under the Apache License, Version 2.0
 
 require 'rjr/nodes/tcp'
+#require 'rjr/messages/compressed'
 
 server = RJR::Nodes::TCP.new :host => 'localhost', :port => 9789, :node_id => "server"
 server.dispatcher.handle('method') { |i|
