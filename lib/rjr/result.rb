@@ -62,7 +62,7 @@ class Result
   # JSON-RPC -32600 / Invalid Request
   def self.invalid_request
      return Result.new(:error_code => -32600,
-                       :error_msg => '  Invalid Request')
+                       :error_msg => 'Invalid Request')
   end
 
   # JSON-RPC -32602 / Method not found
