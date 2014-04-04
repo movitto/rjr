@@ -11,30 +11,43 @@ module RJR
       @em.halt.join
     end
 
-    it "should start the reactor" do
-      @em.start
-      @em.reactor_running?.should be_true
-      ['sleep', 'run'].should include(@em.reactor_thread.status)
+    describe "#start" do
+      it "should start the reactor" do
+        @em.start
+        @em.reactor_running?.should be_true
+        ['sleep', 'run'].should include(@em.reactor_thread.status)
+      end
+
+      it "should only start the reactor once" do
+        @em.start
+
+        ot = @em.reactor_thread
+        @em.start
+        @em.reactor_thread.should == ot
+      end
     end
 
-    it "should only start the reactor once" do
-      @em.start
+    describe "#stop" do
+      it "should halt the reactor" do
+        @em.start
 
-      ot = @em.reactor_thread
-      @em.start
-      @em.reactor_thread.should == ot
+        @em.halt
+        @em.join
+        @em.reactor_running?.should be_false
+        @em.reactor_thread.should be_nil
+      end
     end
 
-    it "should halt the reactor" do
-      @em.start
-
-      @em.halt
-      @em.join
-      @em.reactor_running?.should be_false
-      @em.reactor_thread.should be_nil
+    describe "#join" do
+      it "joins reactor thread" do
+        th = Object.new
+        th.should_receive(:join).twice # XXX also called in after block above
+        @em.instance_variable_set(:@reactor_thread, th)
+        @em.join
+      end
     end
 
-    it "should dispatch all requests to eventmachine" do
+    it "should forward all messages to eventmachine" do
       @em.start
 
       invoked = false

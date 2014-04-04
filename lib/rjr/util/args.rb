@@ -6,6 +6,10 @@
 require 'forwardable'
 
 module RJR
+
+# Encapsulates a list of JSON-RPC method arguments as sent
+# from the client to the server, in addition to providing
+# various helper / utility methods.
 class Arguments
   include Enumerable
   extend Forwardable
@@ -29,6 +33,15 @@ class Arguments
   #
   # *Note* args / acceptable params are converted to strings
   # before comparison
+  #
+  # @example
+  #   args = Arguments.new :args => ['custom', 'another']
+  #   args.validate! 'custom', 'another'  #=> nil
+  #   args.validate! 'something'          #=> ArgumentError
+  #
+  #   args = Arguments.new :args => ['with_id', 123, 'another']
+  #   args.validate! :with_id => 1, :another => 0 #=> nil
+  #   args.validate! :with_id => 1                #=> ArgumentError
   def validate!(*acceptable)
     i = 0
     if acceptable.first.is_a?(Hash)
@@ -60,6 +73,8 @@ class Arguments
         i += 1
       end
     end
+
+    nil
   end
 
   # Extract groups of values from argument list
@@ -69,6 +84,12 @@ class Arguments
   # arguments specified by the map values
   #
   # Note arguments / keys are converted to strings before comparison
+  #
+  # @example
+  #   args = Arguments.new :args => ['with_id', 123, 'custom', 'another']
+  #   args.extract :with_id => 1, :custom => 0
+  #     # => [['with_id', 123], ['custom']]
+  #
   def extract(map)
     # clone map hash, swap keys for string
     map = Hash[map]
@@ -99,6 +120,11 @@ class Arguments
   # Return boolean if tag appears in argument list.
   # Simple wrapper around includes setting up the scope
   # of argument 'specifiers'
+  #
+  # @example
+  #   args = Arguments.new :args => ['foobar']
+  #   args.specifies?('foobar') #=> true
+  #   args.specifies?('barfoo') #=> false
   def specifies?(tag)
     include?(tag)
   end
@@ -106,6 +132,11 @@ class Arguments
   # Return specifier corresponding given tag. The specifier
   # is defined as the value appearing in the argument list
   # immediately after the tag
+  #
+  # @example
+  #   args = Argument.new :args => ('with_id', 123)
+  #   args.specifier_for('with_id') #=> 123
+  #   args.specifier_for('other')   #=> nil
   def specifier_for(tag)
     return nil unless specifies?(tag)
     self[index(tag) + 1]
