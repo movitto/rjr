@@ -5,21 +5,25 @@ module RJR
   class HandlesMethodsTest
     include HandlesMethods
 
-    def custom
-      @foo
-    end
-
     jr_method :method1
     jr_method :method2, :method3
 
     jr_method :method4, :custom
     jr_method :method5, :method6, :custom
 
+    def custom
+      @foo
+    end
   end
 
   describe HandlesMethods do
     before(:each) do
-      @handlers = HandlesMethodsTest.instance_variable_get(:@jr_handlers)
+      @handlers = HandlesMethodsTest.jr_handlers
+      HandlesMethodsTest.jr_handlers = Hash[@handlers] if !!@handlers
+    end
+
+    after(:each) do
+      HandlesMethodsTest.jr_handlers = @handlers
     end
 
     describe "#extract_handler_method" do
@@ -48,11 +52,14 @@ module RJR
       end
     end
 
-    describe "#has_handler_for" do
+    describe "#has_handler_for?" do
+      before(:each) do
+        HandlesMethodsTest.jr_handlers = {:handle => proc{}}
+      end
+
       context "handler exists" do
         it "returns true" do
           HandlesMethodsTest.has_handler_for?(:handle).should be_true
-          HandlesMethodsTest.has_handler_for?(:custom).should be_true
         end
       end
 
@@ -65,12 +72,7 @@ module RJR
 
     describe "#handler_for" do
       before(:each) do
-        @orig_handler = @handlers[:custom]
-        @handlers[:custom] = 'foobar'
-      end
-
-      after(:each) do
-        @handlers[:custom] = @orig_handler
+        HandlesMethodsTest.jr_handlers = {:custom => 'foobar'}
       end
 
       it "returns handler" do
@@ -79,23 +81,14 @@ module RJR
     end
 
     describe "#create_handler_for" do
-      before(:each) do
-        @orig_handlers = HandlesMethodsTest.instance_variable_get(:@jr_handlers)
-        @new_handlers  = Hash[@orig_handlers]
-        HandlesMethodsTest.instance_variable_set(:@jr_handlers, @new_handlers)
-      end
-
-      after(:each) do
-        HandlesMethodsTest.instance_variable_set(:@jr_handlers, @orig_handlers)
-      end
-
       it "store handler proc in handler registry" do
         HandlesMethodsTest.create_handler_for(:foobar)
-        @new_handlers[:foobar].should be_an_instance_of(Proc)
+        HandlesMethodsTest.jr_handlers[:foobar].should be_an_instance_of(Proc)
       end
 
       it "returns handler proc" do
-        HandlesMethodsTest.create_handler_for(:foobar).should == @new_handlers[:foobar]
+        HandlesMethodsTest.create_handler_for(:foobar).should ==
+          HandlesMethodsTest.jr_handlers[:foobar]
       end
 
       describe "handler" do
@@ -114,9 +107,10 @@ module RJR
 
         it "invokes handler method with args" do
           inst = HandlesMethodsTest.new
-          HandlesMethodsTest.should_receive(:new).and_return(inst)
-          inst.should_receive(:custom).with(42)
-          @new_handlers[:custom].call 42
+          HandlesMethodsTest.should_receive(:new).twice.and_return(inst)
+          inst.should_receive(:custom).twice.with(42)
+          HandlesMethodsTest.create_handler_for(:custom).call 42
+          HandlesMethodsTest.jr_handlers[:custom].call 42
         end
 
         it "returns handler return value" do
@@ -127,35 +121,33 @@ module RJR
     end
 
     describe "#jr_method" do
-      it "registers json-rpc method with default handler" do
-        expected = [[:method1], @handlers[:handle]]
-        HandlesMethodsTest.jr_methods[0].should == expected
-      end
-
-      it "registers json-rpc methods with default handler" do
-        expected = [[:method2, :method3], @handlers[:handle]]
-        HandlesMethodsTest.jr_methods[1].should == expected
-      end
-
-      it "registers json-rpc method with custom handler" do
-        expected = [[:method4], @handlers[:custom]]
-        HandlesMethodsTest.jr_methods[2].should == expected
-      end
-
-      it "registers json-rpc methods with custom handler" do
-        expected = [[:method5, :method6], @handlers[:custom]]
-        HandlesMethodsTest.jr_methods[3].should == expected
+      it "registers json-rpc methods for later evaluation" do
+        args = HandlesMethodsTest.instance_variable_get(:@jr_method_args)
+        args.should == [[:method1], [:method2, :method3],
+                        [:method4, :custom], [:method5, :method6, :custom]]
       end
     end
 
     describe "#dispatch_to" do
+      it "registers json-rpc method with new handler" do
+        d = Dispatcher.new
+        HandlesMethodsTest.jr_handlers.should be_nil
+        HandlesMethodsTest.dispatch_to(d)
+        HandlesMethodsTest.jr_handlers.size.should == 2
+        HandlesMethodsTest.jr_handlers[:handle].should be_an_instance_of(Proc)
+        HandlesMethodsTest.jr_handlers[:custom].should be_an_instance_of(Proc)
+      end
+
       it "registers local json rpc methods with dispatcher" do
         d = Dispatcher.new
-        d.should_receive(:handle).with([:method1], @handlers[:handle])
-        d.should_receive(:handle).with([:method2, :method3], @handlers[:handle])
-        d.should_receive(:handle).with([:method4], @handlers[:custom])
-        d.should_receive(:handle).with([:method5, :method6], @handlers[:custom])
         HandlesMethodsTest.dispatch_to(d)
+
+        d.handler_for('method1').should == HandlesMethodsTest.jr_handlers[:handle]
+        d.handler_for('method2').should == HandlesMethodsTest.jr_handlers[:handle]
+        d.handler_for('method3').should == HandlesMethodsTest.jr_handlers[:handle]
+        d.handler_for('method4').should == HandlesMethodsTest.jr_handlers[:custom]
+        d.handler_for('method5').should == HandlesMethodsTest.jr_handlers[:custom]
+        d.handler_for('method6').should == HandlesMethodsTest.jr_handlers[:custom]
       end
     end
   end

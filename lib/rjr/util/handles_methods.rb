@@ -7,20 +7,36 @@ module RJR
 
 # Mixin adding methods allowing developer to specify JSON-RPC
 # methods which to dispatch to.
+#
+# @example Defining a structured JSON-RPC method handler
+#   class MyMethodHandler
+#     include RJR::HandlesMethods
+#
+#     jr_method :do_something
+#
+#     def handle(*params)
+#       'return value'
+#     end
+#   end
+#
+#   node = RJR::Nodes::TCP.new :host => '0.0.0.0', :port => 8888
+#   MyMethodHandler.dispatch_to(node.dispatcher)
+#   node.listen.join
+#
+#   # clients can now invoke the 'do_something' json-rpc method by
+#   # issuing requests to the target host / port
+#
 module HandlesMethods
   def self.included(base)
     base.extend(ClassMethods)
   end
 
   # Override w/ custom handler logic
-  #
-  # XXX handler method needs to be defined before jr_method is called,
-  # not a problem for default case, but could be a pain in custom case
   def handle
   end
 
   module ClassMethods
-    attr_accessor :jr_methods
+    attr_accessor :jr_handlers
 
     # Return the handler method matching the argument set
     def extract_handler_method(args)
@@ -75,20 +91,23 @@ module HandlesMethods
     # w/ optional id of local method to dispatch to. If no method
     # specified, the :handle method will be used
     def jr_method(*args)
-      @jr_methods  ||= []
-
-      handler_method, args = extract_handler_method(args)
-
-      handler = has_handler_for?(handler_method) ?
-        handler_for(handler_method) : create_handler_for(handler_method)
-
-      @jr_methods << [args, handler]
+      @jr_method_args  ||= []
+      @jr_method_args  << args
     end
 
     # Register locally stored methods w/ the specified dispatcher
     def dispatch_to(dispatcher)
-      jr_methods.each { |handlers, method|
-        dispatcher.handle handlers, method
+      @jr_method_args.each { |args|
+        # copy args so original is preserved
+        handler_method, jr_methods =
+          extract_handler_method(Array.new(args))
+        jr_methods.map! { |m| m.to_s }
+
+        handler = has_handler_for?(handler_method) ?
+                       handler_for(handler_method) :
+                create_handler_for(handler_method)
+
+        dispatcher.handle jr_methods, handler
       }
     end
   end # module ClassMethods
