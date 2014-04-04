@@ -32,24 +32,31 @@ class Request
   # Headers which came w/ request
   attr_accessor :rjr_headers
 
+  # Client IP which request came in on (only for direct nodes)
+  attr_accessor :rjr_client_ip
+
+  # Port which request came in on (only for direct nodes)
+  attr_accessor :rjr_client_port
+
+  # RJR callback which may be used to push data to client
+  attr_accessor :rjr_callback
+
+  # Node which the request came in on
+  attr_accessor :rjr_node
+
   # Type of node which request came in on
   attr_accessor :rjr_node_type
 
   # ID of node which request came in on
   attr_accessor :rjr_node_id
 
+  # Actual proc registered to handle request
+  attr_accessor :rjr_handler
+
   # RJR Request initializer
-  # @param [Hash] args options to set on request
-  # @option args [String] :rjr_method name of the method which request is for
-  # @option args [Array]  :rjr_method_args array of arguments which to pass to the rpc method handler
-  # @option args [Hash]   :rjr_headers hash of keys/values corresponding to optional headers received as part of of the request
-  # @option args [String] :rjr_client_ip ip address of client which invoked the request (if applicable)
-  # @option args [String] :rjr_client_port port of client which invoked the request (if applicable)
-  # @option args [RJR::Callback] :rjr_callback callback through which requests/notifications can be sent to remote node
-  # @option args [RJR::Node] :rjr_node rjr node which request was received on
-  # @option args [String] :rjr_node_id id of the rjr node which request was received on
-  # @option args [Symbol] :rjr_node_type type of the rjr node which request was received on
-  # @option args [Callable] :rjr_handler callable object registered to the specified method which to invoke request on with arguments
+  #
+  # @param [Hash] args options to set on request,
+  #   see Request accessors for valid keys
   def initialize(args = {})
     @rjr_method      = args[:rjr_method]      || args['rjr_method']
     @rjr_method_args = args[:rjr_method_args] || args['rjr_method_args'] || []
@@ -87,22 +94,26 @@ class Request
     return retval
   end
 
+  def request_json
+    {:request => { :rjr_method      => @rjr_method,
+                   :rjr_method_args => @rjr_method_args,
+                   :rjr_headers     => @rjr_headers,
+                   :rjr_node_type   => @rjr_node_type,
+                   :rjr_node_id     => @rjr_node_id }}
+  end
+
+  def result_json
+    return {} unless !!@result
+    {:result  => { :result          => @result.result,
+                   :error_code      => @result.error_code,
+                   :error_msg       => @result.error_msg,
+                   :error_class     => @result.error_class }}
+  end
+
   # Convert request to json representation and return it
   def to_json(*a)
-    {
-      'json_class' => self.class.name,
-      'data'       =>
-        {:request => { :rjr_method      => @rjr_method,
-                       :rjr_method_args => @rjr_method_args,
-                       :rjr_headers     => @rjr_headers,
-                       :rjr_node_type   => @rjr_node_type,
-                       :rjr_node_id     => @rjr_node_id },
-
-         :result  => { :result          => @result.result,
-                       :error_code      => @result.error_code,
-                       :error_msg       => @result.error_msg,
-                       :error_class     => @result.error_class } }
-    }.to_json(*a)
+    {'json_class' => self.class.name,
+     'data'       => request_json.merge(result_json)}.to_json(*a)
   end
 
   # Create new request from json representation
