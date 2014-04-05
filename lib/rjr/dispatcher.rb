@@ -89,9 +89,11 @@ class Dispatcher
   # @return [Callable, nil] callback proc registered to handle rjr_method
   #   or nil if not found
   def handler_for(rjr_method)
-    handler = @handlers.find { |k,v|
-      k.is_a?(String) ? (k == rjr_method) : (k =~ rjr_method)
-    }
+    # look for exact match first
+    handler = @handlers.find { |k,v| k == rjr_method }
+
+    # if not found try to match regex's
+    handler ||= @handlers.find { |k,v| k.is_a?(Regexp) && (k =~ rjr_method) }
 
     handler.nil? ? nil : handler.last
   end
@@ -123,9 +125,11 @@ class Dispatcher
 
   # Return the environment registered for the specified method
   def env_for(rjr_method)
-     env = @environments.find { |k,v|
-       k.is_a?(String) ? (k == rjr_method) : (k =~ rjr_method)
-     }
+     # look for exact match first
+     env = @environments.find { |k,v| k == rjr_method }
+
+     # if not found try to match regex's
+     env ||= @environments.find { |k,v| k.is_a?(Regexp) && (k =~ rjr_method) }
 
      env.nil? ? nil : env.last
   end

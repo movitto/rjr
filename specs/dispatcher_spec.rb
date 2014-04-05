@@ -148,6 +148,17 @@ module RJR
         d.handler_for('foobar1').should == cb
         d.handler_for('barfoo1').should be_nil
       end
+
+      context "mulitple matches" do
+        it "returns exact match before regex" do
+          d = Dispatcher.new
+          cb1 = proc{ 1 }
+          cb2 = proc{ 2 }
+          d.handle /foobar.*/, cb1
+          d.handle "foobar1",  cb2
+          d.handler_for("foobar1").should == cb2
+        end
+      end
     end
 
     describe "#handles?" do
@@ -204,6 +215,15 @@ module RJR
         d.env(/foobar.*/, 'fooenv')
         d.env_for('foobar1').should == 'fooenv'
         d.env_for('barfoo1').should be_nil
+      end
+
+      context "mulitple matches" do
+        it "returns exact match before regex" do
+          d = Dispatcher.new
+          d.env /foobar.*/, 'foo'
+          d.env "foobar1",  'bar'
+          d.env_for("foobar1").should == 'bar'
+        end
       end
     end
 
