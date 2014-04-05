@@ -19,7 +19,7 @@ class JSONParser
   # TODO efficiency can probably be optimized in the case closing '}'
   # hasn't arrived yet
   #
-  # FIXME if uneven '{' / '}' appears in string data (such as params)
+  # FIXME if uneven brackets appears in string data (such as in params)
   # this will break, detect when in string and ignore in counts
   def self.extract_json_from(data) 
     return nil if data.nil? || data.empty?

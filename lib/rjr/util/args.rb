@@ -134,7 +134,7 @@ class Arguments
   # immediately after the tag
   #
   # @example
-  #   args = Argument.new :args => ('with_id', 123)
+  #   args = Argument.new :args => ['with_id', 123]
   #   args.specifier_for('with_id') #=> 123
   #   args.specifier_for('other')   #=> nil
   def specifier_for(tag)

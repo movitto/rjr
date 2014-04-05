@@ -87,8 +87,8 @@ end
 #   puts client.invoke('http://localhost:7777', 'hello', 'mo')
 #
 # @example Invoking json-rpc requests over http using curl
-#   $ curl -X POST http://localhost:7777 -d '{"jsonrpc":"2.0","method":"hello","params":["mo"],"id":"123"}'
-#   > {"jsonrpc":"2.0","id":"123","result":"Hello mo!"}
+#   sh> curl -X POST http://localhost:7777 -d '{"jsonrpc":"2.0","method":"hello","params":["mo"],"id":"123"}'
+#     > {"jsonrpc":"2.0","id":"123","result":"Hello mo!"}
 #
 class Web < RJR::Node
 
@@ -114,7 +114,7 @@ class Web < RJR::Node
 
   # Send data using specified http connection
   #
-  # Implementation of {RJR::Node#send_msg}
+  # Implementation of RJR::Node#send_msg
   def send_msg(data, connection)
     # we are assuming that since http connections
     # are not persistant, we should be sending a
@@ -132,7 +132,7 @@ class Web < RJR::Node
 
   # Instruct Node to start listening for and dispatching rpc requests
   #
-  # Implementation of {RJR::Node#listen}
+  # Implementation of RJR::Node#listen
   def listen
     @@em.schedule do
       EventMachine::start_server(@host, @port, WebConnection, :rjr_node => self)
@@ -142,7 +142,7 @@ class Web < RJR::Node
 
   # Instructs node to send rpc request, and wait for / return response
   #
-  # Implementation of {RJR::Node#invoke}
+  # Implementation of RJR::Node#invoke
   #
   # Do not invoke directly from em event loop or callback as will block the message
   # subscription used to receive responses
@@ -178,7 +178,7 @@ class Web < RJR::Node
 
   # Instructs node to send rpc notification (immadiately returns / no response is generated)
   #
-  # Implementation of {RJR::Node#notify}
+  # Implementation of RJR::Node#notify
   #
   # @param [String] uri location of node to send request to, should be
   #   in format of http://hostname:port

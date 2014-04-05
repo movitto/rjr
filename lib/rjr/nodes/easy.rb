@@ -116,21 +116,21 @@ class Easy < RJR::Node
 
   # Send data using specified connection
   #
-  # Implementation of {RJR::Node#send_msg}
+  # Implementation of RJR::Node#send_msg
   def send_msg(data, connection)
   # TODO
   end
 
   # Instruct Nodes to start listening for and dispatching rpc requests
   #
-  # Implementation of {RJR::Node#listen}
+  # Implementation of RJR::Node#listen
   def listen
     @multi_node.listen
   end
 
   # Instructs node to send rpc request, and wait for and return response.
   #
-  # Implementation of {RJR::Node#invoke}
+  # Implementation of RJR::Node#invoke
   #
   # @param [String] dst destination send request to
   # @param [String] rpc_method json-rpc method to invoke on destination
@@ -145,7 +145,7 @@ class Easy < RJR::Node
 
   # Instructs node to send rpc notification (immadiately returns / no response is generated)
   #
-  # Implementation of {RJR::Node#notify}
+  # Implementation of RJR::Node#notify
   #
   # @param [String] dst destination to send notification to
   # @param [String] rpc_method json-rpc method to invoke on destination

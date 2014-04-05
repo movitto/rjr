@@ -69,8 +69,8 @@ class Dispatcher
   # Register json-rpc handler with dispatcher
   #
   # @param [String,Regex] signature request signature to match
-  # @param [Callable] callable callable object which to bind to signature
-  # @param [Callable] &bl block parameter will be set to callback if specified
+  # @param [Callable] callback callable object which to bind to signature
+  # @param [Callable] bl block parameter will be set to callback if specified
   # @return self
   def handle(signature, callback = nil, &bl)
     if signature.is_a?(Array)
@@ -85,7 +85,7 @@ class Dispatcher
   # Return handler for specified method.
   #
   # Currently we match method name string or regex against signature
-  # @param [String] string rjr method to match
+  # @param [String] rjr_method string rjr method to match
   # @return [Callable, nil] callback proc registered to handle rjr_method
   #   or nil if not found
   def handler_for(rjr_method)
@@ -100,7 +100,7 @@ class Dispatcher
 
   # Return boolean indicating if dispatcher can handle method
   #
-  # @param [String] string rjr method to match
+  # @param [String] rjr_method string rjr method to match
   # @return [true,false] indicating if requests to specified method will be matched
   def handles?(rjr_method)
     !handler_for(rjr_method).nil?
@@ -112,7 +112,7 @@ class Dispatcher
   # will extend before executing handler
   #
   # @param [String,Regex] signature request signature to match
-  # @param [Module] module which to extend requests with
+  # @param [Module] environment module which to extend requests with
   # @return self
   def env(signature, environment)
     if signature.is_a?(Array)

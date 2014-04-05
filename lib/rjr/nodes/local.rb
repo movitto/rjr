@@ -58,7 +58,7 @@ class Local < RJR::Node
   #
   # Simply dispatch local notification.
   #
-  # Implementation of {RJR::Node#send_msg}
+  # Implementation of RJR::Node#send_msg
   def send_msg(msg, connection)
     # ignore response message
     unless Messages::Response.is_response_message?(msg)
@@ -68,7 +68,7 @@ class Local < RJR::Node
 
   # Instruct Nodes to start listening for and dispatching rpc requests
   #
-  # Implementation of {RJR::Node#listen}
+  # Implementation of RJR::Node#listen
   def listen
     # do nothing
     self
@@ -88,7 +88,7 @@ class Local < RJR::Node
 
   # Instructs node to send rpc request, and wait for and return response
   #
-  # Implementation of {RJR::Node#invoke}
+  # Implementation of RJR::Node#invoke
   #
   # If strictly confirming to other nodes, this would use event machine to launch
   # a thread pool job to dispatch request and block on result.
@@ -117,7 +117,7 @@ class Local < RJR::Node
 
   # Instructs node to send rpc notification (immediately returns / no response is generated)
   #
-  # Implementation of {RJR::Node#notify}
+  # Implementation of RJR::Node#notify
   #
   # Same performance comment as invoke_request above
   #

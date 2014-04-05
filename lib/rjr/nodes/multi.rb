@@ -70,7 +70,7 @@ class Multi < RJR::Node
 
   # Instruct Node to start listening for and dispatching rpc requests
   #
-  # Implementation of {RJR::Node#listen}
+  # Implementation of RJR::Node#listen
   def listen
     @nodes.each { |node|
       node.listen

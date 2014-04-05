@@ -36,7 +36,7 @@ class UnixConnection < EventMachine::Connection
     @data      = ""
   end
 
-  # {EventMachine::Connection#receive_data} callback, handle request / response messages
+  # EventMachine::Connection#receive_data callback, handle request / response messages
   def receive_data(data)
     # a large json-rpc message may be split over multiple packets
     #   (invocations of receive_data)
@@ -108,14 +108,14 @@ class Unix < RJR::Node
 
   # Send data using specified connection
   #
-  # Implementation of {RJR::Node#send_msg}
+  # Implementation of RJR::Node#send_msg
   def send_msg(data, connection)
     connection.send_msg(data)
   end
 
   # Instruct Node to start listening for and dispatching rpc requests
   #
-  # Implementation of {RJR::Node#listen}
+  # Implementation of RJR::Node#listen
   def listen
     @@em.schedule {
       @@em.start_unix_domain_server @socketname, nil, UnixConnection, { :rjr_node => self }
@@ -125,7 +125,7 @@ class Unix < RJR::Node
 
   # Instructs node to send rpc request, and wait for / return response.
   #
-  # Implementation of {RJR::Node#invoke}
+  # Implementation of RJR::Node#invoke
   #
   # Do not invoke directly from em event loop or callback as will block the message
   # subscription used to receive responses
@@ -158,7 +158,7 @@ class Unix < RJR::Node
 
   # Instructs node to send rpc notification (immadiately returns / no response is generated)
   #
-  # Implementation of {RJR::Node#notify}
+  # Implementation of RJR::Node#notify
   #
   # @param [String] socketname name of socket which
   # destination node is listening on

@@ -26,14 +26,14 @@ class Template < RJR::Node
 
   # Send data using specified connection
   #
-  # Implementation of {RJR::Node#send_msg}
+  # Implementation of RJR::Node#send_msg
   def send_msg(data, connection)
     # TODO
   end
 
   # Instruct Node to start listening for and dispatching rpc requests
   #
-  # Implementation of {RJR::Node#listen}
+  # Implementation of RJR::Node#listen
   def listen
     # TODO
     self
@@ -41,7 +41,7 @@ class Template < RJR::Node
 
   # Instructs node to send rpc request, and wait for / return response.
   #
-  # Implementation of {RJR::Node#invoke}
+  # Implementation of RJR::Node#invoke
   # @param [String] optional_destination if the transport requires it, param
   #   to specify the target of this request, if not remove this param
   # @param [String] rpc_method json-rpc method to invoke on destination
@@ -52,7 +52,7 @@ class Template < RJR::Node
 
   # Instructs node to send rpc notification (immadiately returns / no response is generated)
   #
-  # Implementation of {RJR::Node#notify}
+  # Implementation of RJR::Node#notify
   # @param [String] optional_destination if the transport requires it, param
   #   to specify the target of this request, if not remove this param
   # @param [String] rpc_method json-rpc method to invoke on destination

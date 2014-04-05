@@ -127,7 +127,7 @@ class AMQP < RJR::Node
 
   # Publish a message using the amqp exchange
   #
-  # Implementation of {RJR::Node#send_msg}
+  # Implementation of RJR::Node#send_msg
   def send_msg(msg, metadata, &on_publish)
     @amqp_lock.synchronize {
       #raise RJR::Errors::ConnectionError.new("client unreachable") if @disconnected
@@ -144,7 +144,7 @@ class AMQP < RJR::Node
 
   # Instruct Node to start listening for and dispatching rpc requests.
   #
-  # Implementation of {RJR::Node#listen}
+  # Implementation of RJR::Node#listen
   def listen
     @@em.schedule do
       init_node {
@@ -156,7 +156,7 @@ class AMQP < RJR::Node
 
   # Instructs node to send rpc request, and wait for and return response.
   #
-  # Implementation of {RJR::Node#invoke}
+  # Implementation of RJR::Node#invoke
   #
   # Do not invoke directly from em event loop or callback as will block the message
   # subscription used to receive responses
@@ -192,7 +192,7 @@ class AMQP < RJR::Node
 
   # Instructs node to send rpc notification (immadiately returns / no response is generated)
   #
-  # Implementation of {RJR::Node#notify}
+  # Implementation of RJR::Node#notif}
   #
   # @param [String] routing_key destination queue to send request to
   # @param [String] rpc_method json-rpc method to invoke on destination
