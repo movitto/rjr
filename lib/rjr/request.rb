@@ -50,6 +50,9 @@ class Request
   # ID of node which request came in on
   attr_accessor :rjr_node_id
 
+  # Environment handler will be run in
+  attr_accessor :rjr_env
+
   # Actual proc registered to handle request
   attr_accessor :rjr_handler
 
@@ -73,7 +76,14 @@ class Request
     @rjr_handler     = args[:rjr_handler]
 
     @rjr_args        = Arguments.new :args => @rjr_method_args
-    @result = nil
+    @rjr_env         = nil
+    @result          = nil
+  end
+
+  # Set the environment by extending Request instance with the specified module
+  def set_env(env)
+    @rjr_env = env
+    self.extend(env)
   end
 
   # Invoke the request by calling the registered handler with the registered

@@ -63,8 +63,27 @@ module RJR
         request.rjr_args.args.should == args
       end
 
+      it "sets default env to nil" do
+        Request.new.rjr_env.should be_nil
+      end
+
       it "sets default result to nil" do
         Request.new.result.should be_nil
+      end
+    end
+
+    describe "#set_env" do
+      it "extends request w/ specified module" do
+        request = Request.new
+        request.should_receive(:extend).with('foobar')
+        request.set_env('foobar')
+      end
+
+      it "sets rjr_env" do
+        request = Request.new
+        request.should_receive(:extend)
+        request.set_env('foobar')
+        request.rjr_env.should == 'foobar'
       end
     end
 

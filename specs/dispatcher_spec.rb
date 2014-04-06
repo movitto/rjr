@@ -245,14 +245,14 @@ module RJR
         d.dispatch :rjr_method => 'foobar'
       end
 
-      it "extends request w/ method environment" do
+      it "sets request environment" do
         d = Dispatcher.new
         d.env 'foobar', 'fooenv'
         d.handle 'foobar', proc {}
 
         r = Request.new
         Request.should_receive(:new).and_return(r)
-        r.should_receive(:extend).with('fooenv')
+        r.should_receive(:set_env).with('fooenv')
         d.dispatch :rjr_method => 'foobar'
       end
 

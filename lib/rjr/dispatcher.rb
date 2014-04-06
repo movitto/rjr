@@ -152,7 +152,7 @@ class Dispatcher
     request = Request.new args.merge(:rjr_handler  => handler)
 
     # set request environment
-    request.extend(environment) unless environment.nil?
+    request.set_env(environment) unless environment.nil?
 
     begin
       retval = request.handle
