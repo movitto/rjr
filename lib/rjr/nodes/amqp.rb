@@ -58,12 +58,12 @@ class AMQP < RJR::Node
 
   def amqp_options
     opts = {}
-    opts[:host] = @host if @host
-    opts[:port] = @port if @port
+    opts[:host]  = @host  if @host
+    opts[:port]  = @port  if @port
     opts[:vhost] = @vhost if @vhost
-    opts[:user] = @user if @user
-    opts[:pass] = @pass if @pass
-    opts[:ssl] = @ssl if @ssl
+    opts[:user]  = @user  if @user
+    opts[:pass]  = @pass  if @pass
+    opts[:ssl]   = @ssl   if @ssl
     opts
   end
 
@@ -128,7 +128,7 @@ class AMQP < RJR::Node
   # @option args [String] :broker the amqp message broker which to connect to
   def initialize(args = {})
      super(args)
-     @host          = args[:host]
+     @host          = args[:host] || args[:broker]
      @port          = args[:port]
      @vhost         = args[:vhost]
      @user          = args[:user] || args[:username]
