@@ -56,6 +56,17 @@ class AMQP < RJR::Node
 
   private
 
+  def amqp_options
+    opts = {}
+    opts[:host] = @host if @host
+    opts[:port] = @port if @port
+    opts[:vhost] = @vhost if @vhost
+    opts[:user] = @user if @user
+    opts[:pass] = @pass if @pass
+    opts[:ssl] = @ssl if @ssl
+    opts
+  end
+
   # Internal helper, initialize the amqp subsystem
   def init_node(&on_init)
      if !@conn.nil? && @conn.connected?
@@ -63,7 +74,7 @@ class AMQP < RJR::Node
        return
      end
 
-     @conn = ::AMQP.connect(:host => @broker) do |conn|
+     @conn = ::AMQP.connect(amqp_options) do |conn|
        ::AMQP.connection = conn # XXX not sure why this is needed but the amqp
                                 # em interface won't shut down cleanly otherwise
 
@@ -117,12 +128,17 @@ class AMQP < RJR::Node
   # @option args [String] :broker the amqp message broker which to connect to
   def initialize(args = {})
      super(args)
-     @broker        = args[:broker]
+     @host          = args[:host]
+     @port          = args[:port]
+     @vhost         = args[:vhost]
+     @user          = args[:user] || args[:username]
+     @pass          = args[:pass] || args[:password]
+     @ssl           = args[:ssl]
      @amqp_lock     = Mutex.new
   end
 
   def to_s
-    "RJR::Nodes::AMQP<#{@node_id},#{@broker},#{@queue_name}>"
+    "RJR::Nodes::AMQP<#{@node_id},#{@host},#{@port},#{@vhost},#{@queue_name}>"
   end
 
   # Publish a message using the amqp exchange
