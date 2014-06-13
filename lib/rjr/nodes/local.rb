@@ -61,8 +61,9 @@ class Local < RJR::Node
   # Implementation of RJR::Node#send_msg
   def send_msg(msg, connection)
     # ignore response message
-    unless Messages::Response.is_response_message?(msg)
-      launch_request(msg, true) # .join?
+    inter = Messages::Intermediate.parse(msg)
+    unless Messages::Response.is_response_message?(inter)
+      launch_request(inter, true) # .join?
     end
   end
 
@@ -80,9 +81,15 @@ class Local < RJR::Node
   # (or close to it, globals will still be available, but locks will
   #  not be locally held, etc)
   def launch_request(req, notification)
-    Thread.new(req,notification) { |req,notification|
-      res = handle_request(req, notification, nil)
-      handle_response(res.to_s) unless res.nil?
+    Thread.new(req, notification) { |req, notification|
+      inter = req.is_a?(Messages::Intermediate) ?    req :
+                        Messages::Intermediate.parse(req)
+      res = handle_request(inter, notification, nil)
+
+      unless res.nil?
+        inter = Messages::Intermediate.parse(res.to_s)
+        handle_response(inter)
+      end
     }
   end
 

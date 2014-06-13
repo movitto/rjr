@@ -6,3 +6,4 @@
 require 'rjr/messages/request'
 require 'rjr/messages/response'
 require 'rjr/messages/notification'
+require 'rjr/messages/intermediate'

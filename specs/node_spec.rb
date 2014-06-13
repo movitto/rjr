@@ -247,6 +247,10 @@ module RJR
           connection = Object.new
           request = Messages::Request.new  :id => 1, :method => 'foo'
           request_str = request.to_s
+          inter = Messages::Intermediate.parse request_str
+          Messages::Intermediate.should_receive(:parse).
+                                 with(request_str).
+                                 and_return(inter)
 
           node = Node.new
           node.tp.should_receive(:<<) { |job|
@@ -254,7 +258,7 @@ module RJR
             job.exec Mutex.new
           }
 
-          node.should_receive(:handle_request).with(request_str, false, connection)
+          node.should_receive(:handle_request).with(inter, false, connection)
           node.send :handle_message, request_str, connection
         end
       end
@@ -264,6 +268,10 @@ module RJR
           connection = Object.new
           notification = Messages::Notification.new  :method => 'foo'
           notification_str = notification.to_s
+          inter = Messages::Intermediate.parse notification_str
+          Messages::Intermediate.should_receive(:parse).
+                                 with(notification_str).
+                                 and_return(inter)
 
           node = Node.new
           node.tp.should_receive(:<<) { |job|
@@ -271,8 +279,7 @@ module RJR
             job.exec Mutex.new
           }
 
-          node.should_receive(:handle_request).
-            with(notification_str, true, connection)
+          node.should_receive(:handle_request).with(inter, true, connection)
           node.send :handle_message, notification_str, connection
         end
       end
@@ -281,9 +288,13 @@ module RJR
         it "handles response" do
           response = Messages::Response.new :result => Result.new
           response_str = response.to_s
+          inter = Messages::Intermediate.parse response_str
+          Messages::Intermediate.should_receive(:parse).
+                                 with(response_str).
+                                 and_return(inter)
 
           node = Node.new
-          node.should_receive(:handle_response).with(response_str)
+          node.should_receive(:handle_response).with(inter)
           node.send :handle_message, response_str
         end
       end
@@ -297,6 +308,14 @@ module RJR
           node.send :handle_message, "{}"
         end
       end
+
+      it "returns intermediate message" do
+        node = Node.new
+        connection = Object.new
+        inter = Messages::Intermediate.new
+        Messages::Intermediate.should_receive(:parse).and_return(inter)
+        node.send(:handle_message, '', connection).should == inter
+      end
     end
 
     describe "#handle_request" do
@@ -305,13 +324,14 @@ module RJR
            Messages::Notification.new :method  => 'rjr_method1',
                                       :args    => ['method', 'args'],
                                       :headers => {'msg' => 'headers'}
-        @notification = notification.to_s
+        notification_str = notification.to_s
+        @intermediate = Messages::Intermediate.parse notification_str
         @node = Node.new
       end
 
       it "invokes dispatcher.dispatch" do
         @node.dispatcher.should_receive(:dispatch)
-        @node.send :handle_request, @notification, true
+        @node.send :handle_request, @intermediate, true
       end
 
       describe "dispatcher.dispatch args" do
@@ -319,21 +339,21 @@ module RJR
           @node.dispatcher.should_receive(:dispatch) { |args|
             args[:rjr_method].should == 'rjr_method1'
           }
-          @node.send :handle_request, @notification, true
+          @node.send :handle_request, @intermediate, true
         end
 
         it "includes :rjr_method_args => msg.jr_args" do
           @node.dispatcher.should_receive(:dispatch) { |args|
             args[:rjr_method_args].should == ['method', 'args']
           }
-          @node.send :handle_request, @notification, true
+          @node.send :handle_request, @intermediate, true
         end
 
         it "includes :rjr_headers => msg.headers" do
           @node.dispatcher.should_receive(:dispatch) { |args|
             args[:rjr_headers].should == {'msg' => 'headers'}
           }
-          @node.send :handle_request, @notification, true
+          @node.send :handle_request, @intermediate, true
         end
 
         it "includes :rjr_client_ip => extracted client ip" do
@@ -343,7 +363,7 @@ module RJR
           @node.dispatcher.should_receive(:dispatch) { |args|
             args[:rjr_client_ip].should == '127.0.0.1'
           }
-          @node.send :handle_request, @notification, true, connection
+          @node.send :handle_request, @intermediate, true, connection
         end
 
         it "includes :rjr_client_port => extracted client port" do
@@ -353,14 +373,14 @@ module RJR
           @node.dispatcher.should_receive(:dispatch) { |args|
             args[:rjr_client_port].should == 9999
           }
-          @node.send :handle_request, @notification, true, connection
+          @node.send :handle_request, @intermediate, true, connection
         end
 
         it "includes :rjr_node => self" do
           @node.dispatcher.should_receive(:dispatch) { |args|
             args[:rjr_node].should == @node
           }
-          @node.send :handle_request, @notification, true
+          @node.send :handle_request, @intermediate, true
         end
 
         it "includes :rjr_node_id => self.node_id" do
@@ -368,7 +388,7 @@ module RJR
           @node.dispatcher.should_receive(:dispatch) { |args|
             args[:rjr_node_id].should == 'node_id'
           }
-          @node.send :handle_request, @notification, true
+          @node.send :handle_request, @intermediate, true
         end
 
         it "includes :rjr_node_type => self.node_type" do
@@ -376,14 +396,14 @@ module RJR
           @node.dispatcher.should_receive(:dispatch) { |args|
             args[:rjr_node_type].should == :nt
           }
-          @node.send :handle_request, @notification, true
+          @node.send :handle_request, @intermediate, true
         end
 
         it "includes :rjr_callback => constructed node callback" do
           @node.dispatcher.should_receive(:dispatch) { |args|
             args[:rjr_callback].should be_an_instance_of(NodeCallback)
           }
-          @node.send :handle_request, @notification, true
+          @node.send :handle_request, @intermediate, true
         end
 
         describe "specified node callback" do
@@ -391,7 +411,7 @@ module RJR
             @node.dispatcher.should_receive(:dispatch) { |args|
               args[:rjr_callback].node.should == @node
             }
-            @node.send :handle_request, @notification, true
+            @node.send :handle_request, @intermediate, true
           end
 
           it "has a handle to the connection" do
@@ -399,17 +419,18 @@ module RJR
             @node.dispatcher.should_receive(:dispatch) { |args|
               args[:rjr_callback].connection.should == connection
             }
-            @node.send :handle_request, @notification, true, connection
+            @node.send :handle_request, @intermediate, true, connection
           end
         end
       end
 
       context "handling request / not a notification" do
         before(:each) do
-           request = Messages::Request.new :method  => 'method1',
-                                           :args    => ['method', 'args'],
-                                           :headers => {'msg' => 'headers'}
-          @request = request.to_s
+          request = Messages::Request.new :method  => 'method1',
+                                          :args    => ['method', 'args'],
+                                          :headers => {'msg' => 'headers'}
+          request_str = request.to_s
+          @intermediate = Messages::Intermediate.parse request_str
 
           result = Result.new
           @expected = Messages::Response.new :result  => result,
@@ -426,19 +447,19 @@ module RJR
             response.should == @expected.to_s
             econnection.should == connection
           }
-          @node.send :handle_request, @request, false, connection
+          @node.send :handle_request, @intermediate, false, connection
         end
 
         it "returns response" do
           @node.should_receive(:send_msg) # stub out
-          response = @node.send(:handle_request, @request, false)
+          response = @node.send(:handle_request, @intermediate, false)
           response.should be_an_instance_of(Messages::Response)
           response.to_s.should == @expected.to_s
         end
       end
 
       it "returns nil" do
-        @node.send(:handle_request, @notification, true).should be_nil
+        @node.send(:handle_request, @intermediate, true).should be_nil
       end
     end
 
@@ -448,7 +469,8 @@ module RJR
 
         @result = Result.new :result => 42
          response = Messages::Response.new :id => 'msg1', :result => @result
-        @response = response.to_s
+        response = response.to_s
+        @intermediate = Messages::Intermediate.parse response
       end
 
       it "invokes dispatcher.handle_response with response result" do
@@ -456,11 +478,11 @@ module RJR
           r.should be_an_instance_of(Result)
           r.result.should == 42
         }
-        @node.send :handle_response, @response
+        @node.send :handle_response, @intermediate
       end
 
       it "adds response msg_id and result to response queue" do
-        @node.send :handle_response, @response
+        @node.send :handle_response, @intermediate
         responses = @node.instance_variable_get(:@responses)
         responses.size.should == 1
         responses.first[0].should == 'msg1'
@@ -470,7 +492,7 @@ module RJR
       context "response contains error" do
         it "adds response error to response queue" do
           @node.dispatcher.should_receive(:handle_response).and_raise(Exception)
-          @node.send :handle_response, @response
+          @node.send :handle_response, @intermediate
           responses = @node.instance_variable_get(:@responses)
           responses.first[2].should be_an_instance_of(Exception)
         end
@@ -478,7 +500,7 @@ module RJR
 
       it "signals response cv" do
         @node.instance_variable_get(:@response_cv).should_receive(:broadcast)
-        @node.send :handle_response, @response
+        @node.send :handle_response, @intermediate
       end
     end
 

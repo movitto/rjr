@@ -52,12 +52,13 @@ class WebConnection < EventMachine::Connection
   def process_http_request
     # TODO support http protocols other than POST
     msg = @http_post_content.nil? ? '' : @http_post_content
-    @rjr_node.send(:handle_message, msg, self) # XXX private method
+    inter = @rjr_node.send(:handle_message, msg, self) # XXX private method
 
     # XXX we still have to send a response back to client to satisfy 
     # the http standard, even if this is a notification. handle_message
     # does not do this.
-    @rjr_node.send_msg "", self if Messages::Notification.is_notification_message?(msg)
+    notification = Messages::Notification.is_notification_message?(inter)
+    @rjr_node.send_msg "", self if notification
   end
 end
 

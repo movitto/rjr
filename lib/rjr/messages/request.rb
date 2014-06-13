@@ -12,7 +12,7 @@ module Messages
 # Message sent from client to server to invoke a JSON-RPC method
 class Request
   # Message string received from the source
-  attr_accessor :json_message
+  attr_accessor :message
 
   # Method source is invoking on the destination
   attr_accessor :jr_method
@@ -51,35 +51,29 @@ class Request
   end
 
   def parse_message(message)
-    @json_message = message
-    request       = JSONParser.parse(@json_message)
-    @jr_method    = request['method']
-    @jr_args      = request['params']
-    @msg_id       = request['id']
+    @message      = message
+    @jr_method    = message['method']
+    @jr_args      = message['params']
+    @msg_id       = message['id']
 
-    parse_headers(request)
+    parse_headers(message)
   end
 
-  def parse_headers(request)
-    request.keys.select { |k|
+  def parse_headers(message)
+    message.keys.select { |k|
       !['jsonrpc', 'id', 'method', 'params'].include?(k)
-    }.each { |k| @headers[k] = request[k] }
+    }.each { |k| @headers[k] = message[k] }
   end
 
   public
 
-  # Class helper to determine if the specified string is a valid json-rpc
-  # method request
-  # @param [String] message string message to check
+  # Class helper to determine if the specified message is a valid
+  # json-rpc method request message.
+  #
+  # @param [Message] message to check
   # @return [true,false] indicating if message is request message
   def self.is_request_message?(message)
-    begin
-       # FIXME log error
-       parsed = JSONParser.parse(message)
-       parsed.has_key?('method') && parsed.has_key?('id')
-    rescue Exception => e
-      false
-    end
+     message.has?('method') && message.has?('id')
   end
 
   # Convert request message to json

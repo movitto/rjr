@@ -183,28 +183,36 @@ class Node
 
   # Internal helper, handle message received
   def handle_message(msg, connection = {})
-    if Messages::Request.is_request_message?(msg)
-      tp << ThreadPoolJob.new(msg) { |m| handle_request(m, false, connection) }
+    intermediate = Messages::Intermediate.parse(msg)
 
-    elsif Messages::Notification.is_notification_message?(msg)
-      tp << ThreadPoolJob.new(msg) { |m| handle_request(m, true, connection) }
+    if Messages::Request.is_request_message?(intermediate)
+      tp << ThreadPoolJob.new(intermediate) { |i|
+              handle_request(i, false, connection)
+            }
 
-    elsif Messages::Response.is_response_message?(msg)
-      handle_response(msg)
+    elsif Messages::Notification.is_notification_message?(intermediate)
+      tp << ThreadPoolJob.new(intermediate) { |i|
+              handle_request(i, true, connection)
+            }
+
+    elsif Messages::Response.is_response_message?(intermediate)
+      handle_response(intermediate)
 
     end
+
+    intermediate
   end
 
   # Internal helper, handle request message received
-  def handle_request(data, notification=false, connection={})
+  def handle_request(message, notification=false, connection={})
     # get client for the specified connection
     # TODO should grap port/ip immediately on connection and use that
     client_port,client_ip = client_for(connection)
 
     msg = notification ?
-      Messages::Notification.new(:message => data,
+      Messages::Notification.new(:message => message,
                                  :headers => @message_headers) :
-           Messages::Request.new(:message => data,
+           Messages::Request.new(:message => message,
                                  :headers => @message_headers)
 
     callback = NodeCallback.new(:node       => self,
@@ -233,8 +241,8 @@ class Node
   end
 
   # Internal helper, handle response message received
-  def handle_response(data)
-    msg    = Messages::Response.new(:message => data,
+  def handle_response(message)
+    msg    = Messages::Response.new(:message => message,
                                     :headers => self.message_headers)
     res = err = nil
     begin

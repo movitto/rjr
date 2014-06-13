@@ -13,7 +13,7 @@ module Messages
 # indicate the result should _not_ be returned
 class Notification
   # Message string received from the source
-  attr_accessor :json_message
+  attr_accessor :message
 
   # Method source is invoking on the destination
   attr_accessor :jr_method
@@ -48,18 +48,17 @@ class Notification
   end
 
   def parse_message(message)
-    @json_message = message
-    notification  = JSONParser.parse(@json_message)
-    @jr_method    = notification['method']
-    @jr_args      = notification['params']
+    @message   = message
+    @jr_method = message['method']
+    @jr_args   = message['params']
 
-    parse_headers(notification)
+    parse_headers(message)
   end
 
-  def parse_headers(notification)
-    notification.keys.select { |k|
+  def parse_headers(message)
+    message.keys.select { |k|
       !['jsonrpc', 'method', 'params'].include?(k)
-    }.each { |k| @headers[k] = notification[k] }
+    }.each { |k| @headers[k] = message[k] }
   end
 
   public
@@ -70,13 +69,7 @@ class Notification
   # @param [String] message string message to check
   # @return [true,false] indicating if message is a notification message
   def self.is_notification_message?(message)
-    begin
-       # FIXME log error
-       parsed = JSONParser.parse(message)
-       parsed.has_key?('method') && !parsed.has_key?('id')
-    rescue Exception => e
-      false
-    end
+    message.has?('method') && !message.has?('id')
   end
 
   # Convert notification message to json

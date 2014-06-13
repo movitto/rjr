@@ -16,11 +16,11 @@ class JSONParser
   # Returns the message and remaining portion of the data string,
   # if message is found, else nil
   #
-  # TODO efficiency can probably be optimized in the case closing '}'
-  # hasn't arrived yet
-  #
-  # FIXME if uneven brackets appears in string data (such as in params)
-  # this will break, detect when in string and ignore in counts
+# TODO efficiency can probably be optimized in the case closing '}'
+# hasn't arrived yet
+#
+# FIXME if uneven brackets appears in string data (such as in params)
+# this will break, detect when in string and ignore in counts
   def self.extract_json_from(data) 
     return nil if data.nil? || data.empty?
     start  = 0

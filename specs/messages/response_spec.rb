@@ -1,6 +1,7 @@
 require 'rjr/common'
 require 'rjr/result'
 require 'rjr/messages/response'
+require 'rjr/messages/intermediate'
 
 module RJR
 module Messages
@@ -21,8 +22,8 @@ module Messages
     it "should produce valid result response json" do
       msg_id = gen_uuid
       msg = Response.new :id      => msg_id,
-                                :result  => RJR::Result.new(:result => 'success'),
-                                :headers => {:h => 2}
+                         :result  => RJR::Result.new(:result => 'success'),
+                         :headers => {:h => 2}
       msg_string = msg.to_s
       msg_string.should include('"id":"'+msg_id+'"')
       msg_string.should include('"result":"success"')
@@ -52,8 +53,10 @@ module Messages
       msg_id = gen_uuid
       msg_string = '{"id":"' + msg_id + '", ' +
                     '"result":"success","jsonrpc":"2.0"}'
-      msg = Response.new :message => msg_string
-      msg.json_message.should == msg_string
+      inter = Intermediate.parse msg_string
+
+      msg = Response.new :message => inter
+      msg.message.should == inter
       msg.msg_id.should == msg_id
       msg.result.success.should == true
       msg.result.failed.should == false
@@ -64,8 +67,10 @@ module Messages
       msg_id = gen_uuid
       msg_string = '{"id":"' + msg_id + '", ' +
                     '"error":{"code":404,"message":"not found","class":"ArgumentError"}, "jsonrpc":"2.0"}'
-      msg = Response.new :message => msg_string
-      msg.json_message.should == msg_string
+      inter = Intermediate.parse msg_string
+
+      msg = Response.new :message => inter
+      msg.message.should == inter
       msg.msg_id.should == msg_id
       msg.result.success.should == false
       msg.result.failed.should == true
@@ -78,16 +83,12 @@ module Messages
       msg_id = gen_uuid
       msg_string = '{"id":"' + msg_id + '", ' +
                     '"result":"success","h":2,"jsonrpc":"2.0"}'
-      msg = Response.new :message => msg_string
-      msg.json_message.should == msg_string
+      inter = Intermediate.parse msg_string
+
+      msg = Response.new :message => inter
+      msg.message.should == inter
       msg.headers.should have_key 'h'
       msg.headers['h'].should == 2
-    end
-
-    it "should fail if parsing invalid message string" do
-      lambda {
-        msg = Response.new :message => 'foobar'
-      }.should raise_error JSON::ParserError
     end
   end # describe Response
 end # module Messages
