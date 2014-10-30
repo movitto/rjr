@@ -1,4 +1,5 @@
 require 'rjr/util/json_parser'
+require 'rjr/core_ext'
 
 module RJR
 describe JSONParser do
@@ -12,6 +13,31 @@ describe JSONParser do
       json = '{"foo":"bar"}'
       complete = "#{json}remaining"
       JSONParser.extract_json_from(complete).should == [json, 'remaining']
+    end
+
+    it "handles brackets in quoted data" do
+      json = '{"foo":"val{"}'
+      JSONParser.extract_json_from(json).should == [json, '']
+    end
+
+    it "handles nested quotes" do
+      json = '{"foo":"val\'{\'"}'
+      JSONParser.extract_json_from(json).should == [json, '']
+    end
+
+    it "handles uneven quotes" do
+      json = '{"foo":"val\'"}'
+      JSONParser.extract_json_from(json).should == [json, '']
+    end
+
+    it "handles escaped quotes" do
+      json = '{"foo":"val\\""}'
+      JSONParser.extract_json_from(json).should == [json, '']
+    end
+
+    it "handles escaped chars" do
+      json = '{"foo":"val\\\\"}'
+      JSONParser.extract_json_from(json).should == [json, '']
     end
   end
 

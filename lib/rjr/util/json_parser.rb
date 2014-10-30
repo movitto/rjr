@@ -16,31 +16,64 @@ class JSONParser
   # Returns the message and remaining portion of the data string,
   # if message is found, else nil
   #
-# TODO efficiency can probably be optimized in the case closing '}'
-# hasn't arrived yet
-#
-# FIXME if uneven brackets appears in string data (such as in params)
-# this will break, detect when in string and ignore in counts
+  # TODO efficiency can probably be optimized in the case of multiple calls
+  # to this when the case closing '}' hasn't arrived yet
   def self.extract_json_from(data) 
     return nil if data.nil? || data.empty?
+    # start at beginning of data, find opening quote
     start  = 0
     start += 1 until start == data.length || data[start].chr == '{'
-    on = mi = 0 
+
+    escaped    = false
+    in_quotes  = false
+    quote_char = nil
+    open_brackets = mark = 0
+
+    # iterate over data stream
     start.upto(data.length - 1).each { |i|
-      if data[i].chr == '{'
-        on += 1
-      elsif data[i].chr == '}'
-        on -= 1
+
+      # toggle escaped flag in case of '\' or '\\'
+      if in_quotes && data[i].chr == '\\'
+        escaped = !escaped
+
+      else
+        # ignore escaped chars
+        if !escaped
+
+          # ignore brackets in quotes
+          if !in_quotes
+            if data[i].chr == '{'
+              open_brackets += 1
+
+            elsif data[i].chr == '}'
+              open_brackets -= 1
+            end
+          end
+
+          # track opening quote
+          if data[i].chr == "'" || data[i].chr == '"'
+            if !in_quotes
+              in_quotes  = true
+              quote_char = data[i]
+            elsif quote_char == data[i]
+              in_quotes = false
+            end
+          end
+        end
+
+        escaped = false
       end
 
-      if on == 0
-        mi = i
+
+      # finish at end of one json message
+      if open_brackets == 0
+        mark = i
         break
       end
     }
     
-    return nil if mi == 0
-    return data[start..mi], data[(mi+1)..-1]
+    return nil if mark == 0
+    return data[start..mark], data[(mark+1)..-1]
   end
 
   # Return bool indicating if json class is invalid in context
