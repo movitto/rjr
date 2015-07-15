@@ -107,6 +107,7 @@ class Node
      @responses     = []
 
      @node_id         = args[:node_id]
+     @timeout         = args[:timeout]
      @dispatcher      = args[:dispatcher] || RJR::Dispatcher.new
      @message_headers = args.has_key?(:headers) ? {}.merge(args[:headers]) : {}
 
@@ -262,13 +263,15 @@ class Node
   # Internal helper, block until response matching message id is received
   def wait_for_result(message)
     res = nil
+    set_timeout = false
     while res.nil?
       @response_lock.synchronize{
         # FIXME throw err if more than 1 match found
         res = @responses.find { |response| message.msg_id == response.first }
         if !res.nil?
           @responses.delete(res)
-
+        elsif set_timeout
+          raise Exception, 'Timed out'
         else
           # FIXME if halt is invoked while this is sleeping, all other threads
           # may be deleted resulting in this sleeping indefinetly and a deadlock
@@ -279,8 +282,8 @@ class Node
           # need mechanism to discard result if it comes in later).
           # finite # of seconds we wait and optional timeout should be
           # configurable on node class
-          @response_cv.wait @response_lock
-
+          set_timeout = true
+          @response_cv.wait @response_lock, @timeout
         end
       }
     end

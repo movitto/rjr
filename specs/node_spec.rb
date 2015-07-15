@@ -535,6 +535,11 @@ module RJR
           node.instance_variable_get(:@response_cv).should_receive(:wait).once
           node.send(:wait_for_result, @msg)
         end
+        it "throws an error if it times out" do
+          node = Node.new :timeout => 0.01
+          node.instance_variable_get(:@response_cv).should_receive(:wait).once
+          expect { node.send(:wait_for_result, @msg) }.to raise_error(Exception)
+        end
       end
     end
   end # describe Node
