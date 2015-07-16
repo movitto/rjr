@@ -537,8 +537,25 @@ module RJR
         end
         it "throws an error if it times out" do
           node = Node.new :timeout => 0.01
-          node.instance_variable_get(:@response_cv).should_receive(:wait).once
+          node.instance_variable_get(:@response_cv).should_receive(:wait).at_least(:once)
           expect { node.send(:wait_for_result, @msg) }.to raise_error(Exception)
+        end
+      end
+
+      context "pruning messages" do
+        it "deletes unrequested messages" do
+          responses = [@response, ['foobar', 'baz']]
+          @node.instance_variable_set(:@responses, responses)
+          @node.send :wait_for_result, @msg
+          @node.instance_variable_get(:@responses).should be_empty
+        end
+        it "deletes timed out messages" do
+          responses = [@response, ['foobar', 'baz']]
+          @node.instance_variable_set(:@timeout, 0.01)
+          @node.instance_variable_set(:@pending, { 'foobar' => Time.at(0) })
+          @node.instance_variable_set(:@responses, responses)
+          @node.send :wait_for_result, @msg
+          @node.instance_variable_get(:@responses).should be_empty
         end
       end
     end

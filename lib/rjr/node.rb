@@ -104,10 +104,12 @@ class Node
      clear_event_handlers
      @response_lock = Mutex.new
      @response_cv   = ConditionVariable.new
+     @pending       = {}
      @responses     = []
 
      @node_id         = args[:node_id]
      @timeout         = args[:timeout]
+     @wait_interval   = args[:wait_interval] || 0.01
      @dispatcher      = args[:dispatcher] || RJR::Dispatcher.new
      @message_headers = args.has_key?(:headers) ? {}.merge(args[:headers]) : {}
 
@@ -263,27 +265,25 @@ class Node
   # Internal helper, block until response matching message id is received
   def wait_for_result(message)
     res = nil
-    set_timeout = false
+    message_id = message.msg_id
+    @pending[message_id] = Time.now
     while res.nil?
       @response_lock.synchronize{
-        # FIXME throw err if more than 1 match found
+        # Prune messages that timed out
+        if @timeout
+          now = Time.now
+          @pending.delete_if { |_, start_time| (now - start_time) > @timeout }
+        end
+        pending_ids = @pending.keys
+        raise Exception, 'Timed out' unless pending_ids.include? message_id
+
+        # Prune invalid responses
+        @responses.keep_if { |response| @pending.has_key? response.first }
         res = @responses.find { |response| message.msg_id == response.first }
         if !res.nil?
           @responses.delete(res)
-        elsif set_timeout
-          raise Exception, 'Timed out'
         else
-          # FIXME if halt is invoked while this is sleeping, all other threads
-          # may be deleted resulting in this sleeping indefinetly and a deadlock
-
-          # TODO wait for a finite # of seconds, record time we started waiting
-          # before while loop and on every iteration check to see if we've been
-          # waiting longer than an optional timeout. If so throw an error (also
-          # need mechanism to discard result if it comes in later).
-          # finite # of seconds we wait and optional timeout should be
-          # configurable on node class
-          set_timeout = true
-          @response_cv.wait @response_lock, @timeout
+          @response_cv.wait @response_lock, @wait_interval
         end
       }
     end
