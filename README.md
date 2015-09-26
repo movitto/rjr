@@ -167,3 +167,4 @@ RJR as this is not standard JSON-RPC.
 * Mo Morsi <mo@morsi.org>
 * Ladislav Smola <ladislav.smola@it-logica.cz>
 * André Dieb Martins <andre.dieb@gmail.com>
+* Eric Bakan <eric@ebakan.com>
