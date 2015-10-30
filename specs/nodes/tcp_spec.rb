@@ -35,35 +35,34 @@ module RJR::Nodes
       end
     end
 
-    describe "#invoke" do
-      it "should invoke request" do
-        server  = TCP.new :node_id => 'tcp',
-                                   :host => 'localhost', :port => 9987
-        server.dispatcher.handle('foobar') { |param|
-          'retval'
-        }
-        server.listen
-
-        client = TCP.new
-        res = client.invoke 'jsonrpc://localhost:9987', 'foobar', 'myparam'
-        server.halt.join
-        res.should == 'retval'
+    context "simple server" do
+      let(:server) do
+        TCP.new(:node_id => 'tcp',
+                :host => 'localhost',
+                :port => 9987)
       end
-    end
 
-    describe "#notify" do
-      it "should send notification" do
-        server  = TCP.new :node_id => 'tcp',
-                                   :host => 'localhost', :port => 9987
-        server.dispatcher.handle('foobar') { |param|
-          'retval'
-        }
+      let(:client) { TCP.new }
+
+      before(:each) do
+        server.dispatcher.handle('foobar') { |param| 'retval' }
         server.listen
+      end
 
-        client = TCP.new
-        res = client.notify 'jsonrpc://localhost:9987', 'foobar', 'myparam'
-        server.halt.join
-        res.should == nil
+      describe "#invoke" do
+        it "should invoke request" do
+          res = client.invoke 'jsonrpc://localhost:9987', 'foobar', 'myparam'
+          server.halt.join
+          res.should == 'retval'
+        end
+      end
+
+      describe "#notify" do
+        it "should send notification" do
+          res = client.notify 'jsonrpc://localhost:9987', 'foobar', 'myparam'
+          server.halt.join
+          res.should == nil
+        end
       end
     end
 
@@ -71,5 +70,3 @@ module RJR::Nodes
     # TODO ensure closed / error event handlers are invoked
   end
 end
-
-
