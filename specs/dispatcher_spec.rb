@@ -167,14 +167,14 @@ module RJR
           d = Dispatcher.new
           cb = proc {}
           d.handle 'foobar', cb
-          d.handles?('foobar').should be_true
+          d.handles?('foobar').should be_truthy
         end
       end
 
       context "dispatcher does not have handler" do
         it "returns false" do
           d = Dispatcher.new
-          d.handles?('foobar').should be_false
+          d.handles?('foobar').should be_falsey
         end
       end
     end
@@ -337,7 +337,7 @@ module RJR
           h = proc {}
           d.handle('foobar', h)
           d.handlers['foobar'].should == h
-          d.handles?('foobar').should be_true
+          d.handles?('foobar').should be_truthy
         end
 
         it "should set handler from block param" do
@@ -345,7 +345,7 @@ module RJR
           h = proc {}
           d.handle('foobar', &h)
           d.handlers['foobar'].should == h
-          d.handles?('foobar').should be_true
+          d.handles?('foobar').should be_truthy
         end
 
         it "should register handler for multiple methods" do
@@ -354,8 +354,8 @@ module RJR
           d.handle(['foobar', 'barfoo'], &h)
           d.handlers['foobar'].should == h
           d.handlers['barfoo'].should == h
-          d.handles?('foobar').should be_true
-          d.handles?('barfoo').should be_true
+          d.handles?('foobar').should be_truthy
+          d.handles?('barfoo').should be_truthy
         end
       end
 
@@ -376,7 +376,7 @@ module RJR
             d.handle('foobar', &h)
 
             d.dispatch :rjr_method => 'foobar'
-            invoked.should be_true
+            invoked.should be_truthy
           end
 
           it "should pass params to handler" do

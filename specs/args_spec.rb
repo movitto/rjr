@@ -115,14 +115,14 @@ module RJR
       context "arguments includes tag" do
         it "returns true" do
           a = Arguments.new :args => ['with_id', 42]
-          a.specifies?('with_id').should be_true
+          a.specifies?('with_id').should be_truthy
         end
       end
 
       context "arguments does not include tag" do
         it "returns false" do
           a = Arguments.new :args => ['with_id', 42]
-          a.specifies?('with_name').should be_false
+          a.specifies?('with_name').should be_falsey
         end
       end
     end

@@ -59,13 +59,13 @@ module RJR
 
       context "handler exists" do
         it "returns true" do
-          HandlesMethodsTest.has_handler_for?(:handle).should be_true
+          HandlesMethodsTest.has_handler_for?(:handle).should be_truthy
         end
       end
 
       context "handler does not exist" do
         it "returns false" do
-          HandlesMethodsTest.has_handler_for?(:foobar).should be_false
+          HandlesMethodsTest.has_handler_for?(:foobar).should be_falsey
         end
       end
     end

@@ -29,7 +29,7 @@ module RJR::Nodes
         # issue request
         Web.new.invoke 'http://localhost:9678', 'test', 'myparam'
         node.halt.join
-        invoked.should be_true
+        invoked.should be_truthy
         ci.should == '127.0.0.1'
         #cp.should
         rn.should == node

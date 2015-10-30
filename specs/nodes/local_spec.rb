@@ -66,8 +66,8 @@ module RJR::Nodes
       }
 
       node.invoke 'foobar', 'myparam'
-      foobar_invoked.should be_true
-      callback_invoked.should be_true
+      foobar_invoked.should be_truthy
+      callback_invoked.should be_truthy
       cbp.should == 'cp'
     end
 
