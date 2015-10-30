@@ -54,6 +54,9 @@ class TCPConnection < EventMachine::Connection
     }
   end
 
+  def unbind
+    @rjr_node.send(:connection_event, :closed)
+  end
 end
 
 # TCP node definition, listen for and invoke json-rpc requests via TCP sockets

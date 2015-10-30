@@ -64,9 +64,19 @@ module RJR::Nodes
           res.should == nil
         end
       end
+
+      describe "closed event handler" do
+        it "should be invoked when connection is closed" do
+          handler_invoked = false
+          server.on(:closed) { |node| handler_invoked = true }
+          client.invoke 'jsonrpc://localhost:9987', 'foobar', 'myparam'
+          server.halt.join
+          handler_invoked.should be_truthy
+        end
+      end
     end
 
     # TODO test callbacks over tcp interface
-    # TODO ensure closed / error event handlers are invoked
+    # TODO ensure error event handler is invoked
   end
 end
