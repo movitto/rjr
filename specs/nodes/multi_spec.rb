@@ -51,7 +51,7 @@ module RJR::Nodes
                                :broker => 'localhost'
         res = amqp_client.invoke 'amqp-queue', 'method1', 'myparam1'
         res.should == 'retval1'
-        invoked1.should be_true
+        invoked1.should be_truthy
         rni1.should == 'amqp'
         rnt1.should == :amqp
         p1.should == 'myparam1'

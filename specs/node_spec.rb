@@ -177,7 +177,9 @@ module RJR
         n = Node.new
         n.on(:error) {}
         n.clear_event_handlers
-        n.connection_event_handlers.should == {:closed => [], :error => []}
+        n.connection_event_handlers.should == { :opened => [],
+                                                :closed => [],
+                                                :error  => [] }
       end
     end
 
@@ -186,7 +188,9 @@ module RJR
         bl = proc{}
         n = Node.new
         n.on(:error, &bl)
-        n.connection_event_handlers.should == {:closed => [], :error => [bl]}
+        n.connection_event_handlers.should == { :opened => [],
+                                                :closed => [],
+                                                :error  => [bl] }
       end
     end
 

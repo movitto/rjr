@@ -58,14 +58,14 @@ describe JSONParser do
       context "class not on permitted classes list" do
         it "returns true" do
           Class.should_receive(:permitted_json_classes).and_return([])
-          JSONParser.invalid_json_class?('foobar').should be_true
+          JSONParser.invalid_json_class?('foobar').should be_truthy
         end
       end
 
       context "class on permitted classes list" do
         it "returns false" do
           Class.should_receive(:permitted_json_classes).and_return(['foobar'])
-          JSONParser.invalid_json_class?('foobar').should be_false
+          JSONParser.invalid_json_class?('foobar').should be_falsey
         end
       end
     end
@@ -77,13 +77,13 @@ describe JSONParser do
 
       context "class not on ruby heirarchy" do
         it "returns true" do
-          JSONParser.invalid_json_class?('Foobar').should be_true
+          JSONParser.invalid_json_class?('Foobar').should be_truthy
         end
       end
 
       context "class on ruby heirarchy" do
         it "returns false" do
-          JSONParser.invalid_json_class?('Integer').should be_false
+          JSONParser.invalid_json_class?('Integer').should be_falsey
         end
       end
     end
