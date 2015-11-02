@@ -1,6 +1,6 @@
-# RJR Request Message
+# RJR Intermediate Message
 #
-# Copyright (C) 2012-2014 Mohammed Morsi <mo@morsi.org>
+# Copyright (C) 2014-2015 Mohammed Morsi <mo@morsi.org>
 # Licensed under the Apache License, Version 2.0
 
 require 'json'
