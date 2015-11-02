@@ -14,7 +14,7 @@ module RJR
     describe "#start" do
       it "should start the reactor" do
         @em.start
-        @em.reactor_running?.should be_true
+        @em.reactor_running?.should be_truthy
         ['sleep', 'run'].should include(@em.reactor_thread.status)
       end
 
@@ -33,7 +33,7 @@ module RJR
 
         @em.halt
         @em.join
-        @em.reactor_running?.should be_false
+        @em.reactor_running?.should be_falsey
         @em.reactor_thread.should be_nil
       end
     end
@@ -65,7 +65,7 @@ module RJR
           m.synchronize { c.wait m, 0.5 }
         end
       end
-      invoked.should be_true
+      invoked.should be_truthy
     end
 
   end

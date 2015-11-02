@@ -146,14 +146,20 @@ class Node
   ##################################################################
   # Reset connection event handlers
   def clear_event_handlers
-    @connection_event_handlers = {:closed => [], :error => []}
+    @connection_event_handlers = {
+      :opened => [],
+      :closed => [],
+      :error  => []
+    }
   end
 
   # Register connection event handler
-  # @param [:error, :close] event the event to register the handler for
-  # @param [Callable] handler block param to be added to array of handlers
-  #   that are called when event occurs
-  # @yield [Node] self is passed to each registered handler when event occurs
+  # @param event [:opened, :closed, :error] the event to register the handler
+  #                                         for
+  # @param handler [Callable] block param to be added to array of handlers
+  #                           that are called when event occurs
+  # @yield [Node, *args] self and event-specific *args are passed to each
+  #                      registered handler when event occurs
   def on(event, &handler)
     return unless @connection_event_handlers.keys.include?(event)
     @connection_event_handlers[event] << handler
@@ -161,12 +167,11 @@ class Node
 
   private
 
-  # Internal helper, run connection event handlers for specified event
-  def connection_event(event)
+  # Internal helper, run connection event handlers for specified event, passing
+  # self and args to handler
+  def connection_event(event, *args)
     return unless @connection_event_handlers.keys.include?(event)
-    @connection_event_handlers[event].each { |h|
-      h.call self
-    }
+    @connection_event_handlers[event].each { |h| h.call(self, *args) }
   end
 
   ##################################################################

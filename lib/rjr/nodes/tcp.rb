@@ -33,6 +33,11 @@ class TCPConnection < EventMachine::Connection
 
     @send_lock = Mutex.new
     @data      = ""
+    @rjr_node.add_connection(self)
+  end
+
+  def post_init
+    @rjr_node.send(:connection_event, :opened, self)
   end
 
   # EventMachine::Connection#receive_data callback, handle request / response messages
@@ -54,6 +59,10 @@ class TCPConnection < EventMachine::Connection
     }
   end
 
+  def unbind
+    @rjr_node.remove_connection(self)
+    @rjr_node.send(:connection_event, :closed, self)
+  end
 end
 
 # TCP node definition, listen for and invoke json-rpc requests via TCP sockets
@@ -89,18 +98,8 @@ class TCP < RJR::Node
   # Internal helper, initialize new client
   def init_client(args={}, &on_init)
     host,port = args[:host], args[:port]
-    connection = nil
-    @connections_lock.synchronize {
-      connection = @connections.find { |c|
-                     port == c.port && host == c.host
-                   }
-      if connection.nil?
-        connection =
-          EventMachine::connect host, port,
-                      TCPConnection, args
-        @connections << connection
-      end
-    }
+    connection = @connections.find { |c| port == c.port && host == c.host }
+    connection ||= EventMachine::connect(host, port, TCPConnection, args)
     on_init.call(connection) # TODO move to tcpnode event ?
   end
 
@@ -138,6 +137,20 @@ class TCP < RJR::Node
       @@em.start_server @host, @port, TCPConnection, { :rjr_node => self }
     }
     self
+  end
+
+  # Called by TCPConnection::initialize
+  def add_connection(connection)
+    @connections_lock.synchronize do
+      connections << connection
+    end
+  end
+
+  # Called by TCPConnection::unbind
+  def remove_connection(connection)
+    @connections_lock.synchronize do
+      connections.delete(connection)
+    end
   end
 
   # Instructs node to send rpc request, and wait for / return response.

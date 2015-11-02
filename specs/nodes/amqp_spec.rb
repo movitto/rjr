@@ -40,7 +40,7 @@ module RJR::Nodes
                                                 'test',
                                                 'myparam'
         stop_node(node)
-        invoked.should be_true
+        invoked.should be_truthy
         ci.should be_nil
         cp.should be_nil
         rn.should == node

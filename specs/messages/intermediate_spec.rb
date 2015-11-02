@@ -23,14 +23,14 @@ module Messages
       context "data has key" do
         it "returns true" do
           msg = Intermediate.new :data => {'foo' => 'bar'}
-          msg.has?('foo').should be_true
+          msg.has?('foo').should be_truthy
         end
       end
 
       context "data does not have key" do
         it "returns false" do
           msg = Intermediate.new
-          msg.has?('foo').should be_false
+          msg.has?('foo').should be_falsey
         end
       end
     end
