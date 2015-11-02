@@ -168,3 +168,4 @@ RJR as this is not standard JSON-RPC.
 * Ladislav Smola <ladislav.smola@it-logica.cz>
 * André Dieb Martins <andre.dieb@gmail.com>
 * Eric Bakan <eric@ebakan.com>
+* Jonas Collberg <jonas.collberg@gmail.com>
