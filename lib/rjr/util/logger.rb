@@ -52,15 +52,17 @@ class Logger
     def self.method_missing(method_id, *args)
        _instantiate_logger
        @logger_mutex.synchronize {
+         # TODO option to indent & prepend configurable prefix to extra log lines after first entry
          args = args.first if args.first.is_a?(Array)
+         shouldnt_log = args.any? { |a| @filters.any? { |f| !f.call a } }
          args.each { |a|
            # run highlights / filters against output before
            # sending formatted output to logger
            # TODO allow user to customize highlight mechanism/text
            na = @highlights.any? { |h| h.call a } ?
                   "\e[1m\e[31m#{a}\e[0m\e[0m" : a
-           @logger.send(method_id, na) if @filters.all? { |f| f.call a }
-         }
+           @logger.send(method_id, na)
+         } unless shouldnt_log
        }
     end
 
