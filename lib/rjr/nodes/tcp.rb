@@ -184,7 +184,7 @@ class TCP < RJR::Node
     result = wait_for_result(message)
 
     if result.size > 2
-      raise Exception, result[2]
+      fail result[2]
     end
     return result[1]
   end

@@ -180,7 +180,7 @@ class Dispatcher
        #  TODO needs to be constantized first (see TODO in lib/rjr/message)
        #  raise result.error_class.new(result.error_msg) unless result.success
        #else
-         raise Exception, result.error_msg
+         fail result.error_msg
        #end
      end
      return result.result

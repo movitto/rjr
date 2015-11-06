@@ -280,7 +280,7 @@ class Node
           @pending.delete_if { |_, start_time| (now - start_time) > @timeout }
         end
         pending_ids = @pending.keys
-        raise Exception, 'Timed out' unless pending_ids.include? message_id
+        fail 'Timed out' unless pending_ids.include? message_id
 
         # Prune invalid responses
         @responses.keep_if { |response| @pending.has_key? response.first }
