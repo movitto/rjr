@@ -52,6 +52,9 @@ module RJR::Nodes
     end
 
     it "should invoke callbacks" do
+      # same workaround as in #notify test above
+      m,c = Mutex.new, ConditionVariable.new
+
       node = Local.new
       cbp = nil
       foobar_invoked = false
@@ -63,9 +66,11 @@ module RJR::Nodes
       node.dispatcher.handle('callback') { |param|
         callback_invoked = true
         cbp = param
+        m.synchronize { c.signal }
       }
 
       node.invoke 'foobar', 'myparam'
+      m.synchronize { c.wait m, 0.1 } unless callback_invoked
       foobar_invoked.should be_truthy
       callback_invoked.should be_truthy
       cbp.should == 'cp'
