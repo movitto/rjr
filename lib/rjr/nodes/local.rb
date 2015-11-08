@@ -117,7 +117,7 @@ class Local < RJR::Node
     res = wait_for_result(message)
 
     if res.size > 2
-      raise Exception, res[2]
+      fail res[2]
     end
     return res[1]
   end
