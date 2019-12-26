@@ -94,16 +94,10 @@ class Request
 
     RJR::Logger.info "#{node_sig}->#{method_sig}"
 
-    # TODO option to compare arity of handler to number
-    # of method_args passed in ?
-    retval = instance_exec(@rjr_method_args, &@rjr_handler)
-
     if rjr_method_args.kind_of?(Array)
       instance_exec(*rjr_method_args, &rjr_handler)
-    elsif rjr_method_args.kind_of?(Hash)
+    else
       instance_exec(**rjr_method_args, &rjr_handler)
-    else 
-      instance_exec(*rjr_method_args, &rjr_handler)
     end
 
     RJR::Logger.info \
