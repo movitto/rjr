@@ -94,10 +94,12 @@ class Request
 
     RJR::Logger.info "#{node_sig}->#{method_sig}"
 
-    if rjr_method_args.kind_of?(Array)
-      instance_exec(*rjr_method_args, &rjr_handler)
+    if @rjr_method_args.is_a? Hash
+      # Translate Hash<String, dynamic> to Hash<Symbol, dynamic>
+      s_params = Hash[@rjr_method_args.map { |k, v| [k.to_sym, v] }]
+      instance_exec(**s_params, &rjr_handler)
     else
-      instance_exec(**rjr_method_args, &rjr_handler)
+      instance_exec(*rjr_method_args, &rjr_handler)
     end
 
     RJR::Logger.info \
