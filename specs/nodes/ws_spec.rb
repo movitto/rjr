@@ -14,7 +14,7 @@ module RJR::Nodes
     describe "#listen" do
       it "should listen for messages" do
         ci = cp = rn = rni = rnt = p = invoked = nil
-        node = WS.new :node_id => 'ws', :host => 'localhost', :port => 9678
+        node = WS.new :node_id => 'ws', :host => '127.0.0.1', :port => 9678
         node.dispatcher.handle('test') do |param|
           ci  = @rjr_client_ip
           cp  = @rjr_client_port
@@ -27,7 +27,7 @@ module RJR::Nodes
         node.listen
 
         # issue request
-        WS.new.invoke 'http://localhost:9678', 'test', 'myparam'
+        WS.new.invoke 'http://127.0.0.1:9678', 'test', 'myparam'
         node.halt.join
         invoked.should be_truthy
         ci.should == '127.0.0.1'
@@ -41,14 +41,14 @@ module RJR::Nodes
 
     describe "#invoke" do
       it "should invoke request" do
-        server = WS.new :node_id => 'ws', :host => 'localhost', :port => 9678
+        server = WS.new :node_id => 'ws', :host => '127.0.0.1', :port => 9678
         server.dispatcher.handle('test') do |p|
           'retval'
         end
         server.listen
 
         client = WS.new
-        res = client.invoke 'http://localhost:9678', 'test', 'myparam'
+        res = client.invoke 'http://127.0.0.1:9678', 'test', 'myparam'
 
         server.halt.join
         res.should == 'retval'
@@ -57,14 +57,14 @@ module RJR::Nodes
 
     describe "#notify" do
       it "should send notification" do
-        server = WS.new :node_id => 'ws', :host => 'localhost', :port => 9678
+        server = WS.new :node_id => 'ws', :host => '127.0.0.1', :port => 9678
         server.dispatcher.handle('test') do |p|
           'retval'
         end
         server.listen
 
         client = WS.new
-        res = client.notify 'http://localhost:9678', 'test', 'myparam'
+        res = client.notify 'http://127.0.0.1:9678', 'test', 'myparam'
 
         server.halt.join
         res.should == nil

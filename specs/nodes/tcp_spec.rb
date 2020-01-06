@@ -10,7 +10,7 @@ module RJR::Nodes
       it "should listen for messages" do
         ci = cp = rn = rni = rnt = p = invoked = nil
         server  = TCP.new :node_id => 'tcp',
-                          :host => 'localhost', :port => 9987
+                          :host => '127.0.0.1', :port => 9987
         server.dispatcher.handle('foobar') { |param|
           ci  = @rjr_client_ip
           cp  = @rjr_client_port
@@ -23,7 +23,7 @@ module RJR::Nodes
         server.listen
 
         # issue request
-        TCP.new.invoke 'jsonrpc://localhost:9987', 'foobar', 'myparam'
+        TCP.new.invoke 'jsonrpc://127.0.0.1:9987', 'foobar', 'myparam'
         server.halt.join
         ci.should == "127.0.0.1"
         #cp.should == 9987
@@ -38,11 +38,11 @@ module RJR::Nodes
     context "simple server" do
       let(:server) do
         TCP.new(:node_id => 'tcp',
-                :host => 'localhost',
+                :host => '127.0.0.1',
                 :port => 9987)
       end
 
-      let(:host) { 'jsonrpc://localhost:9987' }
+      let(:host) { 'jsonrpc://127.0.0.1:9987' }
 
       let(:client) { TCP.new }
 
