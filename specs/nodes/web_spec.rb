@@ -55,6 +55,10 @@ module RJR::Nodes
       end
     end
 
+    # FIXME there spec is causing sporadic failures when connection.get_peername is called
+    #       in the server notification handler. For some reason it's reporting that a
+    #       'pure virtual method' is being called on connection class. Perhaps due to
+    #       connection descruction or not-yet initialization when get_peername is called. Investigate
     describe "#notify" do
       it "should send notification" do
         server = Web.new :node_id => 'www', :host => '127.0.0.1', :port => 9678
