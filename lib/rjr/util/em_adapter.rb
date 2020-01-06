@@ -48,7 +48,7 @@ class EMAdapter
   #
   # @return self
   def halt
-    self.stop_event_loop if self.reactor_running?
+    EventMachine.stop_event_loop if EventMachine.reactor_running?
     self
   end
 

@@ -138,7 +138,7 @@ class Node
   #
   # @return self
   def halt
-    em.stop_event_loop
+    em.halt
     tp.stop
     self
   end
