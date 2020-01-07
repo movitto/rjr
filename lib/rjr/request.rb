@@ -90,13 +90,17 @@ class Request
   # method parameters in the local scope
   def handle
     node_sig   = "#{@rjr_node_id}(#{@rjr_node_type})"
-    method_sig = "#{@rjr_method}(#{@rjr_method_args.join(',')})"
+    method_sig = "#{@rjr_method}(#{@rjr_method_args})"
 
     RJR::Logger.info "#{node_sig}->#{method_sig}"
 
-    # TODO option to compare arity of handler to number
-    # of method_args passed in ?
-    retval = instance_exec(*@rjr_method_args, &@rjr_handler)
+    if @rjr_method_args.is_a? Hash
+      # Translate Hash<String, dynamic> to Hash<Symbol, dynamic>
+      s_params = Hash[@rjr_method_args.map { |k, v| [k.to_sym, v] }]
+      instance_exec(**s_params, &rjr_handler)
+    else
+      instance_exec(*rjr_method_args, &rjr_handler)
+    end
 
     RJR::Logger.info \
       "#{node_sig}<-#{method_sig}<-#{retval.nil? ? "nil" : retval}"
